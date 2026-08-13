@@ -3,15 +3,12 @@
  *
  * This file is the first thing Vite loads.
  *
- * RESPONSIBILITIES (Phase 2):
+ * RESPONSIBILITIES (Phase 3):
  * 1. Import all global CSS
  * 2. Check if the user has an existing session (returning visitor)
- * 3. If yes  → fetch profile → show the authenticated placeholder
+ * 3. If yes  → fetch profile → render the application shell
  * 4. If no   → show the login page
  * 5. Listen for auth state changes (logout, session expiry)
- *
- * PHASE 3 will replace renderAuthenticatedPlaceholder() with the
- * full application shell (sidebar, header, router).
  *
  * IMPORT ORDER MATTERS for CSS:
  * variables.css must load before anything that uses var(--...) tokens.
@@ -25,10 +22,10 @@ import './styles/components.css';
 import './styles/auth.css';
 
 import { getSession, onAuthStateChange } from './core/auth.js';
-import { fetchProfile, logout }          from './features/auth/auth.service.js';
+import { fetchProfile }                  from './features/auth/auth.service.js';
 import { renderLoginPage }               from './features/auth/auth.page.js';
-import { getRoleLabel }                  from './core/permissions.js';
-import { APP_NAME, APP_ORGANIZATION }    from './shared/constants/app.constants.js';
+import { renderShell }                   from './shared/components/shell.component.js';
+import { APP_NAME }                      from './shared/constants/app.constants.js';
 
 // ── Application State ──────────────────────────────────────────────
 // currentProfile holds the signed-in user's profile.
@@ -64,7 +61,7 @@ async function initApp() {
 
   // All good — restore authenticated state
   currentProfile = profile;
-  renderAuthenticatedPlaceholder(profile);
+  renderShell(profile, handleLogoutComplete);
 }
 
 // ── Auth State Listener ────────────────────────────────────────────
@@ -93,7 +90,7 @@ onAuthStateChange((event, session) => {
  */
 function handleLoginSuccess(profile) {
   currentProfile = profile;
-  renderAuthenticatedPlaceholder(profile);
+  renderShell(profile, handleLogoutComplete);
 }
 
 // ── Render Functions ───────────────────────────────────────────────
@@ -127,80 +124,10 @@ function renderLoading() {
 }
 
 /**
- * Temporary post-login placeholder.
- *
- * WHY this exists:
- * Phase 2 only builds authentication. The full application shell
- * (sidebar, navigation, dashboard) is built in Phase 3.
- * This placeholder confirms that login works correctly and shows
- * the user's profile data from the database.
- *
- * This function will be REPLACED in Phase 3 by the router + shell.
- *
- * @param {Object} profile - The logged-in user's profile
+ * Called after the user successfully logs out.
+ * Re-shows the login page.
  */
-function renderAuthenticatedPlaceholder(profile) {
-  const app = document.getElementById('app');
-
-  app.innerHTML = `
-    <div class="auth-success-placeholder">
-      <div class="auth-success-card">
-
-        <div class="auth-success-card__icon" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-        </div>
-
-        <h1 class="auth-success-card__title">Login Successful</h1>
-
-        <p class="auth-success-card__meta">
-          <strong>${profile.full_name}</strong>
-        </p>
-        <p class="auth-success-card__meta" style="margin-bottom: var(--space-5);">
-          ${getRoleLabel(profile)}
-        </p>
-
-        <div style="
-          background-color: var(--color-primary-bg);
-          border-radius: var(--radius-lg);
-          padding: var(--space-3) var(--space-4);
-          margin-bottom: var(--space-6);
-        ">
-          <p style="font-size: var(--font-size-xs); color: var(--color-primary); font-weight: var(--font-weight-semibold);">
-            Phase 2 complete — Authentication is working.
-          </p>
-          <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--space-1);">
-            The full application shell will be built in Phase 3.
-          </p>
-        </div>
-
-        <button
-          id="logout-btn"
-          class="btn btn-secondary btn-full"
-          type="button"
-        >
-          Sign Out
-        </button>
-
-      </div>
-    </div>
-  `;
-
-  document.getElementById('logout-btn').addEventListener('click', handleLogout);
-}
-
-/**
- * Handles the logout button click.
- */
-async function handleLogout() {
-  const btn = document.getElementById('logout-btn');
-  if (btn) {
-    btn.textContent = 'Signing out...';
-    btn.disabled = true;
-  }
-
-  await logout(currentProfile);
-  // onAuthStateChange will fire SIGNED_OUT and call renderLoginPage()
+function handleLogoutComplete() {
+  currentProfile = null;
+  renderLoginPage(handleLoginSuccess);
 }
