@@ -1,0 +1,271 @@
+/*
+ * Authentication Page Styles
+ *
+ * The login page uses its own layout — it does NOT use the sidebar/header
+ * layout from layout.css. It takes up the full viewport.
+ *
+ * Desktop: two-column (brand panel left, form panel right)
+ * Mobile:  single column (compact header, full-width form)
+ */
+
+/* ── Two-column Auth Layout ───────────────────────────────────────── */
+.auth-layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  min-height: 100vh;
+}
+
+/* ── Brand Panel (left side, desktop) ────────────────────────────── */
+.auth-brand {
+  background-color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-8);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle geometric background pattern */
+.auth-brand::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+.auth-brand::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  left: -40px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.auth-brand__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 280px;
+}
+
+.auth-brand__logo {
+  width: 64px;
+  height: 64px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
+
+.auth-brand__name {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: #FFFFFF;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: var(--space-3);
+}
+
+.auth-brand__description {
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.75);
+  line-height: var(--line-height-relaxed);
+}
+
+.auth-brand__divider {
+  width: 40px;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: var(--space-6) 0;
+}
+
+.auth-brand__org {
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.6);
+  line-height: var(--line-height-relaxed);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Form Panel (right side) ──────────────────────────────────────── */
+.auth-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-6);
+  background-color: var(--color-background);
+}
+
+.auth-form-wrapper {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-form-header {
+  margin-bottom: var(--space-6);
+}
+
+.auth-form-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.auth-form-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+/* ── Password field with toggle button ───────────────────────────── */
+.auth-password-wrapper {
+  position: relative;
+}
+
+.auth-password-wrapper .form-input {
+  padding-right: var(--space-10);
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.auth-password-toggle:hover {
+  color: var(--color-text-muted);
+}
+
+/* ── Footer note ──────────────────────────────────────────────────── */
+.auth-footer-note {
+  margin-top: var(--space-6);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  text-align: center;
+  line-height: var(--line-height-relaxed);
+}
+
+/* ── Mobile logo (visible only on mobile) ────────────────────────── */
+.auth-mobile-logo {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.auth-mobile-logo__icon {
+  width: 40px;
+  height: 40px;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-mobile-logo__name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+/* ── Mobile Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Switch to single column */
+  .auth-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  /* Brand panel hides on mobile */
+  .auth-brand {
+    display: none;
+  }
+
+  /* Form panel takes full screen */
+  .auth-form-panel {
+    align-items: flex-start;
+    padding: var(--space-8) var(--space-6);
+  }
+
+  /* Show mobile logo */
+  .auth-mobile-logo {
+    display: flex;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-form-panel {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+/* ── Post-login placeholder (Phase 2 only, replaced in Phase 3) ───── */
+.auth-success-placeholder {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background);
+  padding: var(--space-6);
+}
+
+.auth-success-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-success-card__icon {
+  width: 56px;
+  height: 56px;
+  background-color: var(--color-primary-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-5);
+  color: var(--color-primary);
+}
+
+.auth-success-card__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.auth-success-card__meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
