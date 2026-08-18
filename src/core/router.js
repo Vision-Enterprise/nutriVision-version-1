@@ -194,6 +194,7 @@ class Router {
     const pageTitles = {
       'dashboard':   'Dashboard',
       'commodities': 'Commodity Management',
+      'batches':     'Batch Management',
       'users':       'User Management',
       'audit-logs':  'Audit Logs',
       'account':     'Account Settings',
@@ -207,3 +208,4 @@ class Router {
 // Every file that imports this gets the SAME router object.
 // This is the Singleton pattern — same reason as the Supabase client.
 export const router = new Router();
+
