@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Hash Router
  *
  * A lightweight client-side router for NutriVision.
@@ -85,24 +85,34 @@ class Router {
 
   /**
    * Start the router.
-   * Attaches the hashchange listener and resolves the current route.
-   * Call this once after the shell HTML is in the DOM.
+   *
+   * The hashchange listener is only attached once (on first call).
+   * _resolve() is called every time so that re-login after logout on the same
+   * tab correctly renders the dashboard without requiring a page refresh.
    */
   start() {
-    if (this._started) return;
-    this._started = true;
+    if (!this._started) {
+      this._started = true;
+      window.addEventListener('hashchange', () => this._resolve());
+    }
 
-    window.addEventListener('hashchange', () => this._resolve());
-    this._resolve(); // Handle the route that was in the URL when the app loaded
+    // Always resolve the current route, even on subsequent calls.
+    // This handles the re-login-after-logout scenario where the listener
+    // is already set but the page content must be rendered again.
+    this._resolve();
   }
 
   /**
    * Resolve the current URL to a route and render it.
-   * Called on every hashchange event and once on start().
+   * Called on every hashchange and on every start() call.
+   *
+   * Async so that page handlers that fetch data are properly awaited.
+   * Unhandled errors in async handlers are caught here and surfaced
+   * as a visible error message rather than silently leaving the page blank.
    *
    * @private
    */
-  _resolve() {
+  async _resolve() {
     const path  = this.getCurrentPath();
     const route = this._routes.get(path);
 
@@ -126,8 +136,23 @@ class Router {
 
     // Render the page into #page-content
     const contentEl = document.getElementById('page-content');
-    if (contentEl) {
-      route.handler(this._profile);
+    if (!contentEl) return;
+
+    try {
+      await route.handler(this._profile);
+    } catch (err) {
+      console.error('[Router] Page render error:', err);
+      contentEl.innerHTML = `
+        <div class="alert alert-error" style="margin: var(--space-6);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Something went wrong loading this page. Please refresh and try again.</span>
+        </div>
+      `;
     }
   }
 
