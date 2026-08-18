@@ -32,6 +32,7 @@ import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 // Feature page render functions (placeholders in Phase 3)
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
 import { renderCommoditiesPage } from '../../features/commodities/commodities.page.js';
+import { renderBatchesPage }    from '../../features/batches/batches.page.js';
 import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
 import { renderAccountPage }     from '../../features/account/account.page.js';
@@ -102,6 +103,22 @@ export function renderShell(profile, onLogout) {
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
             Commodities
+          </button>
+
+          <button
+            class="sidebar__nav-item"
+            data-route="batches"
+            id="nav-batches"
+            type="button"
+            aria-label="Batch Management"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="1" y="3" width="15" height="13"/>
+              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            Batches
           </button>
 
           ${isAdmin ? `
@@ -264,6 +281,7 @@ export function renderShell(profile, onLogout) {
   router
     .register('dashboard',   renderDashboardPage)
     .register('commodities', renderCommoditiesPage)
+    .register('batches',     renderBatchesPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage);
