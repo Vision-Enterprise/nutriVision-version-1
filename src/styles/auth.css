@@ -1,23 +1,23 @@
-/*
+﻿/*
  * Authentication Page Styles
  *
- * The login page uses its own layout — it does NOT use the sidebar/header
+ * The login page uses its own layout â€” it does NOT use the sidebar/header
  * layout from layout.css. It takes up the full viewport.
  *
  * Desktop: two-column (brand panel left, form panel right)
  * Mobile:  single column (compact header, full-width form)
  */
 
-/* ── Two-column Auth Layout ───────────────────────────────────────── */
+/* â”€â”€ Two-column Auth Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-layout {
   display: grid;
   grid-template-columns: 420px 1fr;
   min-height: 100vh;
 }
 
-/* ── Brand Panel (left side, desktop) ────────────────────────────── */
+/* â”€â”€ Brand Panel (left side, desktop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-brand {
-  background-color: var(--color-primary);
+  background-color: #0F172A;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,7 +98,7 @@
   letter-spacing: 0.06em;
 }
 
-/* ── Form Panel (right side) ──────────────────────────────────────── */
+/* â”€â”€ Form Panel (right side) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-form-panel {
   display: flex;
   align-items: center;
@@ -129,7 +129,7 @@
   margin-top: var(--space-1);
 }
 
-/* ── Password field with toggle button ───────────────────────────── */
+/* â”€â”€ Password field with toggle button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-password-wrapper {
   position: relative;
 }
@@ -159,7 +159,7 @@
   color: var(--color-text-muted);
 }
 
-/* ── Footer note ──────────────────────────────────────────────────── */
+/* â”€â”€ Footer note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-footer-note {
   margin-top: var(--space-6);
   font-size: var(--font-size-xs);
@@ -168,7 +168,7 @@
   line-height: var(--line-height-relaxed);
 }
 
-/* ── Mobile logo (visible only on mobile) ────────────────────────── */
+/* â”€â”€ Mobile logo (visible only on mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-mobile-logo {
   display: none;
   align-items: center;
@@ -193,7 +193,7 @@
   color: var(--color-text);
 }
 
-/* ── Mobile Responsive ────────────────────────────────────────────── */
+/* â”€â”€ Mobile Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 768px) {
   /* Switch to single column */
   .auth-layout {
@@ -224,7 +224,7 @@
   }
 }
 
-/* ── Post-login placeholder (Phase 2 only, replaced in Phase 3) ───── */
+/* â”€â”€ Post-login placeholder (Phase 2 only, replaced in Phase 3) â”€â”€â”€â”€â”€ */
 .auth-success-placeholder {
   min-height: 100vh;
   display: flex;
@@ -269,3 +269,4 @@
   color: var(--color-text-muted);
   margin-bottom: var(--space-1);
 }
+
