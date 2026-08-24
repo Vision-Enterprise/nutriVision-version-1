@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Authentication Page
  *
  * Renders the login form and handles all login UI interactions.
@@ -17,6 +17,7 @@
  */
 
 import { login } from './auth.service.js';
+import logoUrl from '../../assets/logo.png';
 import { validateLoginForm } from './auth.validation.js';
 import { APP_NAME, APP_ORGANIZATION } from '../../shared/constants/app.constants.js';
 
@@ -35,14 +36,9 @@ export function renderLoginPage(onSuccess) {
       <div class="auth-brand" aria-hidden="true">
         <div class="auth-brand__inner">
 
-          <div class="auth-brand__logo">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+          <div style="margin-bottom: var(--space-6);">
+            <img src="${logoUrl}" alt="NutriVision Logo" style="height: 56px; width: auto; max-width: 100%; display: block;" />
           </div>
-
-          <h1 class="auth-brand__name">${APP_NAME}</h1>
           <p class="auth-brand__description">
             Nutrition Commodity<br>Inventory System
           </p>
@@ -59,14 +55,9 @@ export function renderLoginPage(onSuccess) {
         <div class="auth-form-wrapper">
 
           <!-- Mobile-only logo (hidden on desktop) -->
-          <div class="auth-mobile-logo" aria-hidden="true">
-            <div class="auth-mobile-logo__icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-            </div>
-            <span class="auth-mobile-logo__name">${APP_NAME}</span>
+          <!-- Mobile-only logo (hidden on desktop) -->
+          <div class="auth-mobile-logo" aria-hidden="true" style="margin-bottom: var(--space-6);">
+            <img src="${logoUrl}" alt="NutriVision Logo" style="height: 36px; width: auto; max-width: 100%; display: block;" />
           </div>
 
           <div class="auth-form-header">
@@ -74,7 +65,7 @@ export function renderLoginPage(onSuccess) {
             <p class="auth-form-subtitle">Sign in to your account to continue</p>
           </div>
 
-          <!-- Error alert — hidden by default -->
+          <!-- Error alert â€” hidden by default -->
           <div
             id="auth-error"
             class="alert alert-error"
@@ -246,12 +237,12 @@ function attachLoginHandlers(onSuccess) {
       return;
     }
 
-    // Success — hand off to the caller (main.js)
+    // Success â€” hand off to the caller (main.js)
     onSuccess(profile);
   });
 }
 
-// ── UI Helper Functions ────────────────────────────────────────────────────
+// â”€â”€ UI Helper Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function setLoading(isLoading, btn, text, spinner) {
   btn.disabled     = isLoading;
@@ -278,3 +269,5 @@ function clearFieldError(input, errorEl) {
   input.classList.remove('form-input--error');
   errorEl.textContent = '';
 }
+
+
