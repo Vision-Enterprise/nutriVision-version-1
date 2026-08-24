@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Application Shell Component
  *
  * Renders the full authenticated application layout:
@@ -11,9 +11,9 @@
  *
  * WHY everything in one component?
  * The shell is always present while the user is authenticated.
- * Sidebar, header, and mobile nav never change — only #page-content does.
+ * Sidebar, header, and mobile nav never change â€” only #page-content does.
  * Keeping them in one place makes the structure easy to follow:
- * renderShell() → shell in DOM → router.start() → first page renders.
+ * renderShell() â†’ shell in DOM â†’ router.start() â†’ first page renders.
  *
  * WHAT changes per route:
  * Only the innerHTML of #page-content changes.
@@ -26,6 +26,7 @@
  */
 
 import { router }           from '../../core/router.js';
+import logoUrl              from '../../assets/logo.png';
 import { logout }           from '../../features/auth/auth.service.js';
 import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 
@@ -47,11 +48,11 @@ export function renderShell(profile, onLogout) {
   const app     = document.getElementById('app');
   const isAdmin = isAdministrator(profile);
 
-  // ── Shell HTML ─────────────────────────────────────────────────────
+  // â”€â”€ Shell HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.innerHTML = `
     <div class="app-layout" id="app-layout">
 
-      <!-- ── Sidebar (desktop only) ────────────────────────────────── -->
+      <!-- â”€â”€ Sidebar (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <aside
         class="sidebar"
         id="sidebar"
@@ -60,20 +61,10 @@ export function renderShell(profile, onLogout) {
       >
 
         <!-- Brand logo -->
-        <div class="sidebar__logo">
-          <div class="sidebar__logo-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </div>
-          <div>
-            <div class="sidebar__logo-text">NutriVision</div>
-            <div class="sidebar__logo-sub">MNAO · Manolo Fortich</div>
-          </div>
-        </div>
-
-        <!-- Main navigation -->
+        <div class="sidebar__logo" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: var(--space-4) var(--space-4);">
+          <img src="${logoUrl}" alt="NutriVision Logo" style="height: 32px; width: auto; max-width: 100%; display: block;" />
+          <div class="sidebar__logo-sub" style="margin-left: 2px;">MNAO - Manolo Fortich</div>
+        </div><!-- Main navigation -->
         <nav class="sidebar__nav" aria-label="Main menu">
 
           <span class="sidebar__nav-label">Main</span>
@@ -160,7 +151,7 @@ export function renderShell(profile, onLogout) {
 
         </nav>
 
-        <!-- Sidebar footer — account settings -->
+        <!-- Sidebar footer â€” account settings -->
         <div class="sidebar__footer">
           <button
             class="sidebar__nav-item"
@@ -179,7 +170,7 @@ export function renderShell(profile, onLogout) {
 
       </aside>
 
-      <!-- ── Main Wrapper ───────────────────────────────────────────── -->
+      <!-- â”€â”€ Main Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <div class="main-wrapper" id="main-wrapper">
 
         <!-- Sticky top header -->
@@ -207,14 +198,14 @@ export function renderShell(profile, onLogout) {
           </div>
         </header>
 
-        <!-- Page content — routes render here -->
+        <!-- Page content â€” routes render here -->
         <main class="page-content" id="page-content" role="main" tabindex="-1">
           <!-- Populated by the router -->
         </main>
 
       </div>
 
-      <!-- ── Mobile Bottom Nav ──────────────────────────────────────── -->
+      <!-- â”€â”€ Mobile Bottom Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <nav
         class="mobile-nav"
         id="mobile-nav"
@@ -260,9 +251,9 @@ export function renderShell(profile, onLogout) {
     </div>
   `;
 
-  // ── Event Listeners ────────────────────────────────────────────────
+  // â”€â”€ Event Listeners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Nav item clicks — navigate via router
+  // Nav item clicks â€” navigate via router
   document.querySelectorAll('[data-route]').forEach(btn => {
     btn.addEventListener('click', () => {
       router.navigate(`#/${btn.dataset.route}`);
@@ -274,7 +265,7 @@ export function renderShell(profile, onLogout) {
     handleLogout(profile, onLogout);
   });
 
-  // ── Router Setup ───────────────────────────────────────────────────
+  // â”€â”€ Router Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   router.setProfile(profile);
 
@@ -286,7 +277,7 @@ export function renderShell(profile, onLogout) {
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage);
 
-  // Start the router — handles the current hash and listens for changes
+  // Start the router â€” handles the current hash and listens for changes
   router.start();
 }
 
@@ -303,7 +294,8 @@ async function handleLogout(profile, onLogout) {
   }
 
   await logout(profile);
-  // onAuthStateChange in main.js also fires SIGNED_OUT → rerenders login
+  // onAuthStateChange in main.js also fires SIGNED_OUT â†’ rerenders login
   // Calling onLogout directly handles the case before the event fires
   onLogout();
 }
+
