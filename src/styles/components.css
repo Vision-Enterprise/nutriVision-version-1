@@ -1,28 +1,28 @@
-/*
+﻿/*
  * Reusable Component Styles
  *
  * These CSS classes are used across multiple features.
- * A "component" here means a UI pattern — not a JS component.
+ * A "component" here means a UI pattern â€” not a JS component.
  *
  * Contents:
- *   Buttons → .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost
- *   Cards → .card, .card-header, .stat-card
- *   Badges → .badge, expiration badges, role badges, status badges
- *   Forms → .form-group, .form-label, .form-input, .form-select, .form-error
- *   Alerts → .alert, .alert-error, .alert-success, .alert-warning
- *   Tables → .table-wrapper, .table
- *   Empty State → .empty-state
- *   Loading → .spinner
- *   Modal → .modal-overlay, .modal
- *   Toast → .toast-container, .toast
+ *   Buttons â†’ .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost
+ *   Cards â†’ .card, .card-header, .stat-card
+ *   Badges â†’ .badge, expiration badges, role badges, status badges
+ *   Forms â†’ .form-group, .form-label, .form-input, .form-select, .form-error
+ *   Alerts â†’ .alert, .alert-error, .alert-success, .alert-warning
+ *   Tables â†’ .table-wrapper, .table
+ *   Empty State â†’ .empty-state
+ *   Loading â†’ .spinner
+ *   Modal â†’ .modal-overlay, .modal
+ *   Toast â†’ .toast-container, .toast
  */
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    BUTTONS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /*
- * Base button — all variants extend this.
+ * Base button â€” all variants extend this.
  * display: inline-flex allows icons to align with text.
  */
 .btn {
@@ -30,16 +30,17 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  padding: 0.5rem 1.25rem;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   line-height: 1.5;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   border: 1px solid transparent;
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast),
-              color var(--transition-fast),
-              box-shadow var(--transition-fast);
+  transition: background-color var(--transition-md3),
+              border-color var(--transition-md3),
+              color var(--transition-md3),
+              transform var(--transition-md3),
+              box-shadow var(--transition-md3);
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -53,7 +54,7 @@
   pointer-events: none;
 }
 
-/* Primary — filled green, used for the main action on a page */
+/* Primary â€” filled green, used for the main action on a page */
 .btn-primary {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
@@ -65,7 +66,7 @@
   border-color: var(--color-primary-dark);
 }
 
-/* Secondary — outlined, used for secondary actions */
+/* Secondary â€” outlined, used for secondary actions */
 .btn-secondary {
   background-color: var(--color-surface);
   border-color: var(--color-border-strong);
@@ -78,7 +79,7 @@
   color: var(--color-primary);
 }
 
-/* Danger — used for destructive actions (deactivate, delete) */
+/* Danger â€” used for destructive actions (deactivate, delete) */
 .btn-danger {
   background-color: var(--color-danger);
   border-color: var(--color-danger);
@@ -90,7 +91,7 @@
   border-color: #a32323;
 }
 
-/* Ghost — minimal, used in toolbars and nav */
+/* Ghost â€” minimal, used in toolbars and nav */
 .btn-ghost {
   background-color: transparent;
   border-color: transparent;
@@ -118,16 +119,22 @@
   width: 100%;
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    CARDS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-md3), box-shadow var(--transition-md3), border-color var(--transition-md3);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
 }
 
 .card-header {
@@ -152,13 +159,19 @@
   margin-top: var(--space-1);
 }
 
-/* ── Stat Card — used on Dashboard summary ──────────────────────── */
+/* â”€â”€ Stat Card â€” used on Dashboard summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .stat-card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-5) var(--space-6);
   box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-md3), box-shadow var(--transition-md3), border-color var(--transition-md3);
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
 }
 
 .stat-card__label {
@@ -188,14 +201,14 @@
   color: var(--color-text-subtle);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    BADGES
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /*
  * WHY: Badges communicate status at a glance.
  * IMPORTANT: Every badge uses BOTH color AND text.
- * Color alone is inaccessible — ~8% of males have color blindness.
+ * Color alone is inaccessible â€” ~8% of males have color blindness.
  * A "Near Expiry" label is readable even on a monochrome screen.
  */
 .badge {
@@ -253,9 +266,9 @@
   color: var(--color-exp-expired);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    FORMS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .form-group {
   display: flex;
@@ -282,14 +295,13 @@
 .form-select,
 .form-textarea {
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: 0.625rem 0.875rem;
   font-size: var(--font-size-sm);
   color: var(--color-text);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast),
-              box-shadow var(--transition-fast);
+  transition: border-color var(--transition-md3), box-shadow var(--transition-md3), background-color var(--transition-md3);
   line-height: var(--line-height-normal);
 }
 
@@ -334,7 +346,7 @@
   min-height: 80px;
 }
 
-/* Custom select arrow — replaces default OS arrow */
+/* Custom select arrow â€” replaces default OS arrow */
 .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235A7060' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
@@ -343,7 +355,7 @@
   padding-right: var(--space-8);
 }
 
-/* Form row — horizontal layout for adjacent fields */
+/* Form row â€” horizontal layout for adjacent fields */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -356,7 +368,7 @@
   }
 }
 
-/* Form actions — button row at bottom of a form */
+/* Form actions â€” button row at bottom of a form */
 .form-actions {
   display: flex;
   align-items: center;
@@ -367,9 +379,9 @@
   border-top: 1px solid var(--color-border);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ALERTS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .alert {
   display: flex;
@@ -413,9 +425,9 @@
   color: var(--color-info);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    TABLES
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .table-wrapper {
   overflow-x: auto;
@@ -462,9 +474,9 @@
   background-color: var(--color-primary-bg);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    EMPTY STATE
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /*
  * Shown when a list or table has no records to display.
@@ -504,9 +516,9 @@
   margin-top: var(--space-5);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    LOADING
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .spinner {
   display: inline-block;
@@ -536,9 +548,9 @@
   padding: var(--space-16);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MODAL
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .modal-overlay {
   position: fixed;
@@ -554,13 +566,13 @@
 
 .modal {
   background-color: var(--color-surface);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
-  animation: slide-up var(--transition-base);
+  animation: zoom-spring var(--transition-spring) forwards;
 }
 
 .modal-header {
@@ -591,9 +603,9 @@
   gap: var(--space-3);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    TOAST NOTIFICATIONS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .toast-container {
   position: fixed;
@@ -633,9 +645,9 @@
 .toast-error   { background-color: var(--color-danger);  }
 .toast-warning { background-color: var(--color-warning); }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    DIVIDER
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .divider {
   height: 1px;
@@ -644,9 +656,9 @@
   margin: var(--space-4) 0;
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ANIMATIONS
-   ════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -662,4 +674,129 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+
+@keyframes zoom-spring {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+
+
+/* ════════════════════════════════════════════════════════════════════
+   MATERIAL DESIGN 3 EXTRAS
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Material Symbols Rounded — icon font utility class
+ * Usage: <span class="icon">home</span>
+ * Full icon list: https://fonts.google.com/icons
+ */
+.icon {
+  font-family: 'Material Symbols Rounded', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* Filled variant — use for active/selected state */
+.icon--filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+/* Size variants */
+.icon--sm { font-size: 16px; }
+.icon--lg { font-size: 24px; }
+
+/* MD3 Chip — inline status label with pill shape */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: background-color var(--transition-md3), border-color var(--transition-md3);
+  cursor: default;
+}
+.chip--primary {
+  background-color: var(--color-primary-bg);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}
+.chip--warning {
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning);
+  color: var(--color-warning-dark);
+}
+.chip--danger {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* MD3 FAB — Floating Action Button */
+.btn-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-xl);
+  border: none;
+  background-color: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(27, 122, 62, 0.35);
+  cursor: pointer;
+  transition: transform var(--transition-md3), box-shadow var(--transition-md3), background-color var(--transition-md3);
+  white-space: nowrap;
+}
+.btn-fab:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(27, 122, 62, 0.4);
+}
+.btn-fab:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(27, 122, 62, 0.3);
+}
+
+/* MD3 icon-only FAB (circular) */
+.btn-fab--circle {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
