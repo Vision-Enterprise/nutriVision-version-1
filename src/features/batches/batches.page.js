@@ -155,7 +155,7 @@ function _renderTable(batches) {
               : `in ${days}d`;
 
             return `
-              <tr>
+              <tr class="batch-row" data-batch-id="${b.id}" style="cursor: pointer;" title="Click to view notes">
                 <td>
                   <code style="font-size:var(--font-size-xs);
                                background:var(--color-surface-alt);
@@ -198,6 +198,16 @@ function _renderTable(batches) {
                           data-id="${b.id}" type="button"
                           style="color:var(--color-danger);"
                           aria-label="Delete batch ${_escHtml(b.batch_number)}">Delete</button>
+                </td>
+              </tr>
+              <tr class="batch-desc-row" id="desc-${b.id}" style="display: none; background: var(--color-surface-alt);">
+                <td colspan="7" style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
+                  <div style="display: flex; gap: var(--space-2); align-items: flex-start;">
+                    <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
+                      ${b.notes ? _escHtml(b.notes) : '<em>No notes provided.</em>'}
+                    </div>
+                  </div>
                 </td>
               </tr>
             `;
@@ -263,13 +273,23 @@ function _attachPageListeners() {
       const editBtn   = e.target.closest('.edit-batch-btn');
       const deleteBtn = e.target.closest('.delete-batch-btn');
       if (editBtn) {
-        const batch = _batches.find(b => b.id === editBtn.dataset.id);
-        if (batch) _openModal('edit', batch);
-      }
-      if (deleteBtn) {
-        const batch = _batches.find(b => b.id === deleteBtn.dataset.id);
-        if (batch) _confirmDelete(batch);
-      }
+          const batch = _batches.find(b => b.id === editBtn.dataset.id);
+          if (batch) _openModal('edit', batch);
+          return;
+        }
+        if (deleteBtn) {
+          const batch = _batches.find(b => b.id === deleteBtn.dataset.id);
+          if (batch) _confirmDelete(batch);
+          return;
+        }
+
+        const row = e.target.closest('.batch-row');
+        if (row) {
+          const descRow = document.getElementById('desc-' + row.dataset.batchId);
+          if (descRow) {
+            descRow.style.display = descRow.style.display === 'none' ? 'table-row' : 'none';
+          }
+        }
     });
 }
 
