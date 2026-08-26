@@ -92,6 +92,7 @@ export const AUDIT_ACTIONS = {
   CREATE_BATCH:       'CREATE_BATCH',
   UPDATE_BATCH:       'UPDATE_BATCH',
   DELETE_BATCH:       'DELETE_BATCH',
+  RELEASE_BATCH:      'RELEASE_BATCH',
 };
 
 // ── Commodity Categories ───────────────────────────────────────────────────
@@ -132,3 +133,32 @@ export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 20,
   AUDIT_LOG_PAGE_SIZE: 30,
 };
+
+
+/**
+ * Official Barangays of Manolo Fortich, Bukidnon
+ */
+export const BARANGAYS = [
+  'Agusan Canyon',
+  'Alae',
+  'Dahilayan',
+  'Dalirig',
+  'Damilag',
+  'Dicklum',
+  'Guilang-guilang',
+  'Kalugmanan',
+  'Lindaban',
+  'Lingion',
+  'Lunocan',
+  'Maluko',
+  'Mambatangan',
+  'Mampayag',
+  'Mantibugao',
+  'Minsuro',
+  'San Miguel',
+  'Sankanan',
+  'Santiago',
+  'Santo Niño',
+  'Tankulan',
+  'Ticala'
+];

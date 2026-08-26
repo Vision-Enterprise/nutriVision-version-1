@@ -16,9 +16,10 @@ import {
   createBatch,
   updateBatch,
   deleteBatch,
+  releaseBatch,
 } from './batches.service.js';
 import { formatDate, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
-import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_STATUS, BARANGAYS } from '../../shared/constants/app.constants.js';
 
 // ── Page-level state ──────────────────────────────────────────────────────────
 
@@ -191,6 +192,11 @@ function _renderTable(batches) {
                   <span class="badge ${_statusBadgeClass(status)}">${status}</span>
                 </td>
                 <td style="text-align:right; white-space:nowrap;">
+                  
+                  ${b.quantity > 0 ? `<button class="btn btn-ghost btn-sm release-batch-btn"
+                          data-id="${b.id}" type="button"
+                          style="color: var(--color-primary);"
+                          aria-label="Release batch ${_escHtml(b.batch_number)}">Release</button>` : ''}
                   <button class="btn btn-ghost btn-sm edit-batch-btn"
                           data-id="${b.id}" type="button"
                           aria-label="Edit batch ${_escHtml(b.batch_number)}">Edit</button>
@@ -270,9 +276,15 @@ function _attachPageListeners() {
 
   document.getElementById('batch-table-region')
     ?.addEventListener('click', e => {
-      const editBtn   = e.target.closest('.edit-batch-btn');
+      const releaseBtn = e.target.closest('.release-batch-btn');
+        const editBtn   = e.target.closest('.edit-batch-btn');
       const deleteBtn = e.target.closest('.delete-batch-btn');
-      if (editBtn) {
+      if (releaseBtn) {
+          const batch = _batches.find(b => b.id === releaseBtn.dataset.id);
+          if (batch) _openReleaseModal(batch);
+          return;
+        }
+        if (editBtn) {
           const batch = _batches.find(b => b.id === editBtn.dataset.id);
           if (batch) _openModal('edit', batch);
           return;
@@ -616,8 +628,154 @@ function _errorAlert(message) {
   `;
 }
 
+
+// ============================================================
+// Release Logic
+// ============================================================
+
+function _openReleaseModal(batch) {
+  const modalHtml = `
+    <div class="modal-overlay" id="release-modal-overlay">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="release-modal-title">
+        <div class="modal-header">
+          <h2 class="modal-title" id="release-modal-title">Release Commodity</h2>
+          <button class="modal-close" id="release-modal-close-btn" aria-label="Close dialog">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-bottom: var(--space-4);">
+            Releasing from batch <strong>${_escHtml(batch.batch_number)}</strong> 
+            (${_escHtml(batch.commodities?.name)}). Available stock: <strong>${batch.quantity}</strong>
+          </p>
+
+          <form id="release-form" novalidate>
+            <!-- Error Alert -->
+            <div id="release-error-alert" class="alert alert-error" style="display: none; margin-bottom: var(--space-4);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span id="release-error-msg"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="release-quantity" class="form-label form-label--required">Quantity to Release</label>
+              <input type="number" id="release-quantity" name="quantity" class="form-input" 
+                     min="1" max="${batch.quantity}" required />
+              <span class="form-error" id="error-release-quantity" role="alert"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="release-barangay" class="form-label form-label--required">Destination Barangay</label>
+              <input list="barangay-options" id="release-barangay" name="barangay" class="form-input" 
+                     placeholder="Select barangay" required autocomplete="off" />
+              <datalist id="barangay-options">
+                ${BARANGAYS ? BARANGAYS.map(b => `<option value="${b}"></option>`).join('') : ''}
+              </datalist>
+              <span class="form-error" id="error-release-barangay" role="alert"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="release-notes" class="form-label">Notes (optional)</label>
+              <textarea id="release-notes" name="notes" class="form-input" rows="2" 
+                        placeholder="Purpose of release..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" id="release-cancel-btn" type="button">Cancel</button>
+          <button class="btn btn-primary" id="release-submit-btn" type="button" style="background: var(--color-success);">
+            <svg id="release-spinner" class="spinner" viewBox="0 0 24 24" style="display: none; margin-right: 8px;">
+              <circle class="path" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>
+            </svg>
+            <span id="release-submit-text">Confirm Release</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const overlay = document.getElementById('release-modal-overlay');
+  
+  const close = () => {
+    overlay.remove();
+  };
+  
+  document.getElementById('release-modal-close-btn').addEventListener('click', close);
+  document.getElementById('release-cancel-btn').addEventListener('click', close);
+  
+  document.getElementById('release-submit-btn').addEventListener('click', async () => {
+    // Validate
+    const qtyInput = document.getElementById('release-quantity');
+    const brgyInput = document.getElementById('release-barangay');
+    const notesInput = document.getElementById('release-notes');
+    const qty = parseInt(qtyInput.value, 10);
+    const brgy = brgyInput.value.trim();
+    
+    let valid = true;
+    document.querySelectorAll('.form-input--error').forEach(el => el.classList.remove('form-input--error'));
+    document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+    document.getElementById('release-error-alert').style.display = 'none';
+
+    if (!qty || isNaN(qty) || qty < 1 || qty > batch.quantity) {
+      qtyInput.classList.add('form-input--error');
+      document.getElementById('error-release-quantity').textContent = 'Enter a valid quantity (1 to ' + batch.quantity + ').';
+      valid = false;
+    }
+    if (!brgy) {
+      brgyInput.classList.add('form-input--error');
+      document.getElementById('error-release-barangay').textContent = 'Destination barangay is required.';
+      valid = false;
+    }
+    
+    if (!valid) return;
+    
+    // Loading state
+    const btn = document.getElementById('release-submit-btn');
+    const spinner = document.getElementById('release-spinner');
+    const text = document.getElementById('release-submit-text');
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    text.textContent = 'Releasing...';
+    
+    // Call service
+    const result = await releaseBatch(
+      batch.id, 
+      batch.batch_number, 
+      batch.commodities?.name, 
+      qty, 
+      batch.quantity, 
+      brgy, 
+      notesInput.value, 
+      _profile
+    );
+    
+    if (result.error) {
+      document.getElementById('release-error-alert').style.display = 'flex';
+      document.getElementById('release-error-msg').textContent = result.error;
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      text.textContent = 'Confirm Release';
+      return;
+    }
+    
+    // Update local state
+    const idx = _batches.findIndex(b => b.id === result.batch.id);
+    if (idx !== -1) _batches[idx] = result.batch;
+    
+    close();
+    _refreshTable();
+  });
+}
+
 function _escHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+

@@ -34,6 +34,7 @@ import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
 import { renderCommoditiesPage } from '../../features/commodities/commodities.page.js';
 import { renderBatchesPage }    from '../../features/batches/batches.page.js';
+import { renderReleasesPage }   from '../../features/releases/releases.page.js';
 import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
 import { renderAccountPage }     from '../../features/account/account.page.js';
@@ -101,6 +102,16 @@ export function renderShell(profile, onLogout) {
             <span class="icon" aria-hidden="true">package_2</span>
             Batches
           </button>
+            <button
+              class="sidebar__nav-item"
+              data-route="releases"
+              id="nav-releases"
+              type="button"
+              aria-label="Releases Ledger"
+            >
+              <span class="icon" aria-hidden="true">local_shipping</span>
+              Releases
+            </button>
 
           ${isAdmin ? `
           <span class="sidebar__nav-label" style="margin-top: var(--space-2);">Administration</span>
@@ -232,6 +243,7 @@ export function renderShell(profile, onLogout) {
     .register('dashboard',   renderDashboardPage)
     .register('commodities', renderCommoditiesPage)
     .register('batches',     renderBatchesPage)
+      .register('releases',    renderReleasesPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage);
