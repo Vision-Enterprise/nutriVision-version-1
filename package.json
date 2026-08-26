@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
+    "chart.js": "^4.5.1",
     "jimp": "^1.6.1"
   },
   "devDependencies": {
