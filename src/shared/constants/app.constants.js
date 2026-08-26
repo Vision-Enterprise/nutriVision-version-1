@@ -42,8 +42,8 @@ export const ROLES = {
 // Because they live here, changing them requires editing this file only.
 
 export const EXPIRATION_THRESHOLDS = {
-  GOOD_DAYS:       90,
-  NEAR_EXPIRY_DAYS: 30,
+  GOOD_DAYS:       180,
+  NEAR_EXPIRY_DAYS: 90,
 };
 
 // ── Expiration Status Labels ───────────────────────────────────────────────
