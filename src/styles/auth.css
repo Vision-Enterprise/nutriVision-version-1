@@ -17,7 +17,7 @@
 
 /* â”€â”€ Brand Panel (left side, desktop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-brand {
-  background-color: #0F172A;
+  background-color: #f0fdf4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -35,7 +35,7 @@
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(16, 185, 129, 0.08);
   pointer-events: none;
 }
 
@@ -47,7 +47,7 @@
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(16, 185, 129, 0.06);
   pointer-events: none;
 }
 
@@ -60,7 +60,7 @@
 .auth-brand__logo {
   width: 64px;
   height: 64px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(16, 185, 129, 0.15);
   border-radius: var(--radius-xl);
   display: flex;
   align-items: center;
@@ -71,7 +71,7 @@
 .auth-brand__name {
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
-  color: #FFFFFF;
+  color: #064e3b;
   letter-spacing: -0.03em;
   line-height: 1;
   margin-bottom: var(--space-3);
@@ -79,20 +79,20 @@
 
 .auth-brand__description {
   font-size: var(--font-size-base);
-  color: rgba(255, 255, 255, 0.75);
+  color: #374151;
   line-height: var(--line-height-relaxed);
 }
 
 .auth-brand__divider {
   width: 40px;
   height: 2px;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: #6ee7b7;
   margin: var(--space-6) 0;
 }
 
 .auth-brand__org {
   font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.6);
+  color: #6b7280;
   line-height: var(--line-height-relaxed);
   text-transform: uppercase;
   letter-spacing: 0.06em;
