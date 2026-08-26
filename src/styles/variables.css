@@ -49,14 +49,14 @@
    * Thresholds (day counts) are in src/shared/constants/app.constants.js.
    * Visual representation (colors) lives here.
    */
-  --color-exp-good:         #2E7D32;
-  --color-exp-good-bg:      #E8F5E9;
-  --color-exp-moderate:     #E65100;
-  --color-exp-moderate-bg:  #FFF3E0;
-  --color-exp-near:         #B71C1C;
-  --color-exp-near-bg:      #FFEBEE;
-  --color-exp-expired:      #37474F;
-  --color-exp-expired-bg:   #ECEFF1;
+  --color-exp-good:         #047857;
+  --color-exp-good-bg:      #d1fae5;
+  --color-exp-moderate:     #1d4ed8;
+  --color-exp-moderate-bg:  #dbeafe;
+  --color-exp-near:         #b45309;
+  --color-exp-near-bg:      #fef3c7;
+  --color-exp-expired:      #b91c1c;
+  --color-exp-expired-bg:   #fee2e2;
 
   /* â”€â”€ Typography â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --font-family:          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
