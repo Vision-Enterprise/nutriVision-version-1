@@ -198,3 +198,63 @@ export async function deleteBatch(id, batchNumber, commodityName, profile) {
     return { error: 'Failed to delete batch. Please try again.' };
   }
 }
+
+
+// ============================================================
+// Release Batch
+// ============================================================
+
+export async function releaseBatch(batchId, batchNumber, commodityName, quantityToRelease, currentQuantity, barangay, notes, profile) {
+  try {
+    const qtyNum = parseInt(quantityToRelease, 10);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      return { error: 'Quantity must be a valid number greater than zero.' };
+    }
+    if (qtyNum > currentQuantity) {
+      return { error: 'Cannot release more than the current available stock.' };
+    }
+
+    // 1. Insert into releases
+    const { error: releaseError } = await supabase
+      .from('releases')
+      .insert({
+        batch_id: batchId,
+        quantity: qtyNum,
+        barangay: barangay,
+        notes: notes || null,
+        released_by: profile.id
+      });
+      
+    if (releaseError) throw releaseError;
+
+    // 2. Update batch quantity
+    const newQuantity = currentQuantity - qtyNum;
+    const { data: updatedBatch, error: updateError } = await supabase
+      .from('batches')
+      .update({ quantity: newQuantity, updated_by: profile.id })
+      .eq('id', batchId)
+      .select(`
+        id, batch_number, quantity,
+        delivery_date, expiration_date,
+        supplier, notes, commodity_id,
+        commodities ( id, name, commodity_code, unit )
+      `)
+      .single();
+
+    if (updateError) throw updateError;
+
+    // 3. Log audit action
+    await supabase.from('audit_logs').insert({
+      user_id: profile.id,
+      action: AUDIT_ACTIONS.RELEASE_BATCH,
+      entity_type: 'batch',
+      entity_id: batchId,
+      description: `${profile.full_name} released ${qtyNum} of ${commodityName} (Batch ${batchNumber}) to ${barangay}.`,
+    });
+
+    return { batch: updatedBatch, error: null };
+  } catch (err) {
+    console.error('[BatchService] releaseBatch:', err);
+    return { error: 'Failed to release batch. Please try again.' };
+  }
+}
