@@ -115,3 +115,41 @@ export async function fetchRecentActivity(limit = 5) {
     return { logs: [], error: 'Failed to load recent activity.' };
   }
 }
+
+
+/**
+ * Fetch data required for dashboard charts.
+ * 
+ * @returns {Promise<{
+ *   releases: Array,
+ *   batches: Array,
+ *   error: string|null
+ * }>}
+ */
+export async function fetchChartData() {
+  try {
+    // 1. Fetch releases for distribution trends and barangay distribution
+    const { data: releases, error: releasesError } = await supabase
+      .from('releases')
+      .select('quantity, barangay, released_at');
+      
+    if (releasesError) throw releasesError;
+
+    // 2. Fetch active batches with commodity names for stock per commodity
+    const { data: batches, error: batchesError } = await supabase
+      .from('batches')
+      .select(`
+        quantity,
+        expiration_date,
+        commodities ( name )
+      `)
+      .is('deleted_at', null);
+      
+    if (batchesError) throw batchesError;
+
+    return { releases, batches, error: null };
+  } catch (err) {
+    console.error('[DashboardService] fetchChartData error:', err);
+    return { releases: [], batches: [], error: 'Failed to load chart data.' };
+  }
+}
