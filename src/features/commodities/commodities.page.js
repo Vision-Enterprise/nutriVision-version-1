@@ -71,6 +71,21 @@ export async function renderCommoditiesPage(profile) {
 
 // ── Render helpers ────────────────────────────────────────────────────────────
 
+function _getDynamicCategories() {
+  const dynamicCats = _commodities.map(c => c.category).filter(Boolean);
+  const uniqueCats = Array.from(new Set([...COMMODITY_CATEGORIES, ...dynamicCats]));
+  return uniqueCats.sort((a, b) => {
+    if (a.toLowerCase() === 'other') return 1;
+    if (b.toLowerCase() === 'other') return -1;
+    return a.localeCompare(b);
+  });
+}
+
+function _getDynamicUnits() {
+  const dynamicUnits = _commodities.map(c => c.unit).filter(Boolean);
+  return Array.from(new Set([...COMMODITY_UNITS, ...dynamicUnits])).sort();
+}
+
 function _renderPage(content) {
   const filtered  = _applyFilters();
 
@@ -117,7 +132,7 @@ function _renderPage(content) {
       <select id="commodity-category-filter" class="form-input" style="max-width: 200px;"
               aria-label="Filter by category">
         <option value="all">All Categories</option>
-        ${COMMODITY_CATEGORIES.map(cat =>
+        ${_getDynamicCategories().map(cat =>
           `<option value="${cat}" ${_category === cat ? 'selected' : ''}>${cat}</option>`
         ).join('')}
       </select>
@@ -156,7 +171,7 @@ function _renderTable(commodities) {
         </thead>
         <tbody>
           ${commodities.map(c => `
-            <tr data-commodity-id="${c.id}">
+            <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description">
               <td>
                 <code style="font-size: var(--font-size-xs);
                              background: var(--color-surface-alt);
@@ -188,6 +203,16 @@ function _renderTable(commodities) {
                   aria-label="Delete ${_escHtml(c.name)}"
                   type="button"
                 >Delete</button>
+              </td>
+            </tr>
+            <tr class="commodity-desc-row" id="desc-${c.id}" style="display: none; background: var(--color-surface-alt);">
+              <td colspan="6" style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
+                <div style="display: flex; gap: var(--space-2); align-items: flex-start;">
+                  <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
+                  <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
+                    ${c.description ? _escHtml(c.description) : '<em>No description provided.</em>'}
+                  </div>
+                </div>
               </td>
             </tr>
           `).join('')}
@@ -263,14 +288,24 @@ function _attachPageListeners(content) {
       const deleteBtn = e.target.closest('.delete-commodity-btn');
 
       if (editBtn) {
-        const commodity = _commodities.find(c => c.id === editBtn.dataset.id);
-        if (commodity) _openModal('edit', commodity);
-      }
+          const commodity = _commodities.find(c => c.id === editBtn.dataset.id);
+          if (commodity) _openModal('edit', commodity);
+          return;
+        }
+  
+        if (deleteBtn) {
+          const commodity = _commodities.find(c => c.id === deleteBtn.dataset.id);
+          if (commodity) _confirmDelete(commodity);
+          return;
+        }
 
-      if (deleteBtn) {
-        const commodity = _commodities.find(c => c.id === deleteBtn.dataset.id);
-        if (commodity) _confirmDelete(commodity);
-      }
+        const row = e.target.closest('.commodity-row');
+        if (row) {
+          const descRow = document.getElementById('desc-' + row.dataset.commodityId);
+          if (descRow) {
+            descRow.style.display = descRow.style.display === 'none' ? 'table-row' : 'none';
+          }
+        }
     });
 }
 
@@ -356,22 +391,22 @@ function _openModal(mode, commodity = null) {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
             <div class="form-group">
               <label for="field-category" class="form-label form-label--required">Category</label>
-              <select id="field-category" name="category" class="form-input" required>
-                <option value="">Select category</option>
-                ${COMMODITY_CATEGORIES.map(cat =>
-                  `<option value="${cat}" ${commodity?.category === cat ? 'selected' : ''}>${cat}</option>`
-                ).join('')}
-              </select>
+              <input list="category-options" id="field-category" name="category" class="form-input" placeholder="Select or type category" value="${_escHtml(commodity?.category ?? '')}" required autocomplete="off" />
+                <datalist id="category-options">
+                  ${_getDynamicCategories().map(cat =>
+                    `<option value="${cat}"></option>`
+                  ).join('')}
+                </datalist>
               <span class="form-error" id="error-category" role="alert"></span>
             </div>
             <div class="form-group">
               <label for="field-unit" class="form-label form-label--required">Unit</label>
-              <select id="field-unit" name="unit" class="form-input" required>
-                <option value="">Select unit</option>
-                ${COMMODITY_UNITS.map(u =>
-                  `<option value="${u}" ${commodity?.unit === u ? 'selected' : ''}>${u}</option>`
-                ).join('')}
-              </select>
+              <input list="unit-options" id="field-unit" name="unit" class="form-input" placeholder="Select or type unit" value="${_escHtml(commodity?.unit ?? '')}" required autocomplete="off" />
+                <datalist id="unit-options">
+                  ${_getDynamicUnits().map(u =>
+                    `<option value="${u}"></option>`
+                  ).join('')}
+                </datalist>
               <span class="form-error" id="error-unit" role="alert"></span>
             </div>
           </div>
