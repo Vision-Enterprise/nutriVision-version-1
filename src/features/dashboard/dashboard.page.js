@@ -75,12 +75,12 @@ export async function renderDashboardPage(profile) {
       <div class="stat-card">
         <div class="stat-card__label">Near Expiry</div>
         <div class="stat-card__value stat-card__value--warning">${stats.nearExpiryBatches}</div>
-        <div class="stat-card__footer">Expiring within 6 months</div>
+        <div class="stat-card__footer">Expiring within 3 months</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__label">Expired</div>
         <div class="stat-card__value stat-card__value--danger">${stats.expiredBatches}</div>
-        <div class="stat-card__footer">Requires immediate action</div>
+        <div class="stat-card__footer">Requires proper disposal</div>
       </div>
     </div>
 
@@ -176,10 +176,10 @@ export async function renderDashboardPage(profile) {
 function _initCharts(expirationSummary) {
   // Common theme colors matching the app
   const colors = {
-    primary: '#10b981', // green emerald
-    secondary: '#3b82f6', // blue
-    warning: '#f59e0b', // amber
-    danger: '#ef4444', // red
+    primary: '#047857', // Emerald 700
+    secondary: '#1d4ed8', // Blue 700
+    warning: '#b45309', // Amber 700
+    danger: '#b91c1c', // Red 700
     muted: '#9ca3af',
     surface: '#1f2937',
     grid: '#374151'
