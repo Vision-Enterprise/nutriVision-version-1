@@ -95,6 +95,16 @@ function _renderPage(content) {
       </button>
     </div>
 
+    
+    <!-- Expiry Legend -->
+    <div style="display:flex; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4); font-size: var(--font-size-sm); color: var(--color-text-muted); background: var(--color-surface); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--color-border); align-items: center;">
+      <strong style="color: var(--color-text); margin-right: var(--space-2);">Expiration Guide:</strong>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-good" style="margin:0;">Good</span> > 6 Months</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-moderate" style="margin:0;">Moderate</span> 3-6 Months</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-near-expiry" style="margin:0;">Near Expiry</span> 0-3 Months</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-expired" style="margin:0;">Expired</span> < 0 Days</div>
+    </div>
+
     <!-- Filters -->
     <div style="display:flex; gap:var(--space-3); margin-bottom:var(--space-4); flex-wrap:wrap;">
       <select id="filter-commodity" class="form-input" style="max-width:260px;"
