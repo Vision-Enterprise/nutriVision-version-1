@@ -10,6 +10,7 @@
  *   - Soft-delete with confirmation
  */
 
+import { supabase } from '../../core/supabase.js';
 import {
   fetchBatches,
   fetchActiveCommodities,
@@ -20,6 +21,7 @@ import {
 } from './batches.service.js';
 import { formatDate, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, BARANGAYS } from '../../shared/constants/app.constants.js';
+import { ScannerComponent } from '../scanner/scanner.component.js';
 
 // ── Page-level state ──────────────────────────────────────────────────────────
 
@@ -276,7 +278,7 @@ function _applyFilters() {
 
 function _attachPageListeners() {
   document.getElementById('add-batch-btn')
-    ?.addEventListener('click', () => _openModal('add'));
+    ?.addEventListener('click', () => _openFullScreenWorkspace());
 
   document.getElementById('filter-commodity')
     ?.addEventListener('change', e => { _filterComm = e.target.value; _refreshTable(); });
@@ -296,7 +298,7 @@ function _attachPageListeners() {
         }
         if (editBtn) {
           const batch = _batches.find(b => b.id === editBtn.dataset.id);
-          if (batch) _openModal('edit', batch);
+          if (batch) _openEditModal(batch);
           return;
         }
         if (deleteBtn) {
@@ -324,10 +326,10 @@ function _refreshTable() {
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-function _openModal(mode, batch = null) {
+function _openEditModal(batch) {
   _closeModal();
-  const isEdit = mode === 'edit';
-  const title  = isEdit ? 'Edit Batch' : 'Add Batch';
+  const isEdit = true;
+  const title = "Edit Batch";
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -338,20 +340,40 @@ function _openModal(mode, batch = null) {
 
   overlay.innerHTML = `
     <div class="modal" style="max-width:560px; width:100%;">
-      <div class="modal-header">
-        <h2 class="modal-title">${title}</h2>
-        <button id="modal-close-btn" class="modal-close" type="button" aria-label="Close">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="modal-title" style="margin: 0;">${title}</h2>
+        <div style="display:flex; gap: 8px;">
+          
+          <button id="modal-close-btn" class="modal-close" type="button" aria-label="Close" style="position:relative; top:auto; right:auto;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <form id="batch-form" novalidate>
-        <div class="modal-body" style="display:flex; flex-direction:column; gap:var(--space-4);">
+        
+<style>
+  .bulk-row input:focus {
+     background: rgba(46,125,50,0.06) !important;
+     border-radius: 4px;
+     outline: 1px solid var(--color-primary) !important;
+  }
+  .bulk-row input::placeholder {
+     color: var(--text-muted);
+     font-style: italic;
+  }
+  .bulk-row:hover {
+     outline: 1px solid rgba(46,125,50,0.3);
+     outline-offset: -1px;
+  }
+</style>
+
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:var(--space-4);">
 
           <!-- Commodity -->
           <div class="form-group">
@@ -471,6 +493,40 @@ function _openModal(mode, batch = null) {
 
   document.getElementById('batch-form')
     ?.addEventListener('submit', e => _handleSubmit(e, mode, batch?.id ?? null));
+  if (!isEdit) {
+    const scanBtn = document.getElementById('ocr-scan-btn');
+    if (scanBtn) {
+      scanBtn.addEventListener('click', () => {
+        const scanner = new ScannerComponent(async (parsedRows) => {
+          if (!parsedRows || !parsedRows.length) return;
+          
+          let successCount = 0;
+          for (const row of parsedRows) {
+            if (!row.commodityId) continue;
+            
+            const batchData = {
+              commodity_id: _commodities.find(c => c.name.toLowerCase() === row.commodityName.toLowerCase())?.id || null,
+              quantity: parseInt(row.qty) || 0,
+              expiration_date: row.expDate || '',
+              notes: 'Auto-scanned via Table OCR'
+            };
+            
+            try {
+              await createBatch(batchData);
+              successCount++;
+            } catch (err) {
+              console.error('Failed to create batch for', row, err);
+            }
+          }
+          
+          _closeModal();
+          renderBatchesPage(_profile);
+          if (successCount > 0) alert(`Successfully imported ${successCount} batches!`);
+        });
+        scanner.mount();
+      });
+    }
+  }
 }
 
 function _closeModal() {
@@ -789,3 +845,339 @@ function _escHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+
+
+
+
+// ============================================================
+// Full-Screen Bulk Registration Workspace
+// ============================================================
+let bulkRows = [];
+let baseIncrements = {}; // Cache of highest database increments per prefix
+
+const COMMODITY_PREFIXES = {
+  "Therapeutic Food": "TF",
+  "Micronutrient Powder": "MNP",
+  "Fortified Milk": "FMP",
+  "Iron Folic Acid": "IFA",
+  "Champorado Porridge": "FRP"
+};
+
+function getPrefix(name) {
+  if (!name) return "UNK";
+  for (const [key, prefix] of Object.entries(COMMODITY_PREFIXES)) {
+    if (name.toLowerCase().includes(key.toLowerCase())) return prefix;
+  }
+  // Fallback map exact known names or return UNK
+  return "UNK";
+}
+
+async function _fetchBaseIncrements() {
+   baseIncrements = {};
+   const year = new Date().getFullYear();
+   // Fetch all batch numbers from this year
+   const { data } = await supabase
+      .from('batches')
+      .select('batch_number')
+      .like('batch_number', `%-${year}-%`);
+      
+   if (data) {
+      data.forEach(row => {
+         const parts = row.batch_number.split('-');
+         if (parts.length >= 3) {
+            const prefix = parts[0];
+            const inc = parseInt(parts[2], 10);
+            if (!isNaN(inc)) {
+               baseIncrements[prefix] = Math.max(baseIncrements[prefix] || 0, inc);
+            }
+         }
+      });
+   }
+}
+
+function generateBatchCode(commodityName, rowIndex) {
+   if (!commodityName) return "Auto-assigned";
+   const prefix = getPrefix(commodityName);
+   const year = new Date().getFullYear();
+   
+   // Count how many valid rows with the exact same prefix exist BEFORE this row
+   let localOffset = 1;
+   for (let i = 0; i < rowIndex; i++) {
+      if (getPrefix(bulkRows[i].commodityName) === prefix) {
+         localOffset++;
+      }
+   }
+   
+   const base = baseIncrements[prefix] || 0;
+   const finalInc = base + localOffset;
+   return `${prefix}-${year}-${String(finalInc).padStart(4, '0')}`;
+}
+
+async function _openFullScreenWorkspace() {
+  _closeModal();
+  bulkRows = []; // reset state
+  await _fetchBaseIncrements();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'workspace-overlay';
+  overlay.id = 'batch-workspace-overlay';
+
+  overlay.innerHTML = `
+    <div class="workspace-header">
+      <div style="display:flex; align-items:center; gap:16px;">
+         <h2 class="workspace-header-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            Bulk Batch Registration
+         </h2>
+         <span class="workspace-header-subtitle">NutriVision MNAO Intake</span>
+      </div>
+      <div class="workspace-actions">
+         <button id="workspace-cancel-btn" style="background:transparent; border:none; font-weight:600; color:var(--text-muted); cursor:pointer; padding:10px 16px;">Cancel / Exit</button>
+         <button id="workspace-save-btn" class="btn-elevated">Register All Batches</button>
+      </div>
+    </div>
+
+    <div class="workspace-body">
+      <!-- Left Panel: Scanner -->
+      <div class="workspace-panel-left" id="bulk-scanner-container">
+         <!-- ScannerComponent mounts here -->
+      </div>
+
+      <!-- Right Panel: Data Grid -->
+      <div class="workspace-panel-right">
+         <div class="headless-grid-container">
+           <table class="headless-grid">
+              <thead>
+                 <tr>
+                    <th style="width: 25%;">Commodity</th>
+                    <th style="width: 15%;">Batch Code</th>
+                    <th style="width: 10%;">Qty</th>
+                    <th style="width: 15%;">Del. Date</th>
+                    <th style="width: 15%;">Exp. Date</th>
+                    <th style="width: 15%;">Supplier</th>
+                    <th style="width: 5%; text-align:center;"></th>
+                 </tr>
+              </thead>
+              <tbody id="bulk-table-body">
+                 <!-- Dynamic Rows -->
+              </tbody>
+           </table>
+           <div style="padding:16px;">
+              <button id="bulk-add-row-btn" style="background:none; border:none; color:var(--color-primary); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 Add New Row Manually
+              </button>
+           </div>
+         </div>
+         <div class="workspace-footer">
+            <div>
+               <span id="summary-commodities" style="font-weight:600; color:var(--text-main);">0</span> Unique Commodities
+            </div>
+            <div>
+               <span id="summary-units" style="font-weight:600; color:var(--text-main);">0</span> Total Units
+            </div>
+         </div>
+      </div>
+    </div>
+    
+    <datalist id="commodity-list-ws">
+      ${_commodities.map(c => `<option value="${_escHtml(c.name)}"></option>`).join('')}
+    </datalist>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Mount ScannerComponent
+  new ScannerComponent({
+     container: document.getElementById('bulk-scanner-container'),
+     onComplete: (parsedRows) => {
+        const today = new Date().toISOString().split('T')[0];
+        parsedRows.forEach(r => {
+           bulkRows.push({
+              id: Date.now() + Math.random(),
+              commodityName: r.commodityId ? _commodities.find(c => c.id === r.commodityId)?.name : (r.productName || ''),
+              qty: r.qty || '',
+              deliveryDate: r.deliveryDate || today,
+              expDate: r.expDate || '',
+              supplier: '',
+              notes: ''
+           });
+        });
+        _renderBulkTable();
+     }
+  });
+
+  _renderBulkTable();
+
+  // Event Listeners
+  document.getElementById('workspace-cancel-btn').addEventListener('click', () => overlay.remove());
+  
+  document.getElementById('bulk-add-row-btn').addEventListener('click', () => {
+     _syncBulkState();
+     bulkRows.push({
+        id: Date.now(),
+        commodityName: '',
+        qty: '',
+        deliveryDate: new Date().toISOString().split('T')[0],
+        expDate: '',
+        supplier: '',
+        notes: ''
+     });
+     _renderBulkTable();
+  });
+
+  document.getElementById('workspace-save-btn').addEventListener('click', _handleWorkspaceSave);
+}
+
+function _renderBulkTable() {
+  const tbody = document.getElementById('bulk-table-body');
+  if (!tbody) return;
+
+  if (bulkRows.length === 0) {
+     tbody.innerHTML = `<tr><td colspan="7" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt or add manually.</td></tr>`;
+     document.getElementById('summary-commodities').textContent = '0';
+     document.getElementById('summary-units').textContent = '0';
+     return;
+  }
+
+  let totalQty = 0;
+  let uniqueComms = new Set();
+
+  tbody.innerHTML = bulkRows.map((row, index) => {
+     const batchCode = generateBatchCode(row.commodityName, index);
+     
+     if (row.commodityName) uniqueComms.add(row.commodityName.toLowerCase());
+     if (row.qty) totalQty += parseInt(row.qty, 10) || 0;
+
+     // Calculate expiration highlighting
+     let expStyle = '';
+     if (row.expDate) {
+        const exp = new Date(row.expDate);
+        const now = new Date();
+        const diffDays = (exp - now) / (1000 * 60 * 60 * 24);
+        if (diffDays >= 0 && diffDays < 180) { // < 6 months
+           expStyle = 'background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;';
+        }
+     }
+
+     return `
+      <tr class="bulk-row" data-index="${index}">
+         <td>
+            <input list="commodity-list-ws" class="headless-input ws-input-commodity" placeholder="Type commodity..." value="${_escHtml(row.commodityName)}" />
+         </td>
+         <td>
+            <input type="text" class="headless-input" value="${batchCode}" disabled />
+         </td>
+         <td>
+            <input type="number" class="headless-input ws-input-qty" value="${_escHtml(row.qty)}" min="1" placeholder="0" />
+         </td>
+         <td>
+            <input type="date" class="headless-input ws-input-del" value="${_escHtml(row.deliveryDate)}" />
+         </td>
+         <td>
+            <input type="date" class="headless-input ws-input-exp" value="${_escHtml(row.expDate)}" style="${expStyle}" />
+         </td>
+         <td>
+            <input type="text" class="headless-input ws-input-sup" value="${_escHtml(row.supplier)}" placeholder="Supplier..." />
+         </td>
+         <td style="text-align:center;">
+            <button class="bulk-delete-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:8px;">
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+         </td>
+      </tr>
+     `;
+  }).join('');
+
+  // Update Footer Summary
+  document.getElementById('summary-commodities').textContent = uniqueComms.size;
+  document.getElementById('summary-units').textContent = totalQty;
+
+  // Attach event listeners for dynamic recalculation
+  document.querySelectorAll('.ws-input-commodity').forEach(input => {
+     input.addEventListener('change', () => { _syncBulkState(); _renderBulkTable(); });
+     input.addEventListener('blur', () => { _syncBulkState(); _renderBulkTable(); });
+  });
+  
+  document.querySelectorAll('.ws-input-qty').forEach(input => {
+     input.addEventListener('input', () => { _syncBulkState(); _renderBulkTable(); });
+  });
+
+  document.querySelectorAll('.ws-input-exp').forEach(input => {
+     input.addEventListener('change', () => { _syncBulkState(); _renderBulkTable(); });
+  });
+
+  // Attach delete events
+  document.querySelectorAll('.bulk-delete-btn').forEach((btn, i) => {
+     btn.addEventListener('click', () => {
+        _syncBulkState();
+        bulkRows.splice(i, 1);
+        _renderBulkTable();
+     });
+  });
+}
+
+function _syncBulkState() {
+   const rows = document.querySelectorAll('.bulk-row');
+   rows.forEach((tr, i) => {
+      bulkRows[i].commodityName = tr.querySelector('.ws-input-commodity').value;
+      bulkRows[i].qty = tr.querySelector('.ws-input-qty').value;
+      bulkRows[i].deliveryDate = tr.querySelector('.ws-input-del').value;
+      bulkRows[i].expDate = tr.querySelector('.ws-input-exp').value;
+      bulkRows[i].supplier = tr.querySelector('.ws-input-sup').value;
+   });
+}
+
+async function _handleWorkspaceSave() {
+   _syncBulkState();
+   
+   if (bulkRows.length === 0) return alert('No rows to save.');
+
+   let isValid = true;
+   bulkRows.forEach((r, i) => {
+      if (!r.commodityName || !r.qty || !r.deliveryDate || !r.expDate) {
+         isValid = false;
+      }
+   });
+   
+   let invalidComm = bulkRows.find(r => !_commodities.find(c => c.name.toLowerCase() === r.commodityName.toLowerCase()));
+   if (invalidComm) return alert('Invalid commodity name: "' + invalidComm.commodityName + '". Please select a valid commodity.');
+   if (!isValid) return alert('Please fill in all required fields (Commodity, Qty, Delivery, Expiration).');
+
+   const btn = document.getElementById('workspace-save-btn');
+   btn.disabled = true;
+   btn.textContent = 'Saving...';
+
+   let successCount = 0;
+   let errors = [];
+
+   for (let i = 0; i < bulkRows.length; i++) {
+      const row = bulkRows[i];
+      const batchCode = generateBatchCode(row.commodityName, i);
+      
+      const formData = {
+         commodity_id: _commodities.find(c => c.name.toLowerCase() === row.commodityName.toLowerCase())?.id,
+         batch_number: batchCode,
+         quantity: row.qty,
+         delivery_date: row.deliveryDate,
+         expiration_date: row.expDate,
+         supplier: row.supplier,
+         notes: ''
+      };
+      
+      const res = await createBatch(formData, _profile);
+      if (res.error) errors.push(res.error);
+      else successCount++;
+   }
+
+   if (errors.length > 0) alert(`Saved ${successCount} batches, but encountered errors: \n` + errors.join('\n'));
+   
+   document.getElementById('batch-workspace-overlay').remove();
+   const reloadRes = await fetchBatches();
+   if (!reloadRes.error) {
+      _batches = reloadRes.batches;
+      _refreshTable();
+   } else {
+      window.location.reload();
+   }
+}
