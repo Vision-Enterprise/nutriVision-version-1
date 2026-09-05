@@ -312,6 +312,7 @@ export class ScannerComponent {
         };
         const parsedTable = parseTableData(legacyFormat);
         
+        console.log('PARSED TABLE RESULTS:', parsedTable);
         const parsedRows = parsedTable.rows.map(r => {
            const match = this.fuzzyMatchCommodity(r.productName);
            return {

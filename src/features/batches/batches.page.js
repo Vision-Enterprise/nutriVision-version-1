@@ -1019,7 +1019,7 @@ async function _openFullScreenWorkspace() {
               qty: r.qty || '',
               deliveryDate: r.deliveryDate || today,
               expDate: r.expDate || '',
-              supplier: '',
+              supplier: r.supplier || '',
               notes: ''
            });
         });

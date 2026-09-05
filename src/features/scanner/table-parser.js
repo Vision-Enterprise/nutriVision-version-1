@@ -9,6 +9,7 @@ const CATEGORY_KW = {
   genericDate: ['date', 'dated'],
   mfgDate:     ['mfg', 'manufacture', 'production'],
   unit:        ['unit', 'uom', 'measure', 'pack', 'packaging', 'form'],
+  supplier:    ['supplier', 'vendor', 'distributor', 'manufacturer', 'company', 'source'],
 };
 
 const SKIP_KW = [
@@ -125,7 +126,7 @@ function detectColumnAnchors(headerLine) {
   if (!words.length) return [];
 
   const avgW = words.reduce((s, w) => s + (w.bbox.x1 - w.bbox.x0), 0) / words.length;
-  const gapThreshold = Math.max(avgW * 1.0, 12);
+  const gapThreshold = Math.max(avgW * 0.4, 12);
 
   const cells = [];
   let cell = { words: [words[0]] };
@@ -178,7 +179,7 @@ function assignWordToColumn(word, columns) {
 }
 
 function parseDataLine(line, columns) {
-  const buffers = { productName: [], qty: [], expDate: [], genericDate: [], mfgDate: [], unit: [] };
+  const buffers = { productName: [], qty: [], expDate: [], genericDate: [], mfgDate: [], unit: [], supplier: [] };
   
   for (const word of line.words) {
     if (!word.text.trim()) continue;
@@ -194,15 +195,16 @@ function parseDataLine(line, columns) {
     record[cat] = tokens.join(' ').trim();
   }
   
+  // Debug trace for OCR quantity value
+  console.log('Raw QTY from OCR:', record.qty);
+  
+  // Fix: Strip non-numeric characters from Qty so <input type="number"> doesn't reject it (e.g. "100," or "100 pcs")
+  record.qty = (record.qty || '').replace(/[^\d]/g, '');
+  
   let finalExpDate = record.expDate || '';
   let finalDelDate = record.genericDate || '';
   
-  if (!finalExpDate && finalDelDate) {
-    // if only one date is found, we can assume it's the expiration date
-    // or we can leave it as delivery date. Based on logic, we will keep it as expDate if there is only 1 date.
-    finalExpDate = finalDelDate;
-    finalDelDate = '';
-  }
+  // Removed date shifting logic to preserve Del. Date as intended.
 
   if (/^\d{1,3}$/.test(record.productName)) record.productName = '';
 
@@ -210,7 +212,8 @@ function parseDataLine(line, columns) {
     productName: record.productName,
     qty: record.qty,
     expDate: finalExpDate,
-    deliveryDate: finalDelDate
+    deliveryDate: finalDelDate,
+    supplier: record.supplier || ''
   };
 }
 
