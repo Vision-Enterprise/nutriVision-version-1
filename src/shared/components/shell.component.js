@@ -31,6 +31,7 @@ import { logout }           from '../../features/auth/auth.service.js';
 import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 
 // Feature page render functions (placeholders in Phase 3)
+import { renderCalendarPage }            from '../../features/calendar/calendar.page.js';
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
 import { renderCommoditiesPage } from '../../features/commodities/commodities.page.js';
 import { renderBatchesPage }    from '../../features/batches/batches.page.js';
@@ -112,6 +113,17 @@ export function renderShell(profile, onLogout) {
               <span class="icon" aria-hidden="true">local_shipping</span>
               Releases
             </button>
+
+          <button
+            class="sidebar__nav-item"
+            data-route="calendar"
+            id="nav-calendar"
+            type="button"
+            aria-label="Program Calendar"
+          >
+            <span class="icon" aria-hidden="true">calendar_month</span>
+            Calendar
+          </button>
 
           ${isAdmin ? `
           <span class="sidebar__nav-label" style="margin-top: var(--space-2);">Administration</span>
@@ -246,7 +258,8 @@ export function renderShell(profile, onLogout) {
       .register('releases',    renderReleasesPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
-    .register('account',     renderAccountPage);
+    .register('account',     renderAccountPage)
+    .register('calendar',    renderCalendarPage);
 
   // Start the router â€” handles the current hash and listens for changes
   router.start();

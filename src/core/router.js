@@ -197,6 +197,7 @@ class Router {
       'batches':     'Batch Management',
       'users':       'User Management',
       'audit-logs':  'Audit Logs',
+      'calendar':   'Program Calendar',
       'account':     'Account Settings',
     };
 
