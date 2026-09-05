@@ -14,6 +14,22 @@ class InventoryExtractor:
             cls._instance.table_engine = RapidTable()
         return cls._instance
 
+    def _normalize_text(self, text: str) -> str:
+        if not text:
+            return text
+        replacements = {
+            'wlth': 'with',
+            'Nutrl': 'Nutri',
+            'Follc': 'Folic',
+            'Follo': 'Folic',
+            'follo': 'Folic',
+            'Acld': 'Acid',
+            'Poridge': 'Porridge'
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return text
+
     def extract_table(self, image_path: str):
         try:
             if not os.path.exists(image_path):
@@ -23,6 +39,9 @@ class InventoryExtractor:
             img = cv2.imread(image_path)
             if img is None:
                 raise ValueError(f"Failed to decode image at {image_path} with cv2")
+            
+
+            
             print(f"DEBUG Image Shape: {img.shape}")
 
             # 1. OCR text detection using modern unified rapidocr
@@ -47,13 +66,13 @@ class InventoryExtractor:
                 min_y, max_y = min(y_coords), max(y_coords)
                 
                 rows.append({
-                    "text": text,
+                    "text": self._normalize_text(text),
                     "confidence": float(conf),
                     "bbox": [float(min_x), float(min_y), float(max_x), float(max_y)]
                 })
 
             return {
-                "html_structure": table_html,
+                "html_structure": self._normalize_text(table_html),
                 "raw_cells": rows
             }
         except Exception as e:
