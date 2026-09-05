@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+python-multipart
+rapidocr
+rapid-table
+opencv-python

@@ -293,11 +293,24 @@ export class ScannerComponent {
       if (whitelist) formData.append('whitelist', whitelist);
 
       try {
-        const response = await fetch('http://localhost:8000/api/ocr', { method: 'POST', body: formData });
+        const response = await fetch('http://localhost:8000/api/extract-receipt', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('API failed');
         
         const data = await response.json();
-        const parsedTable = parseTableData(data);
+        
+        const legacyFormat = {
+          words: (data.raw_cells || []).map(cell => ({
+            text: cell.text,
+            confidence: cell.confidence,
+            bbox: [
+              [cell.bbox[0], cell.bbox[1]],
+              [cell.bbox[2], cell.bbox[1]],
+              [cell.bbox[2], cell.bbox[3]],
+              [cell.bbox[0], cell.bbox[3]]
+            ]
+          }))
+        };
+        const parsedTable = parseTableData(legacyFormat);
         
         const parsedRows = parsedTable.rows.map(r => {
            const match = this.fuzzyMatchCommodity(r.productName);
