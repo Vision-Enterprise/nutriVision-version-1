@@ -938,30 +938,50 @@ async function _openFullScreenWorkspace() {
     </div>
 
     <div class="workspace-body">
-      <!-- Left Panel: Scanner -->
-      <div class="workspace-panel-left" id="bulk-scanner-container">
-         <!-- ScannerComponent mounts here -->
+      <!-- Left Panel: Scanner (Collapsible) -->
+      <div class="workspace-panel-left" id="workspace-panel-left">
+         <!-- Hamburger header - always visible -->
+         <div class="scanner-pane-header">
+           <span style="font-size:13px; font-weight:600; color:var(--text-main);">Scanner Module</span>
+           <button class="scanner-hamburger-btn" id="scanner-collapse-btn" title="Collapse scanner pane" aria-label="Toggle scanner pane">
+             <span></span><span></span><span></span>
+           </button>
+         </div>
+         <!-- Scanner mount point -->
+         <div id="bulk-scanner-container" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
+         <!-- Re-open tab (visible only when collapsed) -->
+         <button id="scanner-pane-toggle-tab" title="Expand scanner pane" aria-label="Expand scanner pane">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+           SCANNER
+         </button>
       </div>
 
       <!-- Right Panel: Data Grid -->
       <div class="workspace-panel-right">
-         <div class="headless-grid-container">
+         <!-- FX Bar: Excel-like active cell editor -->
+         <div class="fx-bar-wrapper">
+           <span class="fx-bar-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+           <input class="fx-bar-input" id="fx-bar-input" placeholder="Click a cell to edit its value here..." readonly />
+         </div>
+         <div class="headless-grid-container" style="border-radius:0 0 8px 8px;">
+           <div class="headless-grid-scroll" style="overflow-x:auto; flex:1;">
            <table class="headless-grid">
               <thead>
                  <tr>
-                    <th style="width: 25%;">Commodity</th>
-                    <th style="width: 15%;">Batch Code</th>
-                    <th style="width: 10%;">Qty</th>
-                    <th style="width: 15%;">Del. Date</th>
-                    <th style="width: 15%;">Exp. Date</th>
-                    <th style="width: 15%;">Supplier</th>
-                    <th style="width: 5%; text-align:center;"></th>
+                    <th style="min-width:180px;">Commodity</th>
+                    <th style="min-width:130px;">Batch Code</th>
+                    <th style="min-width:80px;">Qty</th>
+                    <th style="min-width:120px;">Del. Date</th>
+                    <th style="min-width:120px;">Exp. Date</th>
+                    <th style="min-width:160px;">Supplier</th>
+                    <th style="min-width:48px; text-align:center;"></th>
                  </tr>
               </thead>
               <tbody id="bulk-table-body">
                  <!-- Dynamic Rows -->
               </tbody>
            </table>
+           </div><!-- /headless-grid-scroll -->
            <div style="padding:16px;">
               <button id="bulk-add-row-btn" style="background:none; border:none; color:var(--color-primary); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -1010,6 +1030,39 @@ async function _openFullScreenWorkspace() {
   _renderBulkTable();
 
   // Event Listeners
+  // Hamburger toggle: collapse / expand left scanner pane
+  const _leftPanel = document.getElementById('workspace-panel-left');
+  document.getElementById('scanner-collapse-btn').addEventListener('click', () => {
+    _leftPanel.classList.toggle('is-collapsed');
+  });
+  document.getElementById('scanner-pane-toggle-tab').addEventListener('click', () => {
+    _leftPanel.classList.remove('is-collapsed');
+  });
+
+  // FX Bar: active-cell editing
+  const _fxBar = document.getElementById('fx-bar-input');
+  let _fxTarget = null;
+  document.getElementById('bulk-table-body').addEventListener('focusin', (e) => {
+    const inp = e.target.closest('input:not([disabled])');
+    if (!inp) return;
+    _fxTarget = inp;
+    _fxBar.value = inp.value;
+    _fxBar.removeAttribute('readonly');
+  });
+  _fxBar.addEventListener('input', () => { if (_fxTarget) _fxTarget.value = _fxBar.value; });
+  _fxBar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.preventDefault();
+      if (_fxTarget) {
+        _fxTarget.dispatchEvent(new Event('input', {bubbles: true}));
+        _fxTarget.blur();
+        _fxTarget = null;
+      }
+      _fxBar.setAttribute('readonly', true);
+      _fxBar.value = '';
+    }
+  });
+
   document.getElementById('workspace-cancel-btn').addEventListener('click', () => overlay.remove());
   
   document.getElementById('bulk-add-row-btn').addEventListener('click', () => {
@@ -1181,3 +1234,7 @@ async function _handleWorkspaceSave() {
       window.location.reload();
    }
 }
+
+
+
+
