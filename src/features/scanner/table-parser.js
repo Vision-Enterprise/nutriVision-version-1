@@ -1,4 +1,3 @@
-
 // table-parser.js - Adapted for EasyOCR flat bbox array
 
 const CATEGORY_KW = {
@@ -126,7 +125,31 @@ function detectColumnAnchors(headerLine) {
   if (!words.length) return [];
 
   const avgW = words.reduce((s, w) => s + (w.bbox.x1 - w.bbox.x0), 0) / words.length;
-  const gapThreshold = Math.max(avgW * 0.4, 12);
+  let gapThreshold = Math.max(avgW * 0.4, 12);
+  
+  // Dynamic gap threshold: find the largest difference between gaps 
+  // to separate 'word spaces' from 'column gaps' robustly.
+  const gaps = [];
+  for (let i = 1; i < words.length; i++) {
+    gaps.push(words[i].bbox.x0 - words[i-1].bbox.x1);
+  }
+  
+  if (gaps.length > 0) {
+    const sortedGaps = [...gaps].sort((a, b) => a - b);
+    let maxDiff = 0;
+    let bestCutoff = gapThreshold;
+    for (let i = 0; i < sortedGaps.length - 1; i++) {
+      const diff = sortedGaps[i+1] - sortedGaps[i];
+      if (diff > maxDiff) {
+        maxDiff = diff;
+        bestCutoff = (sortedGaps[i] + sortedGaps[i+1]) / 2;
+      }
+    }
+    // If the jump between the largest space and smallest column gap is significant
+    if (maxDiff > Math.max(avgW * 0.15, 5)) {
+      gapThreshold = bestCutoff;
+    }
+  }
 
   const cells = [];
   let cell = { words: [words[0]] };
@@ -281,4 +304,116 @@ export function parseTableData(data) {
   }
 
   return { rows, columns, headerFound, headerText, lineCount: lines.length };
+}
+
+export function parseHtmlTableData(htmlString) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, 'text/html');
+  const table = doc.querySelector('table');
+  if (!table) return { rows: [], columns: [], headerFound: false };
+  
+  const trs = Array.from(table.querySelectorAll('tr'));
+  if (trs.length < 2) return { rows: [], columns: [], headerFound: false };
+  
+  let headerRowIdx = -1;
+  let headers = [];
+  
+  for (let i = 0; i < trs.length; i++) {
+    const tds = Array.from(trs[i].querySelectorAll('td, th'));
+    const textVals = tds.map(td => td.textContent.trim());
+    
+    const tempHeaders = [];
+    textVals.forEach(v => {
+      let cat = getBestCategory(v);
+      if (cat === 'genericDate' && tempHeaders.includes('genericDate')) {
+        cat = 'expDate'; 
+      }
+      tempHeaders.push(cat);
+    });
+    
+    const matchedCats = tempHeaders.filter(c => c);
+    if (matchedCats.length >= 2) {
+      headerRowIdx = i;
+      headers = tempHeaders;
+      break;
+    }
+  }
+  
+  if (headerRowIdx === -1) return { rows: [], columns: [], headerFound: false };
+  
+  // Robust Date Extraction helper
+  const extractAllDates = (rawStr) => {
+      if (!rawStr) return [];
+      const str = rawStr.replace(/\s+/g, '');
+      const regex = /(\d{4}[-./]?\d{2}[-./]?\d{2}|\d{2}[-./]?\d{2}[-./]?\d{4})/g;
+      const matches = str.match(regex);
+      if (!matches) return [];
+      
+      const parsedDates = [];
+      for (let m of matches) {
+          let d = m.replace(/[./]/g, '-');
+          if (!d.includes('-')) {
+             if (d.length === 8) {
+                if (d.match(/^\d{4}/)) d = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
+                else d = `${d.slice(0,2)}-${d.slice(2,4)}-${d.slice(4,8)}`;
+             }
+          }
+          if (d.match(/^\d{2}-\d{2}-\d{4}$/)) {
+              const parts = d.split('-');
+              d = parts[2] + '-' + parts[0] + '-' + parts[1];
+          }
+          parsedDates.push(d);
+      }
+      return parsedDates;
+  };
+
+  const rows = [];
+  for (let i = headerRowIdx + 1; i < trs.length; i++) {
+    const tds = Array.from(trs[i].querySelectorAll('td'));
+    if (tds.length === 0) continue;
+    
+    let record = { productName: '', qty: '', supplier: '', genericDate: '', expDate: '' };
+    tds.forEach((td, colIdx) => {
+      const cat = headers[colIdx];
+      if (cat && record[cat] !== undefined) {
+         record[cat] += (record[cat] ? ' ' : '') + td.textContent.trim();
+      }
+    });
+    
+    record.qty = (record.qty || '').replace(/[^\d]/g, '');
+    
+    // Global Date Sorting
+    const combinedDateStr = (record.genericDate + ' ' + record.expDate).trim();
+    const dates = extractAllDates(combinedDateStr);
+    
+    let finalExpDate = '';
+    let finalDelDate = '';
+    
+    if (dates.length >= 2) {
+        dates.sort((a, b) => new Date(a) - new Date(b));
+        finalDelDate = dates[0];
+        finalExpDate = dates[dates.length - 1]; 
+    } else if (dates.length === 1) {
+        const parsed = new Date(dates[0]);
+        if (!isNaN(parsed)) {
+            const diffDays = (parsed - new Date()) / (1000 * 60 * 60 * 24);
+            if (diffDays > 90) finalExpDate = dates[0];
+            else finalDelDate = dates[0];
+        } else {
+            finalDelDate = dates[0];
+        }
+    }
+    
+    if (record.productName || record.qty || finalExpDate || finalDelDate) {
+      rows.push({
+        productName: record.productName,
+        qty: record.qty,
+        expDate: finalExpDate,
+        deliveryDate: finalDelDate,
+        supplier: record.supplier || ''
+      });
+    }
+  }
+  
+  return { rows, headerFound: true };
 }
