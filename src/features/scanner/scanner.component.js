@@ -1,5 +1,5 @@
 
-import { parseTableData } from './table-parser.js';
+import { parseTableData, parseHtmlTableData } from './table-parser.js';
 
 let cropper = null;
 let stream = null;
@@ -310,7 +310,14 @@ export class ScannerComponent {
             ]
           }))
         };
-        const parsedTable = parseTableData(legacyFormat);
+        let parsedTable;
+        if (data.html_structure) {
+            console.log('Using RapidTable HTML Structure parsing');
+            parsedTable = parseHtmlTableData(data.html_structure);
+        } else {
+            console.log('Fallback to legacy bbox parsing');
+            parsedTable = parseTableData(legacyFormat);
+        }
         
         console.log('PARSED TABLE RESULTS:', parsedTable);
         const parsedRows = parsedTable.rows.map(r => {
