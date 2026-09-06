@@ -625,7 +625,7 @@ function _confirmToggleStatus(user) {
     _closeModal();
 
     if (error) {
-      alert(error);
+      SystemDialog.alert(error);
       return;
     }
 

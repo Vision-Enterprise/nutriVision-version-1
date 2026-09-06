@@ -75,6 +75,7 @@ export const ROUTES = {
   ACCOUNT:    '#/account',
   CALENDAR:   '#/calendar',
     ADVISOR:    '#/advisor',
+  ARCHIVE:    '#/archive',
 };
 
 // ── Audit Log Action Types ─────────────────────────────────────────────────
@@ -164,3 +165,11 @@ export const BARANGAYS = [
   'Tankulan',
   'Ticala'
 ];
+
+// 🌟 Record Statuses 🌟
+// Used for the 3-state record lifecycle.
+export const RECORD_STATUS = {
+  ACTIVE: 'Active',
+  DEPLETED: 'Depleted',
+  VOIDED: 'Voided',
+};
