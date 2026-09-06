@@ -192,7 +192,7 @@ export class ScannerComponent {
       video.srcObject = stream;
       captureBtn.disabled = false;
     } catch (err) {
-      alert("Camera access denied or unavailable.");
+      SystemDialog.alert("Camera access denied or unavailable.");
     }
   }
 
@@ -342,7 +342,7 @@ export class ScannerComponent {
         }
       } catch (error) {
         console.error(error);
-        alert('OCR Error. Make sure the backend server is running and returns bounding boxes.');
+        SystemDialog.alert('OCR Error. Make sure the backend server is running and returns bounding boxes.');
         const btn = this.container.querySelector('#scanner-btn-process');
         btn.innerHTML = 'Extract Table (OCR)';
         btn.disabled = false;

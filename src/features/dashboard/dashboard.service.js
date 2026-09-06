@@ -6,7 +6,7 @@
 
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
-import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 
 /**
  * Fetch top-level dashboard statistics and expiration summary.

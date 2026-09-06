@@ -1,6 +1,6 @@
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
-import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 
 export async function fetchAdvisorData() {
   try {
@@ -50,7 +50,7 @@ export async function fetchAdvisorData() {
 
     // Analyze each commodity
     commodities.forEach(c => {
-      let activeBatches = c.batches?.filter(b => b.deleted_at === null) || [];
+      let activeBatches = c.batches?.filter(b => b.deleted_at === null && b.record_status !== RECORD_STATUS.VOIDED) || [];
       let totalQty = activeBatches.reduce((sum, b) => sum + (b.quantity || 0), 0);
       totalBatches += activeBatches.length;
       
