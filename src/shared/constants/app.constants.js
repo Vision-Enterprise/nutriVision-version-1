@@ -74,6 +74,7 @@ export const ROUTES = {
   AUDIT_LOGS: '#/audit-logs',
   ACCOUNT:    '#/account',
   CALENDAR:   '#/calendar',
+    ADVISOR:    '#/advisor',
 };
 
 // ── Audit Log Action Types ─────────────────────────────────────────────────
