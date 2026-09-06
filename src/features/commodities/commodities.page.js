@@ -573,7 +573,7 @@ async function _confirmDelete(commodity) {
   );
 
   if (error) {
-    alert(error);
+    SystemDialog.alert(error);
     return;
   }
 

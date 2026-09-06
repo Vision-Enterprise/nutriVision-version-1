@@ -16,12 +16,13 @@ import {
   fetchActiveCommodities,
   createBatch,
   updateBatch,
-  deleteBatch,
+  voidBatch,
   releaseBatch,
 } from './batches.service.js';
 import { formatDate, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, BARANGAYS } from '../../shared/constants/app.constants.js';
 import { ScannerComponent } from '../scanner/scanner.component.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 // ── Page-level state ──────────────────────────────────────────────────────────
 
@@ -303,7 +304,7 @@ function _attachPageListeners() {
         }
         if (deleteBtn) {
           const batch = _batches.find(b => b.id === deleteBtn.dataset.id);
-          if (batch) _confirmDelete(batch);
+          if (batch) _openVoidModal(batch);
           return;
         }
 
@@ -521,7 +522,7 @@ function _openEditModal(batch) {
           
           _closeModal();
           renderBatchesPage(_profile);
-          if (successCount > 0) alert(`Successfully imported ${successCount} batches!`);
+          if (successCount > 0) SystemDialog.alert(`Successfully imported ${successCount} batches!`);
         });
         scanner.mount();
       });
@@ -605,27 +606,87 @@ async function _handleSubmit(e, mode, batchId) {
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
-async function _confirmDelete(batch) {
+function _openVoidModal(batch) {
+  _closeModal();
   const name = batch.commodities?.name ?? 'unknown commodity';
-  const confirmed = window.confirm(
-    `Delete batch "${batch.batch_number}" for ${name}?\n\nThis action cannot be undone.`
-  );
-  if (!confirmed) return;
 
-  const { error } = await deleteBatch(batch.id, batch.batch_number, name, _profile);
-  if (error) { alert(error); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id        = 'batch-modal-overlay';
 
-  _batches = _batches.filter(b => b.id !== batch.id);
-  _refreshTable();
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">Void This Record</h2>
+        <button class="modal-close" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="void-form">
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:var(--space-4);">
+          <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-danger); padding: var(--space-3); border-radius: 4px; font-size: var(--font-size-sm); color: var(--color-text);">
+            <strong>Warning:</strong> This will remove batch "${batch.batch_number}" for ${name} from active inventory. It will remain visible in the Archive module for audit purposes.
+          </div>
+          <div class="form-group">
+            <label for="field-void-reason" class="form-label form-label--required">Reason for voiding</label>
+            <textarea id="field-void-reason" name="void_reason" class="form-input" rows="3" required placeholder="e.g. Typo in batch code, Duplicate entry"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: var(--color-danger); border-color: var(--color-danger);">Void Record</button>
+        </div>
+      </form>
+    </div>
+  `;
 
-  const subtitle = document.querySelector('.page-header__subtitle');
-  if (subtitle) {
-    subtitle.textContent =
-      `${_batches.length} batch${_batches.length !== 1 ? 'es' : ''} on record`;
-  }
+  document.body.appendChild(overlay);
+
+  // Focus management
+  const firstInput = document.getElementById('field-void-reason');
+  if (firstInput) firstInput.focus();
+
+  // Close handlers
+  const closeBtn  = overlay.querySelector('.modal-close');
+  const cancelBtn = document.getElementById('modal-cancel');
+
+  closeBtn.addEventListener('click', _closeModal);
+  cancelBtn.addEventListener('click', _closeModal);
+
+  overlay._escHandler = (e) => { if (e.key === 'Escape') _closeModal(); };
+  document.addEventListener('keydown', overlay._escHandler);
+
+  // Form submit
+  document.getElementById('void-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reason = document.getElementById('field-void-reason').value.trim();
+    if (!reason) { await SystemDialog.alert('Please provide a reason for voiding this record.'); return; }
+
+    const submitBtn = e.target.querySelector('[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Voiding...';
+
+    const { error } = await voidBatch(batch.id, batch.batch_number, name, reason, _profile);
+    
+    if (error) {
+      await SystemDialog.alert(error);
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      return;
+    }
+
+    _batches = _batches.filter(b => b.id !== batch.id);
+    _refreshTable();
+    _closeModal();
+
+    const subtitle = document.querySelector('.page-header__subtitle');
+    if (subtitle) {
+      subtitle.textContent =
+        `${_batches.length} batch${_batches.length !== 1 ? 'es' : ''} on record`;
+    }
+  });
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
+// 🌟 Utilities 🌟
 
 function _statusBadgeClass(status) {
   const map = {
@@ -830,9 +891,15 @@ function _openReleaseModal(batch) {
       return;
     }
     
-    // Update local state
+    // Update local state (remove from active list if now depleted)
     const idx = _batches.findIndex(b => b.id === result.batch.id);
-    if (idx !== -1) _batches[idx] = result.batch;
+    if (idx !== -1) {
+      if (result.batch.record_status === 'Depleted') {
+        _batches.splice(idx, 1); // auto-depleted: remove from active list
+      } else {
+        _batches[idx] = result.batch;
+      }
+    }
     
     close();
     _refreshTable();
@@ -1184,7 +1251,7 @@ function _syncBulkState() {
 async function _handleWorkspaceSave() {
    _syncBulkState();
    
-   if (bulkRows.length === 0) return alert('No rows to save.');
+   if (bulkRows.length === 0) return SystemDialog.alert('No rows to save.');
 
    let isValid = true;
    bulkRows.forEach((r, i) => {
@@ -1194,8 +1261,8 @@ async function _handleWorkspaceSave() {
    });
    
    let invalidComm = bulkRows.find(r => !_commodities.find(c => c.name.toLowerCase() === r.commodityName.toLowerCase()));
-   if (invalidComm) return alert('Invalid commodity name: "' + invalidComm.commodityName + '". Please select a valid commodity.');
-   if (!isValid) return alert('Please fill in all required fields (Commodity, Qty, Delivery, Expiration).');
+   if (invalidComm) return SystemDialog.alert('Invalid commodity name: "' + invalidComm.commodityName + '". Please select a valid commodity.');
+   if (!isValid) return SystemDialog.alert('Please fill in all required fields (Commodity, Qty, Delivery, Expiration).');
 
    const btn = document.getElementById('workspace-save-btn');
    btn.disabled = true;
@@ -1223,7 +1290,7 @@ async function _handleWorkspaceSave() {
       else successCount++;
    }
 
-   if (errors.length > 0) alert(`Saved ${successCount} batches, but encountered errors: \n` + errors.join('\n'));
+   if (errors.length > 0) SystemDialog.alert(`Saved ${successCount} batches, but encountered errors: \n` + errors.join('\n'));
    
    document.getElementById('batch-workspace-overlay').remove();
    const reloadRes = await fetchBatches();

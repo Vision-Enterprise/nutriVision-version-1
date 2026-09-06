@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Batch Management Service
  *
  * All Supabase interactions for the Batch Management feature.
@@ -6,9 +6,9 @@
  */
 
 import { supabase } from '../../core/supabase.js';
-import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 
-// ── Read ─────────────────────────────────────────────────────────────────────
+// -- Read ---------------------------------------------------------------------
 
 /**
  * Fetch all active batches with their parent commodity details.
@@ -27,7 +27,7 @@ export async function fetchBatches() {
           id, name, commodity_code, unit
         )
       `)
-      .is('deleted_at', null)
+      .eq('record_status', RECORD_STATUS.ACTIVE)
       .order('expiration_date', { ascending: true });
 
     if (error) throw error;
@@ -58,7 +58,7 @@ export async function fetchActiveCommodities() {
   }
 }
 
-// ── Create ────────────────────────────────────────────────────────────────────
+// -- Create --------------------------------------------------------------------
 
 /**
  * Insert a new batch record and write an audit log entry.
@@ -110,7 +110,7 @@ export async function createBatch(formData, profile) {
   }
 }
 
-// ── Update ────────────────────────────────────────────────────────────────────
+// -- Update --------------------------------------------------------------------
 
 /**
  * Update an existing batch record and write an audit log entry.
@@ -165,7 +165,7 @@ export async function updateBatch(id, formData, profile) {
   }
 }
 
-// ── Delete (Soft) ─────────────────────────────────────────────────────────────
+// -- Delete (Soft) -------------------------------------------------------------
 
 /**
  * Soft-delete a batch by setting deleted_at = NOW().
@@ -175,11 +175,17 @@ export async function updateBatch(id, formData, profile) {
  * @param {Object} profile
  * @returns {Promise<{ error: string|null }>}
  */
-export async function deleteBatch(id, batchNumber, commodityName, profile) {
+export async function voidBatch(id, batchNumber, commodityName, reason, profile) {
   try {
     const { error } = await supabase
       .from('batches')
-      .update({ deleted_at: new Date().toISOString(), updated_by: profile.id })
+      .update({ 
+        record_status: RECORD_STATUS.VOIDED,
+        void_reason: reason,
+        voided_by: profile.id,
+        deleted_at: new Date().toISOString(), 
+        updated_by: profile.id 
+      })
       .eq('id', id);
 
     if (error) throw error;
@@ -194,8 +200,12 @@ export async function deleteBatch(id, batchNumber, commodityName, profile) {
 
     return { error: null };
   } catch (err) {
-    console.error('[BatchService] deleteBatch:', err);
-    return { error: 'Failed to delete batch. Please try again.' };
+    const msg = err?.message || JSON.stringify(err);
+    const code = err?.code || '';
+    console.error(`[BatchService] voidBatch FAILED (HTTP ${err?.status}, code: ${code}):`, msg, err);
+    if (code === '42703') return { error: `DB column missing: ${msg}. Run the archive migration SQL in Supabase.` };
+    if (err?.status === 403 || code === '42501') return { error: 'Permission denied (403). You need to add an RLS UPDATE policy for the batches table in Supabase.' };
+    return { error: `Failed to void batch: ${msg}` };
   }
 }
 
@@ -227,16 +237,20 @@ export async function releaseBatch(batchId, batchNumber, commodityName, quantity
       
     if (releaseError) throw releaseError;
 
-    // 2. Update batch quantity
+    // 2. Update batch quantity (auto-deplete when stock hits 0)
     const newQuantity = currentQuantity - qtyNum;
+    const updatePayload = { quantity: newQuantity, updated_by: profile.id };
+    if (newQuantity <= 0) {
+      updatePayload.record_status = RECORD_STATUS.DEPLETED;
+    }
     const { data: updatedBatch, error: updateError } = await supabase
       .from('batches')
-      .update({ quantity: newQuantity, updated_by: profile.id })
+      .update(updatePayload)
       .eq('id', batchId)
       .select(`
         id, batch_number, quantity,
         delivery_date, expiration_date,
-        supplier, notes, commodity_id,
+        supplier, notes, commodity_id, record_status,
         commodities ( id, name, commodity_code, unit )
       `)
       .single();
@@ -258,3 +272,4 @@ export async function releaseBatch(batchId, batchNumber, commodityName, quantity
     return { error: 'Failed to release batch. Please try again.' };
   }
 }
+

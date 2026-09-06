@@ -36,6 +36,7 @@ import { renderAdvisorPage }             from '../../features/advisor/advisor.pa
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
 import { renderCommoditiesPage } from '../../features/commodities/commodities.page.js';
 import { renderBatchesPage }    from '../../features/batches/batches.page.js';
+import { renderArchivePage }    from '../../features/archive/archive.page.js';
 import { renderReleasesPage }   from '../../features/releases/releases.page.js';
 import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
@@ -113,6 +114,10 @@ export function renderShell(profile, onLogout) {
           >
             <span class="icon" aria-hidden="true">package_2</span>
             Batches
+          </button>
+          <button class="sidebar__nav-item" data-route="archive" id="nav-archive" type="button" aria-label="Data Archive">
+            <span class="icon" aria-hidden="true">archive</span>
+            Archive
           </button>
             <button
               class="sidebar__nav-item"
@@ -266,6 +271,7 @@ export function renderShell(profile, onLogout) {
     .register('dashboard',   renderDashboardPage)
     .register('commodities', renderCommoditiesPage)
     .register('batches',     renderBatchesPage)
+    .register('archive',     renderArchivePage)
       .register('releases',    renderReleasesPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
