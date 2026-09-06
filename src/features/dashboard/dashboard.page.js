@@ -4,6 +4,7 @@
  */
 
 import { fetchDashboardStats, fetchRecentActivity, fetchChartData } from './dashboard.service.js';
+import { fetchAdvisorData, generateAdvisorSummary } from '../advisor/advisor.service.js';
 import { formatDateTime } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 import Chart from 'chart.js/auto';
@@ -30,11 +31,13 @@ export async function renderDashboardPage(profile) {
   `;
 
   // Fetch all data
-  const [stats, activity, chartData] = await Promise.all([
+  const [stats, activity, chartData, advisorRes] = await Promise.all([
     fetchDashboardStats(),
     fetchRecentActivity(5),
-    fetchChartData()
+    fetchChartData(),
+    fetchAdvisorData()
   ]);
+  const advisorData = advisorRes.success ? advisorRes.data : null;
 
   // Handle errors
   if (stats.error || activity.error || chartData.error) {
@@ -84,6 +87,74 @@ export async function renderDashboardPage(profile) {
       </div>
     </div>
 
+    <!-- Inventory Advisor Widget -->
+    ${advisorData ? (() => {
+      // Generate alerts based on expiringSoon array (max 2 for space)
+      const alerts = advisorData.expiringSoon.slice(0, 2).map(item => {
+        if (item.status === EXPIRATION_STATUS.EXPIRED || new Date(item.date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
+          // Critical
+          return `
+            <div style="background-color: #fff5f5; border: 1px solid #ffcccc; border-radius: var(--radius-md); padding: var(--space-3);">
+              <div style="display: flex; align-items: center; gap: var(--space-2); color: #c62828; font-weight: bold; margin-bottom: var(--space-2);">
+                <span class="icon icon--sm">error</span>
+                <span>CRITICAL: Imminent Expiration</span>
+              </div>
+              <div style="color: var(--color-text-dark);">
+                Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
+              </div>
+            </div>
+          `;
+        } else {
+          // Notice
+          return `
+            <div style="background-color: #fffde7; border: 1px solid #ffe082; border-radius: var(--radius-md); padding: var(--space-3);">
+              <div style="display: flex; align-items: center; gap: var(--space-2); color: #f57f17; font-weight: bold; margin-bottom: var(--space-2);">
+                <span class="icon icon--sm">warning</span>
+                <span>NOTICE: Approaching Expiration</span>
+              </div>
+              <div style="color: var(--color-text-dark);">
+                Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+
+      
+
+      return `
+      <div class="card" style="margin-bottom: var(--space-6); background: #ffffff; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 0;">
+        <!-- Top Section -->
+        <div style="padding: var(--space-4);">
+          <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: #5a6b7c;">
+            <span class="icon icon--sm">fact_check</span>
+            <span style="font-weight: bold; font-size: var(--text-sm); letter-spacing: 1px;">SYSTEM SUMMARY</span>
+          </div>
+          <div style="border-left: 4px solid var(--color-primary); padding-left: var(--space-3); font-size: var(--text-md); color: var(--color-text); line-height: 1.6;">
+            ${generateAdvisorSummary(advisorData)}
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--color-border-light);"></div>
+
+        <!-- Middle Section: Alerts -->
+        ${alerts ? `<div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);">${alerts}</div><div style="border-top: 1px solid var(--color-border-light);"></div>` : ''}
+
+        <!-- Bottom Section -->
+        <div style="padding: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: var(--space-3);">
+            
+          </div>
+          <a href="#/advisor" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
+            Open Advisor
+            <span class="icon icon--sm">open_in_new</span>
+          </a>
+        </div>
+      </div>
+      `;
+    })() : ''}
+
+
     <!-- Charts Section -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-6);">
       
@@ -128,6 +199,8 @@ export async function renderDashboardPage(profile) {
       </div>
 
     </div>
+
+
 
     <!-- Recent Activity -->
     <div class="card">

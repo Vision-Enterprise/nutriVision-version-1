@@ -32,6 +32,7 @@ import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 
 // Feature page render functions (placeholders in Phase 3)
 import { renderCalendarPage }            from '../../features/calendar/calendar.page.js';
+import { renderAdvisorPage }             from '../../features/advisor/advisor.page.js';
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
 import { renderCommoditiesPage } from '../../features/commodities/commodities.page.js';
 import { renderBatchesPage }    from '../../features/batches/batches.page.js';
@@ -80,6 +81,16 @@ export function renderShell(profile, onLogout) {
           >
             <span class="icon" aria-hidden="true">dashboard</span>
             Dashboard
+          </button>
+          <button
+            class="sidebar__nav-item"
+            data-route="advisor"
+            id="nav-advisor"
+            type="button"
+            aria-label="Inventory Advisor"
+          >
+            <span class="icon" aria-hidden="true">insights</span>
+            Advisor
           </button>
 
           <button
@@ -259,7 +270,8 @@ export function renderShell(profile, onLogout) {
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage)
-    .register('calendar',    renderCalendarPage);
+    .register('calendar',    renderCalendarPage)
+    .register('advisor',     renderAdvisorPage);
 
   // Start the router â€” handles the current hash and listens for changes
   router.start();

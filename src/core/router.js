@@ -198,6 +198,7 @@ class Router {
       'users':       'User Management',
       'audit-logs':  'Audit Logs',
       'calendar':   'Program Calendar',
+      'advisor':    'Inventory Advisor',
       'account':     'Account Settings',
     };
 
