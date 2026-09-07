@@ -322,11 +322,24 @@ function _openLedgerModal(batch) {
     </div>
   `;
 
+  // Remove any existing ledger modal before appending a new one
+  const existing = document.getElementById('ledger-modal-overlay');
+  if (existing) {
+    if (existing._escHandler) document.removeEventListener('keydown', existing._escHandler);
+    existing.remove();
+  }
+
   document.body.appendChild(overlay);
 
-  const closeBtn = overlay.querySelector('.modal-close');
-  closeBtn.addEventListener('click', () => overlay.remove());
+  function _closeLedger() {
+    document.removeEventListener('keydown', escHandler);
+    overlay.remove();
+  }
 
-  overlay._escHandler = (e) => { if (e.key === 'Escape') overlay.remove(); };
-  document.addEventListener('keydown', overlay._escHandler);
+  const closeBtn = overlay.querySelector('.modal-close');
+  closeBtn.addEventListener('click', _closeLedger);
+
+  const escHandler = (e) => { if (e.key === 'Escape') _closeLedger(); };
+  overlay._escHandler = escHandler;
+  document.addEventListener('keydown', escHandler);
 }
