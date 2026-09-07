@@ -1,3 +1,5 @@
+import { COMMODITY_UNITS } from '../../shared/constants/app.constants.js';
+
 // table-parser.js - Adapted for EasyOCR flat bbox array
 
 const CATEGORY_KW = {
@@ -7,7 +9,7 @@ const CATEGORY_KW = {
   expDate:     ['exp', 'expiry', 'expiration', 'best', 'use', 'shelf'],
   genericDate: ['date', 'dated'],
   mfgDate:     ['mfg', 'manufacture', 'production'],
-  unit:        ['unit', 'uom', 'measure', 'pack', 'packaging', 'form'],
+  unit:        ['unit', 'uunit', 'uom', 'measure', 'pack', 'packaging', 'form', 'units'],
   supplier:    ['supplier', 'vendor', 'distributor', 'manufacturer', 'company', 'source'],
 };
 
@@ -372,7 +374,7 @@ export function parseHtmlTableData(htmlString) {
     const tds = Array.from(trs[i].querySelectorAll('td'));
     if (tds.length === 0) continue;
     
-    let record = { productName: '', qty: '', supplier: '', genericDate: '', expDate: '' };
+    let record = { productName: '', qty: '', unit: '', supplier: '', genericDate: '', expDate: '' };
     tds.forEach((td, colIdx) => {
       const cat = headers[colIdx];
       if (cat && record[cat] !== undefined) {
@@ -408,6 +410,7 @@ export function parseHtmlTableData(htmlString) {
       rows.push({
         productName: record.productName,
         qty: record.qty,
+        unit: record.unit || '',
         expDate: finalExpDate,
         deliveryDate: finalDelDate,
         supplier: record.supplier || ''
@@ -415,5 +418,145 @@ export function parseHtmlTableData(htmlString) {
     }
   }
   
+  return { rows, headerFound: true };
+}
+
+/**
+ * Robust Spatial Fallback Parser
+ * Groups raw OCR bounding boxes by vertical overlap into lines and maps them
+ * to receipt columns (Product Name, Qty, Unit, Exp Date, Supplier).
+ */
+export function parseSpatialCells(rawCells) {
+  if (!rawCells || !rawCells.length) return { rows: [], headerFound: false };
+
+  const items = [...rawCells].map(c => ({
+    text: (c.text || '').trim(),
+    bbox: c.bbox,
+    midY: (c.bbox[1] + c.bbox[3]) / 2,
+    h: c.bbox[3] - c.bbox[1],
+    x1: c.bbox[0],
+    x2: c.bbox[2],
+    y1: c.bbox[1],
+    y2: c.bbox[3]
+  })).filter(i => i.text.length > 0);
+
+  items.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+
+  const lines = [];
+  for (const item of items) {
+    let placed = false;
+    for (const line of lines) {
+      const lineY1 = Math.min(...line.map(i => i.y1));
+      const lineY2 = Math.max(...line.map(i => i.y2));
+      const yOverlap = Math.min(item.y2, lineY2) - Math.max(item.y1, lineY1);
+      const minH = Math.min(item.h, lineY2 - lineY1);
+
+      if (yOverlap > minH * 0.35) {
+        line.push(item);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      lines.push([item]);
+    }
+  }
+
+  lines.forEach(line => line.sort((a, b) => a.x1 - b.x1));
+  const maxX = Math.max(...items.map(i => i.x2), 1000);
+
+  const normalizeDateStr = (raw) => {
+    if (!raw) return '';
+    let cleaned = raw.replace(/^028/, '2028').replace(/^28[-./]/, '2028-');
+    if (/^20\d{2}[-./]\d{4}$/.test(cleaned)) {
+      cleaned = cleaned.slice(0, 7) + '-' + cleaned.slice(7);
+    }
+    const m = cleaned.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\b/);
+    if (m) {
+      const y = m[1];
+      const mo = m[2].padStart(2, '0');
+      const d = m[3].padStart(2, '0');
+      return `${y}-${mo}-${d}`;
+    }
+    return '';
+  };
+
+  const rows = [];
+
+  for (const line of lines) {
+    const lineText = line.map(i => i.text).join(' ');
+
+    if (/\b(commodity|item|product|description|particulars|exp\.?\s*date|vendor|supplier|unit|qty|quantity)\b/i.test(lineText)) {
+      const hasNumbers = /\b\d{2,}\b/.test(lineText);
+      const hasDate = /\b(20\d{2}|028)\b/.test(lineText);
+      if (!hasNumbers && !hasDate) {
+        continue;
+      }
+    }
+
+    let productNameParts = [];
+    let qty = '';
+    let unit = '';
+    let expDate = '';
+    let supplierParts = [];
+
+    for (const item of line) {
+      const t = item.text.trim();
+      const normDate = normalizeDateStr(t);
+
+      if (normDate) {
+        expDate = normDate;
+        continue;
+      }
+
+      if (/\b(028|20\d{2})[-./:]\d{1,4}\b/.test(t)) {
+        expDate = normalizeDateStr(t);
+        continue;
+      }
+
+      const unitClean = t.toLowerCase().replace(/[^a-z]/g, '');
+      const isKnownUnit = COMMODITY_UNITS && COMMODITY_UNITS.some(u => {
+        const uc = u.toLowerCase().replace(/[^a-z]/g, '');
+        return uc === unitClean || (unitClean.length >= 3 && uc.startsWith(unitClean));
+      });
+
+      if (isKnownUnit && !unit && item.x1 > maxX * 0.35 && item.x1 < maxX * 0.75) {
+        unit = t;
+        continue;
+      }
+
+      if (/^\d{1,6}$/.test(t) && !qty && item.x1 > maxX * 0.3 && item.x1 < maxX * 0.65) {
+        qty = t;
+        continue;
+      }
+
+      if (item.x1 < maxX * 0.55 && !expDate) {
+        productNameParts.push(t);
+      } else if (item.x1 > maxX * 0.55 || expDate) {
+        if (t.toLowerCase() !== 'doh' && !/department/i.test(t) && !supplierParts.length && item.x1 < maxX * 0.55) {
+          productNameParts.push(t);
+        } else {
+          supplierParts.push(t);
+        }
+      } else {
+        productNameParts.push(t);
+      }
+    }
+
+    const productName = productNameParts.join(' ').replace(/^[|\-_.:;,\s]+|[|\-_.:;,\s]+$/g, '');
+    const supplier = supplierParts.join(' ').replace(/^[|\-_.:;,\s]+|[|\-_.:;,\s]+$/g, '');
+
+    if (productName.length >= 2 || (expDate && qty)) {
+      rows.push({
+        productName,
+        qty,
+        unit,
+        expDate,
+        deliveryDate: '',
+        supplier
+      });
+    }
+  }
+
   return { rows, headerFound: true };
 }

@@ -83,8 +83,17 @@ def get_temp_dir() -> str:
 def _process_image_sync(temp_path: str):
     preprocessed_path = None
     try:
-        preprocessed_path = preprocess_receipt(temp_path)
-        result = extractor.extract_table(preprocessed_path)
+        # RapidOCR and RapidTable (SLANet-plus) are deep neural networks trained on full-color/grayscale images.
+        # Direct inference preserves natural gradients, anti-aliasing, and table borders.
+        result = extractor.extract_table(temp_path)
+        
+        # Fallback to preprocessor only if direct inference yielded zero cells and zero table structure
+        if not result or (not result.get("raw_cells") and not result.get("html_structure")):
+            try:
+                preprocessed_path = preprocess_receipt(temp_path)
+                result = extractor.extract_table(preprocessed_path)
+            except Exception:
+                pass
         return result
     finally:
         # Cleanup temp file

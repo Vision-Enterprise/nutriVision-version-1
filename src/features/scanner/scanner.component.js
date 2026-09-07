@@ -1,4 +1,4 @@
-import { parseTableData, parseHtmlTableData } from './table-parser.js';
+import { parseTableData, parseHtmlTableData, parseSpatialCells } from './table-parser.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { fetchCommodities } from '../commodities/commodities.service.js';
 
@@ -330,7 +330,7 @@ export class ScannerComponent {
 
           // Load image into preview and trigger extraction
           const fullImageUrl = `${this.apiBase}${data.latest_image_url}`;
-          this.initCropper(fullImageUrl, true);
+          this.initCropper(fullImageUrl, true, 'mobile');
         }
       } catch (e) {
         // Polling error, retry silently
@@ -382,7 +382,8 @@ export class ScannerComponent {
     this.initCropper(canvas.toDataURL('image/jpeg'));
   }
 
-  initCropper(imageSrc, autoProcess = false) {
+  initCropper(imageSrc, autoProcess = false, sourceTab = 'upload') {
+    this.sourceTab = sourceTab;
     this.switchTab('crop');
     const img = this.container.querySelector('#scanner-crop-img');
     this.destroyCropper();
@@ -512,25 +513,43 @@ export class ScannerComponent {
       if (data.html_structure) {
           console.log('Using RapidTable HTML Structure parsing');
           parsedTable = parseHtmlTableData(data.html_structure);
-      } else {
+      }
+      
+      if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
+          console.log('Trying spatial bbox parsing on raw cells');
+          if (data.raw_cells && data.raw_cells.length > 0) {
+              parsedTable = parseSpatialCells(data.raw_cells);
+          }
+      }
+
+      if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
           console.log('Fallback to legacy bbox parsing');
           parsedTable = parseTableData(legacyFormat);
       }
       
       console.log('PARSED TABLE RESULTS:', parsedTable);
-      const parsedRows = parsedTable.rows.map(r => {
+      const parsedRows = (parsedTable?.rows || []).map(r => {
          const match = this.fuzzyMatchCommodity(r.productName);
          return {
             ...r,
             commodityId: match ? match.id : null,
-            productName: match ? match.name : r.productName
+            productName: match ? match.name : r.productName,
+            unit: match ? (match.unit || r.unit) : r.unit
          };
       });
       
       this.destroyCropper();
-      this.switchTab('upload');
+      const returnTab = this.sourceTab || 'upload';
+      this.switchTab(returnTab);
       const fileInput = this.container.querySelector('#scanner-file-input');
       if (fileInput) fileInput.value = '';
+
+      if (returnTab === 'mobile') {
+        const statusPill = this.container.querySelector('#scanner-mobile-status');
+        if (statusPill) {
+          statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>${parsedRows.length} item(s) extracted! Ready for next scan</span>`;
+        }
+      }
 
       if (this.onComplete) {
          this.onComplete(parsedRows);
