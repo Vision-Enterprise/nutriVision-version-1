@@ -1,5 +1,9 @@
 node_modules/
 .env
+.env.local
 .DS_Store
-ocr_service/venv/
+dist/
 __pycache__/
+backend/venv/
+backend/temp/
+ocr_service/venv/
