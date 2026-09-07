@@ -2,6 +2,7 @@ import { fetchAdvisorData, generateAdvisorSummary } from './advisor.service.js';
 import { fetchChartData, fetchDashboardStats } from '../dashboard/dashboard.service.js';
 import Chart from 'chart.js/auto';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import './advisor.css';
 
 let _advChartInstances = {};
 let _advChartData = null;
@@ -24,14 +25,6 @@ export async function renderAdvisorPage(profile) {
     <div id="advisor-content" style="display: none;"></div>
   `;
 
-  // Insert link to CSS
-  if (!document.getElementById('advisor-css')) {
-    const link = document.createElement('link');
-    link.id = 'advisor-css';
-    link.rel = 'stylesheet';
-    link.href = '/src/features/advisor/advisor.css';
-    document.head.appendChild(link);
-  }
 
   const [advisorRes, chartRes, statsRes] = await Promise.all([
     fetchAdvisorData(),
