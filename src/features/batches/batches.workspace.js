@@ -190,7 +190,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   document.body.appendChild(overlay);
 
   // Mount ScannerComponent
-  new ScannerComponent({
+  const scannerInstance = new ScannerComponent({
     container: document.getElementById('bulk-scanner-container'),
     onComplete: (parsedRows) => {
       const today = new Date().toISOString().split('T')[0];
@@ -227,6 +227,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       renderBulkTable();
     }
   });
+  overlay._scanner = scannerInstance;
 
   renderBulkTable();
 
@@ -268,7 +269,10 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     }
   });
 
-  document.getElementById('workspace-cancel-btn')?.addEventListener('click', () => overlay.remove());
+  document.getElementById('workspace-cancel-btn')?.addEventListener('click', () => {
+    overlay._scanner?.unmount();
+    overlay.remove();
+  });
 
   document.getElementById('bulk-add-row-btn')?.addEventListener('click', () => {
     syncBulkState();
@@ -745,6 +749,7 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
     SystemDialog.alert(`Registered ${successCount} batches, but encountered errors:\n` + errors.join('\n'));
   }
 
+  overlay._scanner?.unmount();
   overlay.remove();
   if (typeof onSaveComplete === 'function') onSaveComplete();
 }

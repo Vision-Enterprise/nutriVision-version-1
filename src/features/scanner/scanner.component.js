@@ -13,6 +13,9 @@ export class ScannerComponent {
     this.scanMode = 'table';
     this.mobileSessionId = null;
     this.mobilePollTimer = null;
+    this.isProcessingMobile = false;
+    this.lastProcessedImageUrl = null;
+    this.mobileScanCount = 0;
     this.apiBase = 'http://localhost:8000';
     this.init();
   }
@@ -78,8 +81,8 @@ export class ScannerComponent {
               </div>
               <h3 style="margin:0 0 6px 0; color:var(--color-text, #1A2B1C); font-size:17px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
               <p style="margin:0 0 16px 0; color:var(--color-text-muted, #5A7060); font-size:13px; line-height:1.4;">
-                Scan with your phone to upload a receipt.<br>
-                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Requires phone and laptop connected to same local Wi-Fi network)</span>
+                Scan with your phone to upload receipts.<br>
+                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Supports continuous batch scanning.)</span>
               </p>
 
               <!-- QR Code Render Canvas/Box -->
@@ -138,85 +141,99 @@ export class ScannerComponent {
 
             <div style="display:flex; gap:12px;">
                 <button class="btn" id="scanner-btn-cancel-crop" style="flex:1; background:#fff; color:var(--text-main); border:1px solid var(--color-border); border-radius:6px; padding:12px; font-weight:600; cursor:pointer;">Discard</button>
-                <button class="btn-elevated" id="scanner-btn-process" style="flex:2;">Extract Table (OCR)</button>
+                <button class="btn" id="scanner-btn-process" style="flex:2; background:var(--color-primary); color:#fff; border:none; border-radius:6px; padding:12px; font-weight:600; cursor:pointer;">Extract Table (OCR)</button>
             </div>
         </div>
       </div>
     `;
 
-    this.bindEvents();
-    this.switchTab('upload');
+    this.attachEvents();
   }
 
-  bindEvents() {
-    this.container.querySelector('#tab-btn-upload').addEventListener('click', () => this.switchTab('upload'));
-    this.container.querySelector('#tab-btn-camera').addEventListener('click', () => {
-      this.switchTab('camera');
-      this.startCamera();
-    });
-    this.container.querySelector('#tab-btn-mobile').addEventListener('click', () => {
-      this.switchTab('mobile');
+  attachEvents() {
+    // Tab switching
+    this.container.querySelectorAll('.scanner-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tab = e.currentTarget.getAttribute('data-tab');
+        this.switchTab(tab);
+      });
     });
 
-    // Copy link helper
-    this.container.querySelector('#scanner-mobile-copy-btn').addEventListener('click', () => {
-      const input = this.container.querySelector('#scanner-mobile-link-input');
-      if (input && input.value) {
-        navigator.clipboard.writeText(input.value);
-        const btn = this.container.querySelector('#scanner-mobile-copy-btn');
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = 'Copy', 1500);
-      }
+    // File input change
+    const fileInput = this.container.querySelector('#scanner-file-input');
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) this.loadImage(file);
     });
 
     // Drag and Drop
-    const dropZone = this.container.querySelector('#tab-upload');
-    dropZone.addEventListener('dragover', (e) => {
-       e.preventDefault();
-       dropZone.classList.add('drag-active');
+    const dragZone = this.container.querySelector('#tab-upload');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dragZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
     });
-    dropZone.addEventListener('dragleave', (e) => {
-       e.preventDefault();
-       dropZone.classList.remove('drag-active');
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dragZone.addEventListener(eventName, () => {
+        dragZone.style.borderColor = 'var(--color-primary)';
+        dragZone.style.background = 'var(--color-surface-alt, #e8f5ee)';
+      }, false);
     });
-    dropZone.addEventListener('drop', (e) => {
-       e.preventDefault();
-       dropZone.classList.remove('drag-active');
-       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          this.loadImage(e.dataTransfer.files[0]);
-       }
+    ['dragleave', 'drop'].forEach(eventName => {
+      dragZone.addEventListener(eventName, () => {
+        dragZone.style.borderColor = 'var(--color-border-strong, #B2C9B5)';
+        dragZone.style.background = 'var(--color-surface, #fff)';
+      }, false);
+    });
+    dragZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length) this.loadImage(files[0]);
     });
 
-    this.container.querySelector('#scanner-file-input').addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) {
-        this.loadImage(e.target.files[0]);
-      }
-    });
-
+    // Camera Capture
     this.container.querySelector('#scanner-btn-capture').addEventListener('click', () => {
       this.captureImage();
     });
 
+    // Cancel Crop
     this.container.querySelector('#scanner-btn-cancel-crop').addEventListener('click', () => {
       this.destroyCropper();
-      this.switchTab(this.container.querySelector('.scanner-tab-btn.active').dataset.tab);
+      this.switchTab('upload');
     });
-    
-    this.container.querySelector('#scanner-btn-process').addEventListener('click', (e) => {
-      e.target.innerHTML = `<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Processing...`;
-      e.target.disabled = true;
+
+    // Process OCR
+    this.container.querySelector('#scanner-btn-process').addEventListener('click', () => {
       this.processImage();
     });
 
-    this.container.querySelector('#adv-scan-mode').addEventListener('change', (e) => {
-       this.scanMode = e.target.value;
-    });
+    // Mode changer
+    const modeSelect = this.container.querySelector('#adv-scan-mode');
+    if (modeSelect) {
+      modeSelect.addEventListener('change', (e) => {
+        this.scanMode = e.target.value;
+      });
+    }
+
+    // Copy mobile URL button
+    const copyBtn = this.container.querySelector('#scanner-mobile-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const input = this.container.querySelector('#scanner-mobile-link-input');
+        if (input && input.value) {
+          navigator.clipboard.writeText(input.value);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+        }
+      });
+    }
   }
 
   switchTab(tabId) {
-    this.stopCamera();
-    if (tabId !== 'mobile') {
-      this.stopMobilePolling();
+    if (tabId !== 'crop') {
+      this.destroyCropper();
+      this.stopCamera();
     }
 
     this.container.querySelector('#tab-upload').style.display = 'none';
@@ -264,15 +281,23 @@ export class ScannerComponent {
     });
   }
 
-  async initMobileScanner() {
+  async initMobileScanner(forceNew = false) {
     const qrContainer = this.container.querySelector('#scanner-qr-container');
     const linkInput = this.container.querySelector('#scanner-mobile-link-input');
     const statusPill = this.container.querySelector('#scanner-mobile-status');
 
+    // If session already exists and active, do NOT regenerate! Continue polling the same session.
+    if (this.mobileSessionId && !forceNew) {
+      this.startMobilePolling();
+      return;
+    }
+
     try {
       await this.ensureQRCodeLib();
 
-      statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
+      if (statusPill) {
+        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
+      }
 
       // Create new session
       const res = await fetch(`${this.apiBase}/api/mobile/create-session`);
@@ -280,32 +305,43 @@ export class ScannerComponent {
       const data = await res.json();
 
       this.mobileSessionId = data.session_id;
+      this.lastProcessedImageUrl = null;
+      this.isProcessingMobile = false;
+      this.mobileScanCount = 0;
       const uploadUrl = data.upload_url;
 
-      linkInput.value = uploadUrl;
-      statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
+      if (linkInput) linkInput.value = uploadUrl;
+      if (statusPill) {
+        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
+      }
 
       // Render QR code
-      qrContainer.innerHTML = '';
-      new window.QRCode(qrContainer, {
-        text: uploadUrl,
-        width: 200,
-        height: 200,
-        colorDark: '#0f172a',
-        colorLight: '#ffffff',
-        correctLevel: window.QRCode.CorrectLevel.M
-      });
+      if (qrContainer) {
+        qrContainer.innerHTML = '';
+        new window.QRCode(qrContainer, {
+          text: uploadUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: window.QRCode.CorrectLevel.M
+        });
+      }
 
-      // Start Polling every 2 seconds
+      // Start Polling every 1.5 seconds
       this.startMobilePolling();
     } catch (err) {
       console.error(err);
-      qrContainer.innerHTML = `
-        <div style="color:var(--color-danger, #C62828); font-size:12px; padding:16px;">
-          Failed to generate QR code.<br>Ensure backend server is running at ${this.apiBase}.
-        </div>
-      `;
-      statusPill.innerHTML = `<span style="color:var(--color-danger, #C62828);">Connection failed</span>`;
+      if (qrContainer) {
+        qrContainer.innerHTML = `
+          <div style="color:var(--color-danger, #C62828); font-size:12px; padding:16px;">
+            Failed to generate QR code.<br>Ensure backend server is running at ${this.apiBase}.
+          </div>
+        `;
+      }
+      if (statusPill) {
+        statusPill.innerHTML = `<span style="color:var(--color-danger, #C62828);">Connection failed</span>`;
+      }
     }
   }
 
@@ -314,28 +350,42 @@ export class ScannerComponent {
     if (!this.mobileSessionId) return;
 
     this.mobilePollTimer = setInterval(async () => {
+      if (this.isProcessingMobile) return;
+
       try {
         const res = await fetch(`${this.apiBase}/api/mobile/status/${this.mobileSessionId}`);
         if (!res.ok) return;
         const data = await res.json();
 
         if (data.status === 'ready' && data.latest_image_url) {
+          if (data.latest_image_url === this.lastProcessedImageUrl) return;
+
+          this.isProcessingMobile = true;
+          this.lastProcessedImageUrl = data.latest_image_url;
+          this.mobileScanCount = data.image_count || (this.mobileScanCount + 1);
+
           const statusPill = this.container.querySelector('#scanner-mobile-status');
           if (statusPill) {
-            statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Receipt received! Loading OCR...</span>`;
+            statusPill.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--color-primary, #1B7A3E); border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span><span>Receipt #${this.mobileScanCount} received! Extracting data...</span>`;
           }
 
-          // Acknowledge session so it waits for the next scan
+          // Acknowledge session so backend marks status as waiting
           await fetch(`${this.apiBase}/api/mobile/consume/${this.mobileSessionId}`, { method: 'POST' });
 
-          // Load image into preview and trigger extraction
+          // Fetch the cropped image blob directly from server
           const fullImageUrl = `${this.apiBase}${data.latest_image_url}`;
-          this.initCropper(fullImageUrl, true, 'mobile');
+          const imgRes = await fetch(fullImageUrl);
+          const blob = await imgRes.blob();
+
+          // Process the receipt directly without disturbing the desktop view
+          await this.processBlob(blob, 'mobile', this.mobileScanCount);
         }
       } catch (e) {
-        // Polling error, retry silently
+        console.error('Mobile poll error:', e);
+      } finally {
+        this.isProcessingMobile = false;
       }
-    }, 2000);
+    }, 1500);
   }
 
   stopMobilePolling() {
@@ -349,7 +399,7 @@ export class ScannerComponent {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      this.initCropper(e.target.result);
+      this.initCropper(e.target.result, false, 'upload');
     };
     reader.readAsDataURL(file);
   }
@@ -379,7 +429,7 @@ export class ScannerComponent {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    this.initCropper(canvas.toDataURL('image/jpeg'));
+    this.initCropper(canvas.toDataURL('image/jpeg'), false, 'camera');
   }
 
   initCropper(imageSrc, autoProcess = false, sourceTab = 'upload') {
@@ -468,93 +518,95 @@ export class ScannerComponent {
     return null;
   }
 
+  async processBlob(blob, sourceTab = 'upload', receiptIndex = null) {
+    if (!blob) throw new Error('Empty receipt image data');
+
+    const formData = new FormData();
+    formData.append('file', blob, 'receipt.jpg');
+    formData.append('mode', this.scanMode);
+    
+    const whitelist = this.container.querySelector('#adv-whitelist')?.value;
+    if (whitelist) formData.append('whitelist', whitelist);
+
+    const response = await fetch(`${this.apiBase}/api/extract-receipt`, { method: 'POST', body: formData });
+    if (!response.ok) {
+      let errDetail = 'API failed';
+      try {
+        const errJson = await response.json();
+        errDetail = errJson.detail || errDetail;
+      } catch (_) {}
+      throw new Error(errDetail);
+    }
+    
+    const data = await response.json();
+    
+    const legacyFormat = {
+      words: (data.raw_cells || []).map(cell => ({
+        text: cell.text,
+        confidence: cell.confidence,
+        bbox: [
+          [cell.bbox[0], cell.bbox[1]],
+          [cell.bbox[2], cell.bbox[1]],
+          [cell.bbox[2], cell.bbox[3]],
+          [cell.bbox[0], cell.bbox[3]]
+        ]
+      }))
+    };
+    let parsedTable;
+    if (data.html_structure) {
+        console.log('Using RapidTable HTML Structure parsing');
+        parsedTable = parseHtmlTableData(data.html_structure);
+    }
+    
+    if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
+        console.log('Trying spatial bbox parsing on raw cells');
+        if (data.raw_cells && data.raw_cells.length > 0) {
+            parsedTable = parseSpatialCells(data.raw_cells);
+        }
+    }
+
+    if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
+        console.log('Fallback to legacy bbox parsing');
+        parsedTable = parseTableData(legacyFormat);
+    }
+    
+    console.log('PARSED TABLE RESULTS:', parsedTable);
+    const parsedRows = (parsedTable?.rows || []).map(r => {
+       const match = this.fuzzyMatchCommodity(r.productName);
+       return {
+          ...r,
+          commodityId: match ? match.id : null,
+          productName: match ? match.name : r.productName,
+          unit: match ? (match.unit || r.unit) : r.unit
+       };
+    });
+
+    if (sourceTab === 'mobile') {
+      const statusPill = this.container.querySelector('#scanner-mobile-status');
+      if (statusPill) {
+        const receiptLabel = receiptIndex ? `Receipt #${receiptIndex}` : 'Receipt';
+        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>${parsedRows.length} item(s) extracted from ${receiptLabel}! Ready for next scan</span>`;
+      }
+    } else {
+      this.destroyCropper();
+      const returnTab = this.sourceTab || 'upload';
+      this.switchTab(returnTab);
+      const fileInput = this.container.querySelector('#scanner-file-input');
+      if (fileInput) fileInput.value = '';
+    }
+
+    if (this.onComplete) {
+       this.onComplete(parsedRows);
+    }
+    return parsedRows;
+  }
+
   async processImage() {
     const btn = this.container.querySelector('#scanner-btn-process');
     if (btn) {
       btn.innerHTML = `<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Extracting Table...`;
       btn.disabled = true;
     }
-
-    const sendBlob = async (blob) => {
-      if (!blob) throw new Error('Empty receipt image data');
-
-      const formData = new FormData();
-      formData.append('file', blob, 'receipt.jpg');
-      formData.append('mode', this.scanMode);
-      
-      const whitelist = this.container.querySelector('#adv-whitelist')?.value;
-      if (whitelist) formData.append('whitelist', whitelist);
-
-      const response = await fetch(`${this.apiBase}/api/extract-receipt`, { method: 'POST', body: formData });
-      if (!response.ok) {
-        let errDetail = 'API failed';
-        try {
-          const errJson = await response.json();
-          errDetail = errJson.detail || errDetail;
-        } catch (_) {}
-        throw new Error(errDetail);
-      }
-      
-      const data = await response.json();
-      
-      const legacyFormat = {
-        words: (data.raw_cells || []).map(cell => ({
-          text: cell.text,
-          confidence: cell.confidence,
-          bbox: [
-            [cell.bbox[0], cell.bbox[1]],
-            [cell.bbox[2], cell.bbox[1]],
-            [cell.bbox[2], cell.bbox[3]],
-            [cell.bbox[0], cell.bbox[3]]
-          ]
-        }))
-      };
-      let parsedTable;
-      if (data.html_structure) {
-          console.log('Using RapidTable HTML Structure parsing');
-          parsedTable = parseHtmlTableData(data.html_structure);
-      }
-      
-      if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
-          console.log('Trying spatial bbox parsing on raw cells');
-          if (data.raw_cells && data.raw_cells.length > 0) {
-              parsedTable = parseSpatialCells(data.raw_cells);
-          }
-      }
-
-      if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
-          console.log('Fallback to legacy bbox parsing');
-          parsedTable = parseTableData(legacyFormat);
-      }
-      
-      console.log('PARSED TABLE RESULTS:', parsedTable);
-      const parsedRows = (parsedTable?.rows || []).map(r => {
-         const match = this.fuzzyMatchCommodity(r.productName);
-         return {
-            ...r,
-            commodityId: match ? match.id : null,
-            productName: match ? match.name : r.productName,
-            unit: match ? (match.unit || r.unit) : r.unit
-         };
-      });
-      
-      this.destroyCropper();
-      const returnTab = this.sourceTab || 'upload';
-      this.switchTab(returnTab);
-      const fileInput = this.container.querySelector('#scanner-file-input');
-      if (fileInput) fileInput.value = '';
-
-      if (returnTab === 'mobile') {
-        const statusPill = this.container.querySelector('#scanner-mobile-status');
-        if (statusPill) {
-          statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>${parsedRows.length} item(s) extracted! Ready for next scan</span>`;
-        }
-      }
-
-      if (this.onComplete) {
-         this.onComplete(parsedRows);
-      }
-    };
 
     try {
       let canvas = null;
@@ -569,7 +621,7 @@ export class ScannerComponent {
       if (canvas) {
         canvas.toBlob(async (blob) => {
           try {
-            await sendBlob(blob);
+            await this.processBlob(blob, this.sourceTab || 'upload');
           } catch (err) {
             console.error(err);
             SystemDialog.alert('OCR Error: ' + err.message);
@@ -581,12 +633,11 @@ export class ScannerComponent {
           }
         }, 'image/jpeg', 0.92);
       } else {
-        // Fallback: If Cropper canvas is unavailable, fetch the image directly
         const img = this.container.querySelector('#scanner-crop-img');
         if (!img || !img.src) throw new Error('No receipt image available to process');
         const res = await fetch(img.src);
         const blob = await res.blob();
-        await sendBlob(blob);
+        await this.processBlob(blob, this.sourceTab || 'upload');
         if (btn) {
           btn.innerHTML = 'Extract Table (OCR)';
           btn.disabled = false;
