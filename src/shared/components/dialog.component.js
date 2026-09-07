@@ -31,6 +31,9 @@ export const SystemDialog = {
         </div>
       `;
 
+      // Remove any existing to prevent stacking
+      const _existA = document.getElementById('system-alert-overlay');
+      if (_existA) _existA.remove();
       document.body.appendChild(overlay);
 
       const okBtn = overlay.querySelector('#alert-ok-btn');
@@ -86,6 +89,9 @@ export const SystemDialog = {
         </div>
       `;
 
+      // Remove any existing to prevent stacking
+      const _existC = document.getElementById('system-confirm-overlay');
+      if (_existC) _existC.remove();
       document.body.appendChild(overlay);
 
       const okBtn = overlay.querySelector('#confirm-ok-btn');
@@ -141,6 +147,9 @@ export const SystemDialog = {
         </div>
       `;
 
+      // Remove any existing to prevent stacking
+      const _existP = document.getElementById('system-prompt-overlay');
+      if (_existP) _existP.remove();
       document.body.appendChild(overlay);
 
       const okBtn = overlay.querySelector('#prompt-ok-btn');

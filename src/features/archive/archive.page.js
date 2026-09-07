@@ -155,7 +155,7 @@ function _renderVoidedTable() {
               <td style="font-weight: 600;">${_escHtml(b.batch_number)}</td>
               <td>${_escHtml(b.commodities?.name || '-')}</td>
               <td style="font-style: italic; color: var(--color-text-muted);">"${_escHtml(b.void_reason || 'No reason provided')}"</td>
-              <td>${_escHtml(b.voided_by || 'Unknown')}</td>
+              <td>${_escHtml(b.voided_by_name || 'Unknown')}</td>
               <td>${formatDate(b.deleted_at)}</td>
               <td>
                 <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); color: var(--color-danger); border-radius: 4px; font-size: 12px;">
@@ -267,16 +267,20 @@ function _openLedgerModal(batch) {
         <div style="background: var(--color-surface); border: 1px solid var(--color-border-subtle); border-radius: 8px; padding: var(--space-3); margin-bottom: var(--space-3);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
             <div style="font-weight: 600; color: var(--color-primary);">${r.quantity} units</div>
-            <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">${formatDate(r.created_at)}</div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">${formatDate(r.released_at)}</div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); font-size: var(--font-size-sm);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2); font-size: var(--font-size-sm);">
             <div>
               <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Location / Barangay</span>
               <span style="font-weight: 500;">${_escHtml(r.barangay) || '-'}</span>
             </div>
             <div>
-              <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Recipient Name</span>
+              <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Recipient / Receiver</span>
               <span style="font-weight: 500;">${_escHtml(r.recipient_name) || '-'}</span>
+            </div>
+            <div>
+              <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Released By (Staff)</span>
+              <span style="font-weight: 500;">${_escHtml(r.released_by_name || 'Unknown Staff')}</span>
             </div>
           </div>
           ${r.notes ? `<div style="margin-top: var(--space-2); font-size: var(--font-size-sm); padding-top: var(--space-2); border-top: 1px dashed var(--color-border-subtle); color: var(--color-text-muted);">

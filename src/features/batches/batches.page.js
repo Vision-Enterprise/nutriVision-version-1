@@ -625,6 +625,10 @@ function _openVoidModal(batch) {
           <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-danger); padding: var(--space-3); border-radius: 4px; font-size: var(--font-size-sm); color: var(--color-text);">
             <strong>Warning:</strong> This will remove batch "${batch.batch_number}" for ${name} from active inventory. It will remain visible in the Archive module for audit purposes.
           </div>
+          <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; font-weight: 600;">Authorized Staff (You)</span>
+            <span style="font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text);">${_escHtml(_profile?.full_name || 'Current User')}</span>
+          </div>
           <div class="form-group">
             <label for="field-void-reason" class="form-label form-label--required">Reason for voiding</label>
             <textarea id="field-void-reason" name="void_reason" class="form-input" rows="3" required placeholder="e.g. Typo in batch code, Duplicate entry"></textarea>
@@ -786,6 +790,11 @@ function _openReleaseModal(batch) {
                 <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
               <span id="release-error-msg"></span>
+            </div>
+
+            <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; font-weight: 600;">Releasing Staff (You)</span>
+              <span style="font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text);">${_escHtml(_profile?.full_name || 'Current User')}</span>
             </div>
 
             <div class="form-group">
