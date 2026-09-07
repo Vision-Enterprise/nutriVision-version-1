@@ -2,44 +2,63 @@ import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS } from '../../shared/constants/app.constants.js';
 
 /**
+ * Fetch profile ID -> full_name mapping for display in archives & audit views.
+ */
+async function _getProfileMap() {
+  try {
+    const { data } = await supabase.from('profiles').select('id, full_name');
+    return (data || []).reduce((acc, p) => {
+      acc[p.id] = p.full_name;
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Fetch depleted batches for the Historical Inventory tab.
  */
 export async function fetchDepletedBatches() {
   try {
-    const { data, error } = await supabase
-      .from('batches')
-      .select(`
-        id,
-        batch_number,
-        quantity,
-        updated_at,
-        created_at,
-        supplier,
-        record_status,
-        commodities ( name, commodity_code, unit ),
-        releases ( quantity, barangay, recipient_name, notes )
-      `)
-      .eq('record_status', RECORD_STATUS.DEPLETED)
-      .order('updated_at', { ascending: false });
+    const [batchesRes, profileMap] = await Promise.all([
+      supabase
+        .from('batches')
+        .select(`
+          id,
+          batch_number,
+          quantity,
+          updated_at,
+          created_at,
+          supplier,
+          record_status,
+          commodities ( name, commodity_code, unit ),
+          releases ( quantity, barangay, recipient_name, notes, released_by, released_at )
+        `)
+        .eq('record_status', RECORD_STATUS.DEPLETED)
+        .order('updated_at', { ascending: false }),
+      _getProfileMap()
+    ]);
 
-    if (error) {
-      console.error('[ArchiveService] fetchDepletedBatches Supabase error:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
-      throw error;
+    if (batchesRes.error) {
+      console.error('[ArchiveService] fetchDepletedBatches Supabase error:', batchesRes.error);
+      throw batchesRes.error;
     }
 
-    const formattedData = data.map(batch => {
+    const formattedData = (batchesRes.data || []).map(batch => {
       const totalDistributed = batch.releases 
         ? batch.releases.reduce((sum, r) => sum + r.quantity, 0)
         : 0;
 
+      const releases = (batch.releases || []).map(r => ({
+        ...r,
+        released_by_name: profileMap[r.released_by] || 'Unknown Staff'
+      }));
+
       return {
         ...batch,
-        totalDistributed
+        totalDistributed,
+        releases
       };
     });
 
@@ -55,31 +74,34 @@ export async function fetchDepletedBatches() {
  */
 export async function fetchVoidedBatches() {
   try {
-    const { data, error } = await supabase
-      .from('batches')
-      .select(`
-        id,
-        batch_number,
-        void_reason,
-        deleted_at,
-        voided_by,
-        record_status,
-        commodities ( name, commodity_code, unit )
-      `)
-      .eq('record_status', RECORD_STATUS.VOIDED)
-      .order('deleted_at', { ascending: false });
+    const [batchesRes, profileMap] = await Promise.all([
+      supabase
+        .from('batches')
+        .select(`
+          id,
+          batch_number,
+          void_reason,
+          deleted_at,
+          voided_by,
+          record_status,
+          commodities ( name, commodity_code, unit )
+        `)
+        .eq('record_status', RECORD_STATUS.VOIDED)
+        .order('deleted_at', { ascending: false }),
+      _getProfileMap()
+    ]);
 
-    if (error) {
-      console.error('[ArchiveService] fetchVoidedBatches Supabase error:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
-      throw error;
+    if (batchesRes.error) {
+      console.error('[ArchiveService] fetchVoidedBatches Supabase error:', batchesRes.error);
+      throw batchesRes.error;
     }
 
-    return { batches: data, error: null };
+    const formatted = (batchesRes.data || []).map(b => ({
+      ...b,
+      voided_by_name: profileMap[b.voided_by] || b.voided_by || 'Unknown'
+    }));
+
+    return { batches: formatted, error: null };
   } catch (err) {
     console.error('[ArchiveService] fetchVoidedBatches CAUGHT:', err);
     return { batches: [], error: 'Failed to load voided batches: ' + (err.message || JSON.stringify(err)) };
