@@ -1,5 +1,6 @@
-
 import { parseTableData, parseHtmlTableData } from './table-parser.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { fetchCommodities } from '../commodities/commodities.service.js';
 
 let cropper = null;
 let stream = null;
@@ -10,14 +11,16 @@ export class ScannerComponent {
     this.onComplete = onComplete;
     this.commodities = [];
     this.scanMode = 'table';
+    this.mobileSessionId = null;
+    this.mobilePollTimer = null;
+    this.apiBase = 'http://localhost:8000';
     this.init();
   }
 
   async init() {
     try {
-      const response = await fetch('/api/commodities');
-      const data = await response.json();
-      this.commodities = data.commodities || [];
+      const { commodities } = await fetchCommodities();
+      this.commodities = commodities || [];
     } catch (e) {
       console.warn("Could not fetch commodities for fuzzy matching", e);
     }
@@ -25,9 +28,10 @@ export class ScannerComponent {
     this.container.innerHTML = `
       <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:24px;">
         <!-- Tabs -->
-        <div style="display:flex; background:#f1f5f9; border-radius:8px; padding:4px; margin-bottom:16px;">
+        <div style="display:flex; background:#f1f5f9; border-radius:8px; padding:4px; margin-bottom:16px; gap:4px;">
           <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary); color:white; border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,0.1);">File Import</button>
           <button class="scanner-tab-btn" data-tab="camera" id="tab-btn-camera" style="flex:1; border:none; background:transparent; color:var(--text-main); border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; transition:all 0.15s ease;">Live Camera</button>
+          <button class="scanner-tab-btn" data-tab="mobile" id="tab-btn-mobile" style="flex:1; border:none; background:transparent; color:var(--text-main); border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; transition:all 0.15s ease;">📱 Mobile Scanner</button>
         </div>
 
         <!-- TABS CONTENT -->
@@ -51,7 +55,39 @@ export class ScannerComponent {
             </div>
           </div>
 
-          <!-- 3. CROP TAB -->
+          <!-- 3. MOBILE SCANNER TAB -->
+          <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; align-items:center; justify-content:center; background:#f8fafc; border:1px solid var(--color-border); border-radius:8px; padding:24px; text-align:center; overflow-y:auto;">
+            <div style="max-width:440px; width:100%; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:48px; height:48px; background:rgba(16, 185, 129, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:12px;">📱</div>
+              <h3 style="margin:0 0 6px 0; color:var(--text-main); font-size:18px;">Mobile Scanner Companion</h3>
+              <p style="margin:0 0 16px 0; color:var(--text-muted); font-size:13px; line-height:1.4;">
+                Scan with your phone to upload a receipt.<br>
+                <span style="font-size:11px; color:#64748b;">(Requires phone and laptop connected to same local Wi-Fi network)</span>
+              </p>
+
+              <!-- QR Code Render Canvas/Box -->
+              <div id="scanner-qr-container" style="background:#ffffff; padding:16px; border-radius:12px; border:2px solid var(--color-border); box-shadow:0 4px 12px rgba(0,0,0,0.06); margin-bottom:16px; min-width:220px; min-height:220px; display:flex; align-items:center; justify-content:center;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-muted);">
+                  <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid #cbd5e1; border-top:2px solid var(--color-primary); border-radius:50%; animation:spin 1s linear infinite;"></span>
+                  <span style="font-size:12px;">Generating QR Code...</span>
+                </div>
+              </div>
+
+              <!-- Connection Status Pill -->
+              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:#e2e8f0; color:#334155; padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:12px;">
+                <span style="width:8px; height:8px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 6px #10b981;"></span>
+                <span>Waiting for phone scan...</span>
+              </div>
+
+              <!-- Direct URL for testing or manual input -->
+              <div style="display:flex; align-items:center; gap:6px; width:100%; background:#fff; border:1px solid var(--color-border); border-radius:6px; padding:6px 10px;">
+                <input id="scanner-mobile-link-input" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:#475569; outline:none;" value="Connecting..." />
+                <button id="scanner-mobile-copy-btn" style="border:none; background:#f1f5f9; color:var(--text-main); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:600;">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. CROP TAB -->
           <div id="tab-crop" style="display:none; height:100%; flex-direction:column; background:#f8fafc; border:1px solid var(--color-border); border-radius:8px; overflow:hidden;">
              <div style="flex:1; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000;">
                 <img id="scanner-crop-img" style="max-width:100%; max-height:100%;" />
@@ -101,6 +137,20 @@ export class ScannerComponent {
       this.switchTab('camera');
       this.startCamera();
     });
+    this.container.querySelector('#tab-btn-mobile').addEventListener('click', () => {
+      this.switchTab('mobile');
+    });
+
+    // Copy link helper
+    this.container.querySelector('#scanner-mobile-copy-btn').addEventListener('click', () => {
+      const input = this.container.querySelector('#scanner-mobile-link-input');
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value);
+        const btn = this.container.querySelector('#scanner-mobile-copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      }
+    });
 
     // Drag and Drop
     const dropZone = this.container.querySelector('#tab-upload');
@@ -148,8 +198,13 @@ export class ScannerComponent {
 
   switchTab(tabId) {
     this.stopCamera();
+    if (tabId !== 'mobile') {
+      this.stopMobilePolling();
+    }
+
     this.container.querySelector('#tab-upload').style.display = 'none';
     this.container.querySelector('#tab-camera').style.display = 'none';
+    this.container.querySelector('#tab-mobile').style.display = 'none';
     this.container.querySelector('#tab-crop').style.display = 'none';
     this.container.querySelector('#scanner-action-bar').style.display = 'none';
 
@@ -165,13 +220,111 @@ export class ScannerComponent {
       this.container.querySelector('#scanner-action-bar').style.display = 'flex';
     } else {
       const activeBtn = this.container.querySelector(`#tab-btn-${tabId}`);
-      activeBtn.classList.add('active');
-      activeBtn.style.background = 'var(--color-primary)';
-      activeBtn.style.color = 'white';
-      activeBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.background = 'var(--color-primary)';
+        activeBtn.style.color = 'white';
+        activeBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+      }
 
       if (tabId === 'upload') this.container.querySelector('#tab-upload').style.display = 'flex';
       if (tabId === 'camera') this.container.querySelector('#tab-camera').style.display = 'flex';
+      if (tabId === 'mobile') {
+        this.container.querySelector('#tab-mobile').style.display = 'flex';
+        this.initMobileScanner();
+      }
+    }
+  }
+
+  async ensureQRCodeLib() {
+    if (window.QRCode) return true;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/src/assets/libs/qrcode.min.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load local qrcode.min.js'));
+      document.head.appendChild(script);
+    });
+  }
+
+  async initMobileScanner() {
+    const qrContainer = this.container.querySelector('#scanner-qr-container');
+    const linkInput = this.container.querySelector('#scanner-mobile-link-input');
+    const statusPill = this.container.querySelector('#scanner-mobile-status');
+
+    try {
+      await this.ensureQRCodeLib();
+
+      statusPill.innerHTML = `<span style="width:8px; height:8px; background:#38bdf8; border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
+
+      // Create new session
+      const res = await fetch(`${this.apiBase}/api/mobile/create-session`);
+      if (!res.ok) throw new Error('Failed to create mobile session');
+      const data = await res.json();
+
+      this.mobileSessionId = data.session_id;
+      const uploadUrl = data.upload_url;
+
+      linkInput.value = uploadUrl;
+      statusPill.innerHTML = `<span style="width:8px; height:8px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 6px #10b981;"></span><span>Ready: Scan QR code with phone</span>`;
+
+      // Render QR code
+      qrContainer.innerHTML = '';
+      new window.QRCode(qrContainer, {
+        text: uploadUrl,
+        width: 200,
+        height: 200,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.M
+      });
+
+      // Start Polling every 2 seconds
+      this.startMobilePolling();
+    } catch (err) {
+      console.error(err);
+      qrContainer.innerHTML = `
+        <div style="color:#ef4444; font-size:12px; padding:16px;">
+          ❌ Could not generate QR code.<br>Ensure backend is running at ${this.apiBase}.
+        </div>
+      `;
+      statusPill.innerHTML = `<span style="color:#ef4444;">Connection failed</span>`;
+    }
+  }
+
+  startMobilePolling() {
+    this.stopMobilePolling();
+    if (!this.mobileSessionId) return;
+
+    this.mobilePollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`${this.apiBase}/api/mobile/status/${this.mobileSessionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.status === 'ready' && data.latest_image_url) {
+          const statusPill = this.container.querySelector('#scanner-mobile-status');
+          if (statusPill) {
+            statusPill.innerHTML = `<span style="width:8px; height:8px; background:#38bdf8; border-radius:50%; display:inline-block;"></span><span>Receipt received! Loading OCR...</span>`;
+          }
+
+          // Acknowledge session so it waits for the next scan
+          await fetch(`${this.apiBase}/api/mobile/consume/${this.mobileSessionId}`, { method: 'POST' });
+
+          // Load image into preview and trigger extraction
+          const fullImageUrl = `${this.apiBase}${data.latest_image_url}`;
+          this.initCropper(fullImageUrl, true);
+        }
+      } catch (e) {
+        // Polling error, retry silently
+      }
+    }, 2000);
+  }
+
+  stopMobilePolling() {
+    if (this.mobilePollTimer) {
+      clearInterval(this.mobilePollTimer);
+      this.mobilePollTimer = null;
     }
   }
 
@@ -212,27 +365,44 @@ export class ScannerComponent {
     this.initCropper(canvas.toDataURL('image/jpeg'));
   }
 
-  initCropper(imageSrc) {
+  initCropper(imageSrc, autoProcess = false) {
     this.switchTab('crop');
     const img = this.container.querySelector('#scanner-crop-img');
-    img.src = imageSrc;
-    
     this.destroyCropper();
-    // Use timeout to allow flex container to settle dimensions
-    setTimeout(() => {
+
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // Image is loaded into browser memory
+      this.destroyCropper();
+      setTimeout(() => {
         cropper = new Cropper(img, {
           viewMode: 1,
           dragMode: 'crop',
-          autoCropArea: 0.9,
+          autoCropArea: 0.98,
           restore: false,
           guides: true,
           center: true,
           highlight: false,
           cropBoxMovable: true,
           cropBoxResizable: true,
-          toggleDragModeOnDblclick: false,
+          checkCrossOrigin: false,
+          ready: () => {
+            if (autoProcess) {
+              setTimeout(() => {
+                const btn = this.container.querySelector('#scanner-btn-process');
+                if (btn) {
+                  btn.innerHTML = `<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Auto-Extracting...`;
+                  btn.disabled = true;
+                }
+                this.processImage();
+              }, 250);
+            }
+          }
         });
-    }, 100);
+      }, 100);
+    };
+
+    img.src = imageSrc;
   }
 
   destroyCropper() {
@@ -281,77 +451,124 @@ export class ScannerComponent {
   }
 
   async processImage() {
-    if (!cropper) return;
-    
-    const canvas = cropper.getCroppedCanvas({ width: 1200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
-    canvas.toBlob(async (blob) => {
+    const btn = this.container.querySelector('#scanner-btn-process');
+    if (btn) {
+      btn.innerHTML = `<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Extracting Table...`;
+      btn.disabled = true;
+    }
+
+    const sendBlob = async (blob) => {
+      if (!blob) throw new Error('Empty receipt image data');
+
       const formData = new FormData();
       formData.append('file', blob, 'receipt.jpg');
       formData.append('mode', this.scanMode);
       
-      const whitelist = this.container.querySelector('#adv-whitelist').value;
+      const whitelist = this.container.querySelector('#adv-whitelist')?.value;
       if (whitelist) formData.append('whitelist', whitelist);
 
-      try {
-        const response = await fetch('http://localhost:8000/api/extract-receipt', { method: 'POST', body: formData });
-        if (!response.ok) throw new Error('API failed');
-        
-        const data = await response.json();
-        
-        const legacyFormat = {
-          words: (data.raw_cells || []).map(cell => ({
-            text: cell.text,
-            confidence: cell.confidence,
-            bbox: [
-              [cell.bbox[0], cell.bbox[1]],
-              [cell.bbox[2], cell.bbox[1]],
-              [cell.bbox[2], cell.bbox[3]],
-              [cell.bbox[0], cell.bbox[3]]
-            ]
-          }))
-        };
-        let parsedTable;
-        if (data.html_structure) {
-            console.log('Using RapidTable HTML Structure parsing');
-            parsedTable = parseHtmlTableData(data.html_structure);
-        } else {
-            console.log('Fallback to legacy bbox parsing');
-            parsedTable = parseTableData(legacyFormat);
-        }
-        
-        console.log('PARSED TABLE RESULTS:', parsedTable);
-        const parsedRows = parsedTable.rows.map(r => {
-           const match = this.fuzzyMatchCommodity(r.productName);
-           return {
-              ...r,
-              commodityId: match ? match.id : null,
-              productName: match ? match.name : r.productName
-           };
-        });
-        
-        const btn = this.container.querySelector('#scanner-btn-process');
-        btn.innerHTML = 'Extract Table (OCR)';
-        btn.disabled = false;
-        
-        this.destroyCropper();
-        this.switchTab('upload');
-        this.container.querySelector('#scanner-file-input').value = '';
+      const response = await fetch(`${this.apiBase}/api/extract-receipt`, { method: 'POST', body: formData });
+      if (!response.ok) {
+        let errDetail = 'API failed';
+        try {
+          const errJson = await response.json();
+          errDetail = errJson.detail || errDetail;
+        } catch (_) {}
+        throw new Error(errDetail);
+      }
+      
+      const data = await response.json();
+      
+      const legacyFormat = {
+        words: (data.raw_cells || []).map(cell => ({
+          text: cell.text,
+          confidence: cell.confidence,
+          bbox: [
+            [cell.bbox[0], cell.bbox[1]],
+            [cell.bbox[2], cell.bbox[1]],
+            [cell.bbox[2], cell.bbox[3]],
+            [cell.bbox[0], cell.bbox[3]]
+          ]
+        }))
+      };
+      let parsedTable;
+      if (data.html_structure) {
+          console.log('Using RapidTable HTML Structure parsing');
+          parsedTable = parseHtmlTableData(data.html_structure);
+      } else {
+          console.log('Fallback to legacy bbox parsing');
+          parsedTable = parseTableData(legacyFormat);
+      }
+      
+      console.log('PARSED TABLE RESULTS:', parsedTable);
+      const parsedRows = parsedTable.rows.map(r => {
+         const match = this.fuzzyMatchCommodity(r.productName);
+         return {
+            ...r,
+            commodityId: match ? match.id : null,
+            productName: match ? match.name : r.productName
+         };
+      });
+      
+      this.destroyCropper();
+      this.switchTab('upload');
+      const fileInput = this.container.querySelector('#scanner-file-input');
+      if (fileInput) fileInput.value = '';
 
-        if (this.onComplete) {
-           this.onComplete(parsedRows);
+      if (this.onComplete) {
+         this.onComplete(parsedRows);
+      }
+    };
+
+    try {
+      let canvas = null;
+      if (cropper) {
+        try {
+          canvas = cropper.getCroppedCanvas({ width: 1400, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+        } catch (canvasErr) {
+          console.warn("Could not get cropped canvas from cropper:", canvasErr);
         }
-      } catch (error) {
-        console.error(error);
-        SystemDialog.alert('OCR Error. Make sure the backend server is running and returns bounding boxes.');
-        const btn = this.container.querySelector('#scanner-btn-process');
+      }
+
+      if (canvas) {
+        canvas.toBlob(async (blob) => {
+          try {
+            await sendBlob(blob);
+          } catch (err) {
+            console.error(err);
+            SystemDialog.alert('OCR Error: ' + err.message);
+          } finally {
+            if (btn) {
+              btn.innerHTML = 'Extract Table (OCR)';
+              btn.disabled = false;
+            }
+          }
+        }, 'image/jpeg', 0.92);
+      } else {
+        // Fallback: If Cropper canvas is unavailable, fetch the image directly
+        const img = this.container.querySelector('#scanner-crop-img');
+        if (!img || !img.src) throw new Error('No receipt image available to process');
+        const res = await fetch(img.src);
+        const blob = await res.blob();
+        await sendBlob(blob);
+        if (btn) {
+          btn.innerHTML = 'Extract Table (OCR)';
+          btn.disabled = false;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      SystemDialog.alert('OCR Error: ' + (error.message || 'Make sure the backend server is running.'));
+      if (btn) {
         btn.innerHTML = 'Extract Table (OCR)';
         btn.disabled = false;
       }
-    }, 'image/jpeg', 0.9);
+    }
   }
 
   unmount() {
     this.stopCamera();
+    this.stopMobilePolling();
     this.destroyCropper();
     if (this.container) {
       this.container.innerHTML = '';
