@@ -237,165 +237,254 @@ def get_mobile_image(session_id: str, filename: str):
 
 @app.get('/api/mobile/upload-page/{session_id}', response_class=HTMLResponse)
 def render_mobile_upload_page(session_id: str):
-    """Delivers a responsive, dark-mode mobile web companion using 100% offline Cropper.js."""
+    """Delivers a responsive Material Design 3 mobile web companion matching the NutriVision theme."""
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>NutriVision Mobile Intake</title>
+  <title>NutriVision Scanner</title>
   <!-- 100% Offline Local Cropper.js Assets (Zero External CDNs) -->
   <link rel="stylesheet" href="/assets/libs/cropper.min.css" />
   <script src="/assets/libs/cropper.min.js"></script>
   <style>
     :root {{
-      --bg-base: #0b0f19;
-      --bg-card: #151d2f;
-      --bg-card-hover: #1e293b;
-      --accent-emerald: #10b981;
-      --accent-emerald-dark: #059669;
-      --accent-cyan: #06b6d4;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --border-color: #334155;
-      --radius: 16px;
+      /* Material Design 3 / NutriVision Brand Tokens */
+      --md-sys-color-primary: #1B7A3E;
+      --md-sys-color-primary-dark: #0E5C2C;
+      --md-sys-color-primary-light: #3FA65B;
+      --md-sys-color-primary-container: #E8F5E9;
+      --md-sys-color-on-primary: #FFFFFF;
+      --md-sys-color-on-primary-container: #0E5C2C;
+      
+      --md-sys-color-surface: #FFFFFF;
+      --md-sys-color-surface-dim: #F4FBF7;
+      --md-sys-color-surface-container: #EDFBF4;
+      --md-sys-color-surface-container-high: #E8F5EE;
+      --md-sys-color-outline: #D8E6DA;
+      --md-sys-color-outline-variant: #B2C9B5;
+      
+      --md-sys-color-on-surface: #1A2B1C;
+      --md-sys-color-on-surface-variant: #5A7060;
+      
+      --md-sys-shape-corner-small: 8px;
+      --md-sys-shape-corner-medium: 14px;
+      --md-sys-shape-corner-large: 20px;
+      --md-sys-shape-corner-extra-large: 28px;
+      --md-sys-shape-corner-full: 9999px;
+      
+      --md-elevation-1: 0 1px 3px rgba(27, 122, 62, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --md-elevation-2: 0 3px 8px rgba(27, 122, 62, 0.12), 0 2px 4px rgba(0, 0, 0, 0.04);
+      --md-elevation-3: 0 6px 18px rgba(27, 122, 62, 0.14), 0 3px 6px rgba(0, 0, 0, 0.06);
     }}
+
     * {{
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
     }}
+
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-base);
-      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-on-surface);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
     }}
-    /* Header */
-    .mobile-header {{
-      background: rgba(21, 29, 47, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-color);
+
+    /* MD3 Top App Bar */
+    .top-app-bar {{
+      background: var(--md-sys-color-surface);
+      border-bottom: 1px solid var(--md-sys-color-outline);
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
+      box-shadow: var(--md-elevation-1);
     }}
-    .brand-group {{
+
+    .brand-section {{
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }}
-    .brand-icon {{
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan));
-      border-radius: 10px;
+
+    .brand-logo-img {{
+      height: 34px;
+      width: auto;
+      max-width: 120px;
+      object-fit: contain;
+      display: block;
+    }}
+
+    .brand-title-wrap {{
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      flex-direction: column;
     }}
-    .brand-text h1 {{
+
+    .brand-title {{
       font-size: 16px;
       font-weight: 700;
-      letter-spacing: -0.3px;
-      color: #fff;
+      color: var(--md-sys-color-primary-dark);
+      letter-spacing: -0.2px;
+      line-height: 1.2;
     }}
-    .brand-text p {{
+
+    .brand-subtitle {{
       font-size: 11px;
-      color: var(--text-muted);
       font-weight: 500;
+      color: var(--md-sys-color-on-surface-variant);
+      letter-spacing: 0.2px;
     }}
-    .session-tag {{
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 4px 8px;
-      border-radius: 999px;
+
+    /* MD3 Assist Chip */
+    .session-chip {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-primary-dark);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      padding: 5px 10px;
+      border-radius: var(--md-sys-shape-corner-small);
       font-size: 11px;
       font-weight: 600;
       font-family: monospace;
     }}
-    
-    /* Main Content Container */
-    .content-area {{
+
+    .chip-indicator {{
+      width: 7px;
+      height: 7px;
+      background: var(--md-sys-color-primary);
+      border-radius: 50%;
+    }}
+
+    /* Content Area */
+    .main-container {{
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 20px;
-      max-width: 500px;
+      padding: 16px;
+      max-width: 480px;
       margin: 0 auto;
+      width: 100%;
+    }}
+
+    /* MD3 Card */
+    .md-card {{
+      background: var(--md-sys-color-surface);
+      border: 1px solid var(--md-sys-color-outline);
+      border-radius: var(--md-sys-shape-corner-extra-large);
+      padding: 32px 24px;
+      box-shadow: var(--md-elevation-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
       width: 100%;
     }}
 
     /* STAGE 1: Launchpad */
     #stage-launchpad {{
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      flex: 1;
-      padding: 30px 10px;
-      animation: fadeIn 0.3s ease;
+      animation: mdFadeIn 0.25s ease-out;
     }}
-    .launch-card {{
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 36px 24px;
-      width: 100%;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }}
-    .camera-halo {{
-      width: 96px;
-      height: 96px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+
+    .camera-avatar-ring {{
+      width: 88px;
+      height: 88px;
+      background: var(--md-sys-color-primary-container);
+      border: 2px solid var(--md-sys-color-primary-light);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      border: 2px dashed rgba(16, 185, 129, 0.4);
+      color: var(--md-sys-color-primary);
+      box-shadow: 0 4px 12px rgba(27, 122, 62, 0.12);
     }}
-    .camera-btn {{
-      background: linear-gradient(135deg, var(--accent-emerald), var(--accent-emerald-dark));
-      color: white;
-      border: none;
-      border-radius: 14px;
-      padding: 18px 24px;
-      font-size: 17px;
+
+    .headline-medium {{
+      font-size: 20px;
       font-weight: 700;
+      color: var(--md-sys-color-on-surface);
+      margin-bottom: 8px;
+    }}
+
+    .body-medium {{
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface-variant);
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }}
+
+    /* MD3 Buttons */
+    .btn-filled {{
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      border: none;
+      border-radius: var(--md-sys-shape-corner-full);
+      padding: 16px 28px;
+      font-size: 16px;
+      font-weight: 600;
       width: 100%;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      gap: 10px;
+      box-shadow: 0 3px 10px rgba(27, 122, 62, 0.3);
+      transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
     }}
-    .camera-btn:active {{
-      transform: scale(0.97);
+
+    .btn-filled:active {{
+      background: var(--md-sys-color-primary-dark);
+      transform: scale(0.98);
+      box-shadow: 0 1px 4px rgba(27, 122, 62, 0.2);
     }}
-    .launch-tip {{
+
+    .btn-outlined {{
+      background: transparent;
+      color: var(--md-sys-color-primary);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-full);
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.15s ease;
+    }}
+
+    .btn-outlined:active {{
+      background: var(--md-sys-color-primary-container);
+    }}
+
+    .helper-tip {{
       margin-top: 24px;
-      color: var(--text-muted);
-      font-size: 13px;
-      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 12px;
+      line-height: 1.4;
+      background: var(--md-sys-color-surface-dim);
+      padding: 10px 14px;
+      border-radius: var(--md-sys-shape-corner-medium);
+      border: 1px solid var(--md-sys-color-outline);
     }}
 
     /* STAGE 3: Cropping Studio */
@@ -403,249 +492,250 @@ def render_mobile_upload_page(session_id: str):
       display: none;
       flex-direction: column;
       flex: 1;
-      animation: fadeIn 0.3s ease;
+      animation: mdFadeIn 0.25s ease-out;
     }}
-    .cropper-frame {{
+
+    .cropper-container-wrapper {{
       flex: 1;
       min-height: 380px;
-      max-height: 60vh;
+      max-height: 58vh;
       background: #000;
-      border-radius: var(--radius);
+      border-radius: var(--md-sys-shape-corner-large);
       overflow: hidden;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--md-sys-color-outline);
+      box-shadow: var(--md-elevation-1);
       position: relative;
     }}
-    .crop-img-target {{
+
+    .crop-target-img {{
       max-width: 100%;
       display: block;
     }}
-    .cropper-toolbar {{
+
+    /* MD3 Segmented / Tonal Toolbar */
+    .tool-bar {{
       display: flex;
       justify-content: center;
-      gap: 10px;
-      margin: 14px 0;
+      gap: 8px;
+      margin: 12px 0;
     }}
-    .tool-btn {{
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+
+    .tool-button {{
+      background: var(--md-sys-color-surface);
+      border: 1px solid var(--md-sys-color-outline);
+      color: var(--md-sys-color-on-surface);
       padding: 8px 14px;
-      border-radius: 10px;
+      border-radius: var(--md-sys-shape-corner-medium);
       font-size: 13px;
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
+      box-shadow: var(--md-elevation-1);
     }}
-    .crop-actions {{
+
+    .tool-button:active {{
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-primary-dark);
+    }}
+
+    .crop-actions-group {{
       display: flex;
       gap: 12px;
       margin-top: auto;
-      padding-top: 10px;
-    }}
-    .btn-retake {{
-      flex: 1;
-      background: var(--bg-card);
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
-      padding: 15px;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 15px;
-      cursor: pointer;
-    }}
-    .btn-send {{
-      flex: 2;
-      background: linear-gradient(135deg, var(--accent-emerald), var(--accent-emerald-dark));
-      color: white;
-      border: none;
-      padding: 15px;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 15px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
-    }}
-    .btn-send:disabled {{
-      opacity: 0.6;
-      cursor: not-allowed;
+      padding-top: 8px;
     }}
 
-    /* STAGE 4: Success & Continuous Loop */
+    /* STAGE 4: Success Screen */
     #stage-success {{
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      text-align: center;
       flex: 1;
-      padding: 20px;
-      animation: fadeIn 0.3s ease;
+      animation: mdFadeIn 0.25s ease-out;
     }}
-    .success-card {{
-      background: var(--bg-card);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      border-radius: var(--radius);
-      padding: 40px 24px;
-      width: 100%;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }}
-    .check-circle {{
-      width: 84px;
-      height: 84px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 3px solid var(--accent-emerald);
+
+    .success-icon-badge {{
+      width: 80px;
+      height: 80px;
+      background: var(--md-sys-color-primary-container);
+      border: 2.5px solid var(--md-sys-color-primary);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 40px;
-      color: var(--accent-emerald);
+      color: var(--md-sys-color-primary);
       margin-bottom: 20px;
-      animation: bounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }}
-    .success-title {{
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #fff;
-    }}
-    .success-subtitle {{
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 24px;
-      line-height: 1.4;
-    }}
-    .batch-counter {{
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: 13px;
-      color: var(--accent-cyan);
-      font-weight: 600;
-      margin-bottom: 28px;
-    }}
-    .btn-loop {{
-      background: linear-gradient(135deg, var(--accent-emerald), var(--accent-emerald-dark));
-      color: white;
-      border: none;
-      border-radius: 14px;
-      padding: 16px 20px;
-      font-size: 16px;
-      font-weight: 700;
-      width: 100%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      box-shadow: 0 4px 14px rgba(27, 122, 62, 0.16);
+      animation: mdScaleBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }}
 
-    /* Loading Spinner */
-    .spinner {{
+    .count-indicator {{
+      background: var(--md-sys-color-surface-dim);
+      border: 1px solid var(--md-sys-color-outline);
+      color: var(--md-sys-color-primary-dark);
+      padding: 6px 14px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 26px;
+    }}
+
+    /* Spinner */
+    .md-spinner {{
       display: inline-block;
       width: 18px;
       height: 18px;
-      border: 2.5px solid rgba(255, 255, 255, 0.3);
-      border-top: 2.5px solid #fff;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top: 2px solid #ffffff;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: mdSpin 0.8s linear infinite;
     }}
-    @keyframes spin {{
+
+    @keyframes mdSpin {{
       to {{ transform: rotate(360deg); }}
     }}
-    @keyframes fadeIn {{
-      from {{ opacity: 0; transform: translateY(8px); }}
+
+    @keyframes mdFadeIn {{
+      from {{ opacity: 0; transform: translateY(6px); }}
       to {{ opacity: 1; transform: translateY(0); }}
     }}
-    @keyframes bounce {{
-      0% {{ transform: scale(0.3); opacity: 0; }}
-      50% {{ transform: scale(1.1); }}
+
+    @keyframes mdScaleBounce {{
+      0% {{ transform: scale(0.4); opacity: 0; }}
+      70% {{ transform: scale(1.08); }}
       100% {{ transform: scale(1); opacity: 1; }}
     }}
   </style>
 </head>
 <body>
 
-  <!-- Branded Header -->
-  <header class="mobile-header">
-    <div class="brand-group">
-      <div class="brand-icon">🌱</div>
-      <div class="brand-text">
-        <h1>NutriVision Mobile</h1>
-        <p>Delivery Receipt Intake</p>
+  <!-- Top App Bar with NutriVision Logo & Title -->
+  <header class="top-app-bar">
+    <div class="brand-section">
+      <img src="/assets/logo.png" alt="NutriVision" class="brand-logo-img" onerror="this.style.display='none';" />
+      <div class="brand-title-wrap">
+        <span class="brand-title">NutriVision Scanner</span>
+        <span class="brand-subtitle">Mobile Receipt Intake</span>
       </div>
     </div>
-    <div class="session-tag" title="Local Session ID">#{session_id}</div>
+    <div class="session-chip" title="Active Connection Session">
+      <span class="chip-indicator"></span>
+      <span>#{session_id}</span>
+    </div>
   </header>
 
-  <!-- Hidden Native Camera Trigger (Hardware Autofocus & Flash) -->
+  <!-- Native Hardware Camera Trigger -->
   <input type="file" id="mobile-file-input" accept="image/*" capture="environment" style="display:none;" />
 
-  <main class="content-area">
+  <main class="main-container">
 
     <!-- STAGE 1: Launchpad -->
     <section id="stage-launchpad">
-      <div class="launch-card">
-        <div class="camera-halo">
-          <span style="font-size: 38px;">📷</span>
+      <div class="md-card">
+        <div class="camera-avatar-ring">
+          <!-- Vector Camera Icon (No Emojis) -->
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
         </div>
-        <h2 style="font-size: 21px; margin-bottom: 8px; font-weight: 700;">Ready to Scan</h2>
-        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 28px;">
-          Hold camera flat directly above delivery receipt for clear OCR table extraction.
+        <h2 class="headline-medium">Ready to Scan</h2>
+        <p class="body-medium">
+          Place delivery receipt on a flat surface with good lighting for clear table extraction.
         </p>
-        <button class="camera-btn" id="btn-open-camera">
-          <span>📷 Snap Receipt</span>
+        <button class="btn-filled" id="btn-open-camera">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span>Snap Receipt</span>
         </button>
-        <p class="launch-tip">
-          💡 Uses native camera autofocus and flash for optimal contrast.
-        </p>
+        <div class="helper-tip">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--md-sys-color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Uses native camera autofocus and flash for optimal OCR clarity.</span>
+        </div>
       </div>
     </section>
 
     <!-- STAGE 3: Cropping Studio -->
     <section id="stage-cropping">
-      <div class="cropper-frame">
-        <img id="crop-target-img" class="crop-img-target" alt="Receipt Preview" />
+      <div class="cropper-container-wrapper">
+        <img id="crop-target-img" class="crop-target-img" alt="Receipt Preview" />
       </div>
 
-      <div class="cropper-toolbar">
-        <button class="tool-btn" id="btn-rot-left">↺ Rotate Left</button>
-        <button class="tool-btn" id="btn-rot-right">↻ Rotate Right</button>
-        <button class="tool-btn" id="btn-reset-crop">⛶ Reset</button>
+      <!-- Toolbar with Vector Icons -->
+      <div class="tool-bar">
+        <button class="tool-button" id="btn-rot-left" title="Rotate Left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          <span>Rotate Left</span>
+        </button>
+        <button class="tool-button" id="btn-rot-right" title="Rotate Right">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>Rotate Right</span>
+        </button>
+        <button class="tool-button" id="btn-reset-crop" title="Reset Bounds">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"></path>
+            <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"></path>
+          </svg>
+          <span>Reset</span>
+        </button>
       </div>
 
-      <div class="crop-actions">
-        <button class="btn-retake" id="btn-retake-photo">Discard</button>
-        <button class="btn-send" id="btn-upload-cropped">
-          <span>📤 Upload & Send</span>
+      <div class="crop-actions-group">
+        <button class="btn-outlined" id="btn-retake-photo" style="flex: 1;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Discard</span>
+        </button>
+        <button class="btn-filled" id="btn-upload-cropped" style="flex: 2;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>Upload & Send</span>
         </button>
       </div>
     </section>
 
-    <!-- STAGE 4: Continuous Loop Success Screen -->
+    <!-- STAGE 4: Success & Continuous Scan Screen -->
     <section id="stage-success">
-      <div class="success-card">
-        <div class="check-circle">✓</div>
-        <h2 class="success-title">Transferred to Terminal!</h2>
-        <p class="success-subtitle">
-          Your cropped receipt was streamed to the desktop terminal and queued for OCR extraction.
+      <div class="md-card">
+        <div class="success-icon-badge">
+          <!-- Vector Checkmark Icon -->
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h2 class="headline-medium">Transferred to Terminal</h2>
+        <p class="body-medium">
+          Receipt image successfully transmitted to the desktop workstation for table OCR extraction.
         </p>
-        <div class="batch-counter" id="batch-counter-badge">
+        <div class="count-indicator" id="batch-counter-badge">
           1 Receipt Sent in this Session
         </div>
-        <button class="btn-loop" id="btn-scan-another">
-          <span>📷 Scan Another Receipt</span>
+        <button class="btn-filled" id="btn-scan-another">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span>Scan Another Receipt</span>
         </button>
       </div>
     </section>
@@ -657,7 +747,7 @@ def render_mobile_upload_page(session_id: str):
     let cropperInstance = null;
     let uploadedCount = 0;
 
-    // Elements
+    // Element references
     const fileInput = document.getElementById('mobile-file-input');
     const stageLaunchpad = document.getElementById('stage-launchpad');
     const stageCropping = document.getElementById('stage-cropping');
@@ -666,19 +756,19 @@ def render_mobile_upload_page(session_id: str):
     const btnSend = document.getElementById('btn-upload-cropped');
     const batchBadge = document.getElementById('batch-counter-badge');
 
-    // Stage switching helper
+    // Stage switcher
     function setStage(stage) {{
       stageLaunchpad.style.display = stage === 'launchpad' ? 'flex' : 'none';
       stageCropping.style.display = stage === 'cropping' ? 'flex' : 'none';
       stageSuccess.style.display = stage === 'success' ? 'flex' : 'none';
     }}
 
-    // Trigger Native Camera
+    // Trigger Camera
     document.getElementById('btn-open-camera').addEventListener('click', () => {{
       fileInput.click();
     }});
 
-    // Handle Image Chosen
+    // Capture Handler
     fileInput.addEventListener('change', (e) => {{
       const file = e.target.files && e.target.files[0];
       if (!file) return;
@@ -700,12 +790,11 @@ def render_mobile_upload_page(session_id: str):
         cropperInstance = null;
       }}
 
-      // Give DOM time to calculate container dimensions
       setTimeout(() => {{
         cropperInstance = new Cropper(cropTargetImg, {{
           viewMode: 1,
           dragMode: 'crop',
-          autoCropArea: 0.95,
+          autoCropArea: 0.96,
           responsive: true,
           restore: false,
           guides: true,
@@ -718,7 +807,7 @@ def render_mobile_upload_page(session_id: str):
       }}, 100);
     }}
 
-    // Toolbar actions
+    // Toolbar Rotations & Reset
     document.getElementById('btn-rot-left').addEventListener('click', () => {{
       if (cropperInstance) cropperInstance.rotate(-90);
     }});
@@ -729,7 +818,7 @@ def render_mobile_upload_page(session_id: str):
       if (cropperInstance) cropperInstance.reset();
     }});
 
-    // Retake / Discard
+    // Discard / Retake
     document.getElementById('btn-retake-photo').addEventListener('click', () => {{
       if (cropperInstance) {{
         cropperInstance.destroy();
@@ -744,7 +833,7 @@ def render_mobile_upload_page(session_id: str):
       if (!cropperInstance) return;
 
       btnSend.disabled = true;
-      btnSend.innerHTML = '<span class="spinner"></span> Streaming...';
+      btnSend.innerHTML = '<span class="md-spinner"></span><span>Sending...</span>';
 
       const canvas = cropperInstance.getCroppedCanvas({{
         maxWidth: 1600,
@@ -755,9 +844,9 @@ def render_mobile_upload_page(session_id: str):
 
       canvas.toBlob(async (blob) => {{
         if (!blob) {{
-          alert('Could not encode cropped image. Please try again.');
+          alert('Could not process cropped image. Please try again.');
           btnSend.disabled = false;
-          btnSend.innerHTML = '📤 Upload & Send';
+          btnSend.innerHTML = '<span>Upload & Send</span>';
           return;
         }}
 
@@ -770,34 +859,32 @@ def render_mobile_upload_page(session_id: str):
             body: formData
           }});
 
-          if (!res.ok) throw new Error('Upload failed with status ' + res.status);
+          if (!res.ok) throw new Error('Upload error: ' + res.status);
           
           const result = await res.json();
           uploadedCount = result.image_count || (uploadedCount + 1);
           batchBadge.textContent = uploadedCount + (uploadedCount === 1 ? ' Receipt Sent in this Session' : ' Receipts Sent in this Session');
 
-          // Clean up cropper & go to Stage 4 (Continuous Loop)
           if (cropperInstance) {{
             cropperInstance.destroy();
             cropperInstance = null;
           }}
           fileInput.value = '';
           btnSend.disabled = false;
-          btnSend.innerHTML = '📤 Upload & Send';
+          btnSend.innerHTML = '<span>Upload & Send</span>';
           setStage('success');
         }} catch (err) {{
           console.error(err);
           alert('Failed to transmit receipt. Check Wi-Fi connection to server.');
           btnSend.disabled = false;
-          btnSend.innerHTML = '📤 Upload & Send';
+          btnSend.innerHTML = '<span>Upload & Send</span>';
         }}
       }}, 'image/jpeg', 0.92);
     }});
 
-    // Stage 4 Continuous Batch Scanning
+    // Continuous Batch Scanning Loop
     document.getElementById('btn-scan-another').addEventListener('click', () => {{
       setStage('launchpad');
-      // Direct trigger of camera for smooth continuous flow
       fileInput.click();
     }});
   </script>
