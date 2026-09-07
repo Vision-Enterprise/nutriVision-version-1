@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Commodities Service
  *
  * All Supabase interactions for the Commodity Management feature.
@@ -136,24 +136,45 @@ export async function updateCommodity(id, formData, profile) {
  */
 export async function deleteCommodity(id, name, code, profile) {
   try {
-    const { error } = await supabase
+    // 1. Attempt RPC first (Security Definer, bypasses RLS)
+    const { error: rpcErr } = await supabase.rpc('archive_commodity', { commodity_id: id });
+    if (!rpcErr) {
+      return { error: null };
+    }
+
+    // 2. Fallback to direct update if RPC is not yet created in Supabase
+    const { error: updateErr } = await supabase
       .from('commodities')
-      .update({ deleted_at: new Date().toISOString(), updated_by: profile.id })
+      .update({ deleted_at: new Date().toISOString(), updated_by: profile?.id })
       .eq('id', id);
 
-    if (error) throw error;
+    if (updateErr) {
+      console.warn('[CommoditiesService] Direct update error:', updateErr);
+      throw updateErr;
+    }
 
-    await supabase.from('audit_logs').insert({
-      user_id:     profile.id,
-      action:      AUDIT_ACTIONS.DELETE_COMMODITY,
-      entity_type: 'commodity',
-      entity_id:   id,
-      description: `${profile.full_name} deleted commodity "${name}" (${code}).`,
-    });
+    if (profile?.id) {
+      try {
+        await supabase.from('audit_logs').insert({
+          user_id:     profile.id,
+          action:      AUDIT_ACTIONS.DELETE_COMMODITY,
+          entity_type: 'commodity',
+          entity_id:   id,
+          description: `${profile.full_name || 'Staff'} archived commodity "${name}" (${code}).`,
+        });
+      } catch (auditErr) {
+        console.warn('[CommoditiesService] Audit log insert warning:', auditErr);
+      }
+    }
 
     return { error: null };
   } catch (err) {
-    console.error('[CommoditiesService] deleteCommodity:', err);
-    return { error: 'Failed to delete commodity. Please try again.' };
+    console.error('[CommoditiesService] deleteCommodity error:', err);
+    if (err?.code === '42501' || err?.status === 403) {
+      return { 
+        error: 'Permission denied (403). Please run database/04_archive_commodities.sql in your Supabase SQL Editor to allow archiving commodities.' 
+      };
+    }
+    return { error: 'Failed to archive commodity: ' + (err.message || 'Please try again.') };
   }
 }

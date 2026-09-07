@@ -36,16 +36,20 @@ export function renderArchiveLayout({ currentTab, searchTerm, tableHtml }) {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
         Voided Records (Audit Trail)
       </button>
+      <button class="tab-btn ${currentTab === 'commodities' ? 'active' : ''}" data-tab="commodities" style="background: none; border: none; padding: var(--space-3) var(--space-4); border-bottom: 3px solid ${currentTab === 'commodities' ? 'var(--color-primary)' : 'transparent'}; color: ${currentTab === 'commodities' ? 'var(--color-primary)' : 'var(--color-text-muted)'}; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: var(--space-2);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        Archived Commodities
+      </button>
     </div>
 
     <!-- Content Area -->
     <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden;">
       <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4); border-bottom: 1px solid var(--color-border-light);">
         <h2 style="font-size: var(--font-size-base); font-weight: 600; margin: 0;">
-          ${currentTab === 'historical' ? 'Past Distributions (Zero Stock)' : 'Audit Trail: Soft Deleted Entries'}
+          ${currentTab === 'historical' ? 'Past Distributions (Zero Stock)' : (currentTab === 'voided' ? 'Audit Trail: Soft Deleted Entries' : 'Archived Commodities (Soft Deleted)')}
         </h2>
         <div style="position: relative; width: 300px;">
-          <input type="text" id="archive-search" class="form-input" placeholder="${currentTab === 'historical' ? 'Search batch code...' : 'Search reason or user...'}" value="${escapeHtml(searchTerm)}" style="padding-right: var(--space-8);">
+          <input type="text" id="archive-search" class="form-input" placeholder="${currentTab === 'historical' ? 'Search batch code...' : (currentTab === 'voided' ? 'Search reason or user...' : 'Search commodity code or name...')}" value="${escapeHtml(searchTerm)}" style="padding-right: var(--space-8);">
         </div>
       </div>
 
@@ -159,3 +163,59 @@ export function renderArchiveEmpty(message) {
     </div>
   `;
 }
+
+export function renderArchivedCommoditiesTable(commodities, searchTerm = '') {
+  const filtered = (commodities || []).filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.commodity_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (!filtered.length) {
+    return renderArchiveEmpty(
+      searchTerm
+        ? `No archived commodities match "${escapeHtml(searchTerm)}".`
+        : 'No archived commodities found.'
+    );
+  }
+
+  return `
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Unit</th>
+            <th>Date Archived</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(c => `
+            <tr>
+              <td style="font-weight: 600; font-family: monospace;">${escapeHtml(c.commodity_code)}</td>
+              <td>${escapeHtml(c.name)}</td>
+              <td><span class="badge badge-outline">${escapeHtml(c.category)}</span></td>
+              <td>${escapeHtml(c.unit)}</td>
+              <td>${formatDate(c.deleted_at)}</td>
+              <td>
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(245, 158, 11, 0.1); color: #d97706; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                  Archived
+                </span>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-ghost btn-sm restore-commodity-btn" data-id="${c.id}" data-name="${escapeHtml(c.name)}" aria-label="Restore commodity" title="Restore Commodity">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+

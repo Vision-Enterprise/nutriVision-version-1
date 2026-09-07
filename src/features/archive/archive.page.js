@@ -1,22 +1,24 @@
 /**
  * Data Archive & Audit Page (Controller)
  *
- * Coordinates archive tabs (Historical vs Voided), live search,
- * ledger details inspection, and batch restoration.
+ * Coordinates archive tabs (Historical, Voided, and Archived Commodities),
+ * live search, ledger details inspection, and restoration.
  *
  * MVC Controller: delegates HTML to .render.js and modals to .modals.js.
  */
 
-import { fetchDepletedBatches, fetchVoidedBatches } from './archive.service.js';
-import { renderArchiveLayout, renderHistoricalTable, renderVoidedTable } from './archive.render.js';
+import { fetchDepletedBatches, fetchVoidedBatches, fetchArchivedCommodities, restoreCommodity } from './archive.service.js';
+import { renderArchiveLayout, renderHistoricalTable, renderVoidedTable, renderArchivedCommoditiesTable } from './archive.render.js';
 import { openLedgerModal, handleRestoreBatch } from './archive.modals.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 // ── State ───────────────────────────────────────────────────────────────────
-let _depletedBatches = [];
-let _voidedBatches   = [];
-let _profile         = null;
-let _currentTab      = 'historical';
-let _searchTerm      = '';
+let _depletedBatches     = [];
+let _voidedBatches       = [];
+let _archivedCommodities = [];
+let _profile             = null;
+let _currentTab          = 'historical';
+let _searchTerm          = '';
 
 // ── Entry Point ─────────────────────────────────────────────────────────────
 export async function renderArchivePage(profile) {
@@ -28,27 +30,34 @@ export async function renderArchivePage(profile) {
   content.innerHTML = `
     <div class="page-header">
       <h1 class="page-header__title">Data Archive & Audit Log</h1>
-      <p class="page-header__subtitle">Review depleted historical stock and audit voided entries.</p>
+      <p class="page-header__subtitle">Review depleted historical stock, audit voided batches, and manage archived commodities.</p>
     </div>
     <div class="loading-overlay"><div class="spinner spinner-lg"></div></div>
   `;
 
-  const [depletedRes, voidedRes] = await Promise.all([
+  const [depletedRes, voidedRes, commsRes] = await Promise.all([
     fetchDepletedBatches(),
-    fetchVoidedBatches()
+    fetchVoidedBatches(),
+    fetchArchivedCommodities()
   ]);
 
-  _depletedBatches = depletedRes.batches || [];
-  _voidedBatches   = voidedRes.batches   || [];
+  _depletedBatches     = depletedRes.batches     || [];
+  _voidedBatches       = voidedRes.batches       || [];
+  _archivedCommodities = commsRes.commodities     || [];
 
   _renderMainView(content);
 }
 
 // ── View Coordination ───────────────────────────────────────────────────────
 function _renderMainView(content) {
-  const tableHtml = _currentTab === 'historical'
-    ? renderHistoricalTable(_depletedBatches, _searchTerm)
-    : renderVoidedTable(_voidedBatches, _searchTerm);
+  let tableHtml = '';
+  if (_currentTab === 'historical') {
+    tableHtml = renderHistoricalTable(_depletedBatches, _searchTerm);
+  } else if (_currentTab === 'voided') {
+    tableHtml = renderVoidedTable(_voidedBatches, _searchTerm);
+  } else if (_currentTab === 'commodities') {
+    tableHtml = renderArchivedCommoditiesTable(_archivedCommodities, _searchTerm);
+  }
 
   content.innerHTML = renderArchiveLayout({
     currentTab: _currentTab,
@@ -62,9 +71,14 @@ function _renderMainView(content) {
 function _refreshTable() {
   const container = document.getElementById('archive-table-container');
   if (!container) return;
-  container.innerHTML = _currentTab === 'historical'
-    ? renderHistoricalTable(_depletedBatches, _searchTerm)
-    : renderVoidedTable(_voidedBatches, _searchTerm);
+
+  if (_currentTab === 'historical') {
+    container.innerHTML = renderHistoricalTable(_depletedBatches, _searchTerm);
+  } else if (_currentTab === 'voided') {
+    container.innerHTML = renderVoidedTable(_voidedBatches, _searchTerm);
+  } else if (_currentTab === 'commodities') {
+    container.innerHTML = renderArchivedCommoditiesTable(_archivedCommodities, _searchTerm);
+  }
 }
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
@@ -93,7 +107,7 @@ function _attachListeners(content) {
     }
   });
 
-  // Restore action
+  // Restore voided batch
   content.addEventListener('click', async e => {
     const restoreBtn = e.target.closest('.restore-btn');
     if (restoreBtn) {
@@ -110,6 +124,29 @@ function _attachListeners(content) {
           _refreshTable();
         }
       });
+    }
+  });
+
+  // Restore archived commodity
+  content.addEventListener('click', async e => {
+    const restoreCommBtn = e.target.closest('.restore-commodity-btn');
+    if (restoreCommBtn) {
+      const id = restoreCommBtn.dataset.id;
+      const name = restoreCommBtn.dataset.name;
+      const confirmed = await SystemDialog.confirm(`Restore commodity "${name}" back to active inventory?`);
+      if (!confirmed) return;
+
+      restoreCommBtn.disabled = true;
+      const { error } = await restoreCommodity(id, _profile);
+      if (error) {
+        await SystemDialog.alert(error);
+        restoreCommBtn.disabled = false;
+        return;
+      }
+
+      _archivedCommodities = _archivedCommodities.filter(c => c.id !== id);
+      _refreshTable();
+      await SystemDialog.alert(`Commodity "${name}" restored successfully.`);
     }
   });
 }

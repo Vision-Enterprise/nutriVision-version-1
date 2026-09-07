@@ -5,7 +5,7 @@
  * MVC Controller: delegates HTML rendering to .render.js and modal flows to .modals.js.
  */
 
-import { fetchCommodities } from './commodities.service.js';
+import { fetchCommodities, deleteCommodity } from './commodities.service.js';
 import { renderCommoditiesLayout, renderTable, renderEmpty, renderErrorAlert } from './commodities.render.js';
 import { openCommodityModal } from './commodities.modals.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
@@ -49,12 +49,7 @@ export async function renderCommoditiesPage(profile) {
     return;
   }
 
-  let deletedIds = [];
-  try {
-    deletedIds = JSON.parse(sessionStorage.getItem('nutrivision_deleted_commodities') || '[]');
-  } catch {}
-
-  _commodities = (commodities || []).filter(c => !deletedIds.includes(c.id));
+  _commodities = commodities || [];
   _renderMainView(content);
 }
 
@@ -170,21 +165,24 @@ function _attachPageListeners(content) {
 
 async function _handleDelete(commodity) {
   const confirmed = await SystemDialog.confirm(
-    `Delete "${commodity.name}" (${commodity.commodity_code})?\n\nThis will remove it from the active inventory list.`
+    `Archive "${commodity.name}" (${commodity.commodity_code})?\n\nThis will remove it from active inventory across all accounts and move it to the system archive.`
   );
   if (!confirmed) return;
 
-  // Frontend-only deletion: remove from memory and session store
+  const { error } = await deleteCommodity(
+    commodity.id,
+    commodity.name,
+    commodity.commodity_code,
+    _profile
+  );
+
+  if (error) {
+    await SystemDialog.alert(error);
+    return;
+  }
+
+  // Database archive successful: remove from active list
   _commodities = _commodities.filter(c => c.id !== commodity.id);
-
-  try {
-    const deletedIds = JSON.parse(sessionStorage.getItem('nutrivision_deleted_commodities') || '[]');
-    if (!deletedIds.includes(commodity.id)) {
-      deletedIds.push(commodity.id);
-      sessionStorage.setItem('nutrivision_deleted_commodities', JSON.stringify(deletedIds));
-    }
-  } catch {}
-
   _refreshTable();
   _updateSubtitle();
 }

@@ -139,3 +139,55 @@ export async function restoreBatch(batchId, profile) {
     return { error: 'Failed to restore batch: ' + (err.message || JSON.stringify(err)) };
   }
 }
+
+/**
+ * Fetch soft-deleted/archived commodities.
+ */
+export async function fetchArchivedCommodities() {
+  try {
+    const [commsRes, profileMap] = await Promise.all([
+      supabase
+        .from('commodities')
+        .select('id, commodity_code, name, description, category, unit, deleted_at, updated_by')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false }),
+      _getProfileMap()
+    ]);
+
+    if (commsRes.error) throw commsRes.error;
+
+    const formatted = (commsRes.data || []).map(c => ({
+      ...c,
+      archived_by_name: profileMap[c.updated_by] || 'Authorized Staff'
+    }));
+
+    return { commodities: formatted, error: null };
+  } catch (err) {
+    console.error('[ArchiveService] fetchArchivedCommodities:', err);
+    return { commodities: [], error: 'Failed to load archived commodities.' };
+  }
+}
+
+/**
+ * Restore an archived commodity back to active inventory.
+ */
+export async function restoreCommodity(commodityId, profile) {
+  try {
+    const { error: rpcErr } = await supabase.rpc('restore_commodity', { commodity_id: commodityId });
+    if (!rpcErr) return { error: null };
+
+    const { error } = await supabase
+      .from('commodities')
+      .update({
+        deleted_at: null,
+        updated_by: profile?.id
+      })
+      .eq('id', commodityId);
+
+    if (error) throw error;
+    return { error: null };
+  } catch (err) {
+    console.error('[ArchiveService] restoreCommodity:', err);
+    return { error: 'Failed to restore commodity.' };
+  }
+}
