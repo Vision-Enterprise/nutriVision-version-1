@@ -35,11 +35,6 @@ function getExpColor(dateStr) {
 function loadFullCalendar() {
   if (window.FullCalendar) return Promise.resolve();
   return new Promise((resolve, reject) => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css';
-    document.head.appendChild(link);
-
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js';
     script.onload  = resolve;
