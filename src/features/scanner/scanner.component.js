@@ -27,62 +27,79 @@ export class ScannerComponent {
     
     this.container.innerHTML = `
       <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:24px;">
-        <!-- Tabs -->
-        <div style="display:flex; background:#f1f5f9; border-radius:8px; padding:4px; margin-bottom:16px; gap:4px;">
-          <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary); color:white; border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,0.1);">File Import</button>
-          <button class="scanner-tab-btn" data-tab="camera" id="tab-btn-camera" style="flex:1; border:none; background:transparent; color:var(--text-main); border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; transition:all 0.15s ease;">Live Camera</button>
-          <button class="scanner-tab-btn" data-tab="mobile" id="tab-btn-mobile" style="flex:1; border:none; background:transparent; color:var(--text-main); border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:600; transition:all 0.15s ease;">📱 Mobile Scanner</button>
+        <!-- Tabs (MD3 Segmented Surface) -->
+        <div style="display:flex; background:var(--color-surface-alt, #e8f5ee); border:1px solid var(--color-border, #D8E6DA); border-radius:12px; padding:4px; margin-bottom:16px; gap:4px;">
+          <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary, #1B7A3E); color:white; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(27,122,62,0.25); transition:all 0.15s ease;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>File Import</span>
+          </button>
+          <button class="scanner-tab-btn" data-tab="camera" id="tab-btn-camera" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <span>Live Camera</span>
+          </button>
+          <button class="scanner-tab-btn" data-tab="mobile" id="tab-btn-mobile" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <span>Mobile Scanner</span>
+          </button>
         </div>
 
         <!-- TABS CONTENT -->
         <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
           <!-- 1. UPLOAD TAB -->
-          <div id="tab-upload" class="drag-zone" style="display:block;">
-            <svg style="margin-bottom:16px; color:var(--text-muted);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            <h3 style="margin:0 0 8px 0; color:var(--text-main);">Drag & drop document or click to scan file</h3>
-            <p style="color:var(--text-muted); font-size:14px; margin:0 0 16px 0;">Supports PNG, JPG, JPEG</p>
+          <div id="tab-upload" class="drag-zone" style="display:block; background:var(--color-surface, #fff); border:2px dashed var(--color-border-strong, #B2C9B5); border-radius:16px;">
+            <svg style="margin-bottom:16px; color:var(--color-text-muted, #5A7060);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <h3 style="margin:0 0 8px 0; color:var(--color-text, #1A2B1C);">Drag & drop document or click to scan file</h3>
+            <p style="color:var(--color-text-muted, #5A7060); font-size:14px; margin:0 0 16px 0;">Supports PNG, JPG, JPEG</p>
             <input type="file" id="scanner-file-input" accept="image/*" style="display:none;" />
-            <button class="btn" style="background:#fff; color:var(--text-main); border:1px solid var(--color-border); border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="document.getElementById('scanner-file-input').click()">Select File</button>
+            <button class="btn" style="background:#fff; color:var(--color-text, #1A2B1C); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="document.getElementById('scanner-file-input').click()">Select File</button>
           </div>
 
           <!-- 2. CAMERA TAB -->
-          <div id="tab-camera" style="display:none; height:100%; flex-direction:column; background:#000; border-radius:8px; overflow:hidden;">
+          <div id="tab-camera" style="display:none; height:100%; flex-direction:column; background:#0A120B; border-radius:16px; overflow:hidden; border:1px solid var(--color-border, #D8E6DA);">
             <div style="flex:1; position:relative;">
                <video id="scanner-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
             </div>
             <div style="padding:16px; background:#111;">
-               <button class="btn" id="scanner-btn-capture" style="width:100%; background:var(--color-primary); color:#fff; border:none; padding:12px; border-radius:6px; font-weight:600; cursor:pointer;">Capture Image</button>
+               <button class="btn" id="scanner-btn-capture" style="width:100%; background:var(--color-primary); color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                 <span>Capture Image</span>
+               </button>
             </div>
           </div>
 
-          <!-- 3. MOBILE SCANNER TAB -->
-          <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; align-items:center; justify-content:center; background:#f8fafc; border:1px solid var(--color-border); border-radius:8px; padding:24px; text-align:center; overflow-y:auto;">
-            <div style="max-width:440px; width:100%; display:flex; flex-direction:column; align-items:center;">
-              <div style="width:48px; height:48px; background:rgba(16, 185, 129, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:12px;">📱</div>
-              <h3 style="margin:0 0 6px 0; color:var(--text-main); font-size:18px;">Mobile Scanner Companion</h3>
-              <p style="margin:0 0 16px 0; color:var(--text-muted); font-size:13px; line-height:1.4;">
+          <!-- 3. MOBILE SCANNER TAB (MD3 NutriVision Card) -->
+          <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; align-items:center; justify-content:center; background:var(--color-surface, #ffffff); border:1px solid var(--color-border, #D8E6DA); border-radius:20px; padding:24px 20px; text-align:center; overflow-y:auto; box-shadow:0 4px 16px rgba(27,122,62,0.06);">
+            <div style="max-width:400px; width:100%; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:52px; height:52px; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:14px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+              <h3 style="margin:0 0 6px 0; color:var(--color-text, #1A2B1C); font-size:17px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
+              <p style="margin:0 0 16px 0; color:var(--color-text-muted, #5A7060); font-size:13px; line-height:1.4;">
                 Scan with your phone to upload a receipt.<br>
-                <span style="font-size:11px; color:#64748b;">(Requires phone and laptop connected to same local Wi-Fi network)</span>
+                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Requires phone and laptop connected to same local Wi-Fi network)</span>
               </p>
 
               <!-- QR Code Render Canvas/Box -->
-              <div id="scanner-qr-container" style="background:#ffffff; padding:16px; border-radius:12px; border:2px solid var(--color-border); box-shadow:0 4px 12px rgba(0,0,0,0.06); margin-bottom:16px; min-width:220px; min-height:220px; display:flex; align-items:center; justify-content:center;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-muted);">
-                  <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid #cbd5e1; border-top:2px solid var(--color-primary); border-radius:50%; animation:spin 1s linear infinite;"></span>
+              <div id="scanner-qr-container" style="background:#ffffff; padding:14px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:16px; min-width:210px; min-height:210px; display:flex; align-items:center; justify-content:center;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--color-text-muted, #5A7060);">
+                  <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid var(--color-border, #cbd5e1); border-top:2px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
                   <span style="font-size:12px;">Generating QR Code...</span>
                 </div>
               </div>
 
-              <!-- Connection Status Pill -->
-              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:#e2e8f0; color:#334155; padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:12px;">
-                <span style="width:8px; height:8px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 6px #10b981;"></span>
-                <span>Waiting for phone scan...</span>
+              <!-- Connection Status Pill (MD3 Tonal Chip) -->
+              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary-dark, #0E5C2C); border:1px solid var(--color-border-strong, #B2C9B5); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:14px;">
+                <span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span>
+                <span>Ready: Scan QR code with phone</span>
               </div>
 
-              <!-- Direct URL for testing or manual input -->
-              <div style="display:flex; align-items:center; gap:6px; width:100%; background:#fff; border:1px solid var(--color-border); border-radius:6px; padding:6px 10px;">
-                <input id="scanner-mobile-link-input" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:#475569; outline:none;" value="Connecting..." />
-                <button id="scanner-mobile-copy-btn" style="border:none; background:#f1f5f9; color:var(--text-main); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:600;">Copy</button>
+              <!-- Direct URL for manual access -->
+              <div style="display:flex; align-items:center; gap:8px; width:100%; background:var(--color-surface, #fff); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:6px 10px;">
+                <input id="scanner-mobile-link-input" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:var(--color-text, #1A2B1C); outline:none;" value="Connecting..." />
+                <button id="scanner-mobile-copy-btn" style="border:none; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:600; transition:background 0.15s ease;">Copy</button>
               </div>
             </div>
           </div>
@@ -211,7 +228,7 @@ export class ScannerComponent {
     this.container.querySelectorAll('.scanner-tab-btn').forEach(btn => {
        btn.classList.remove('active');
        btn.style.background = 'transparent';
-       btn.style.color = 'var(--text-main)';
+       btn.style.color = 'var(--color-text-muted, #5A7060)';
        btn.style.boxShadow = 'none';
     });
 
@@ -222,9 +239,9 @@ export class ScannerComponent {
       const activeBtn = this.container.querySelector(`#tab-btn-${tabId}`);
       if (activeBtn) {
         activeBtn.classList.add('active');
-        activeBtn.style.background = 'var(--color-primary)';
-        activeBtn.style.color = 'white';
-        activeBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        activeBtn.style.background = 'var(--color-primary, #1B7A3E)';
+        activeBtn.style.color = '#ffffff';
+        activeBtn.style.boxShadow = '0 2px 6px rgba(27,122,62,0.25)';
       }
 
       if (tabId === 'upload') this.container.querySelector('#tab-upload').style.display = 'flex';
@@ -255,7 +272,7 @@ export class ScannerComponent {
     try {
       await this.ensureQRCodeLib();
 
-      statusPill.innerHTML = `<span style="width:8px; height:8px; background:#38bdf8; border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
+      statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
 
       // Create new session
       const res = await fetch(`${this.apiBase}/api/mobile/create-session`);
@@ -266,7 +283,7 @@ export class ScannerComponent {
       const uploadUrl = data.upload_url;
 
       linkInput.value = uploadUrl;
-      statusPill.innerHTML = `<span style="width:8px; height:8px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 6px #10b981;"></span><span>Ready: Scan QR code with phone</span>`;
+      statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
 
       // Render QR code
       qrContainer.innerHTML = '';
@@ -284,11 +301,11 @@ export class ScannerComponent {
     } catch (err) {
       console.error(err);
       qrContainer.innerHTML = `
-        <div style="color:#ef4444; font-size:12px; padding:16px;">
-          ❌ Could not generate QR code.<br>Ensure backend is running at ${this.apiBase}.
+        <div style="color:var(--color-danger, #C62828); font-size:12px; padding:16px;">
+          Failed to generate QR code.<br>Ensure backend server is running at ${this.apiBase}.
         </div>
       `;
-      statusPill.innerHTML = `<span style="color:#ef4444;">Connection failed</span>`;
+      statusPill.innerHTML = `<span style="color:var(--color-danger, #C62828);">Connection failed</span>`;
     }
   }
 
@@ -305,7 +322,7 @@ export class ScannerComponent {
         if (data.status === 'ready' && data.latest_image_url) {
           const statusPill = this.container.querySelector('#scanner-mobile-status');
           if (statusPill) {
-            statusPill.innerHTML = `<span style="width:8px; height:8px; background:#38bdf8; border-radius:50%; display:inline-block;"></span><span>Receipt received! Loading OCR...</span>`;
+            statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Receipt received! Loading OCR...</span>`;
           }
 
           // Acknowledge session so it waits for the next scan
