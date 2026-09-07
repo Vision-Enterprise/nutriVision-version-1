@@ -17,7 +17,7 @@ export async function fetchDepletedBatches() {
         supplier,
         record_status,
         commodities ( name, commodity_code, unit ),
-        releases ( quantity, barangay, released_by, notes )
+        releases ( quantity, barangay, recipient_name, notes )
       `)
       .eq('record_status', RECORD_STATUS.DEPLETED)
       .order('updated_at', { ascending: false });

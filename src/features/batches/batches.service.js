@@ -214,7 +214,7 @@ export async function voidBatch(id, batchNumber, commodityName, reason, profile)
 // Release Batch
 // ============================================================
 
-export async function releaseBatch(batchId, batchNumber, commodityName, quantityToRelease, currentQuantity, barangay, notes, profile) {
+export async function releaseBatch(batchId, batchNumber, commodityName, quantityToRelease, currentQuantity, barangay, recipientName, notes, profile) {
   try {
     const qtyNum = parseInt(quantityToRelease, 10);
     if (isNaN(qtyNum) || qtyNum <= 0) {
@@ -231,6 +231,7 @@ export async function releaseBatch(batchId, batchNumber, commodityName, quantity
         batch_id: batchId,
         quantity: qtyNum,
         barangay: barangay,
+        recipient_name: recipientName || null,
         notes: notes || null,
         released_by: profile.id
       });

@@ -275,8 +275,8 @@ function _openLedgerModal(batch) {
               <span style="font-weight: 500;">${_escHtml(r.barangay) || '-'}</span>
             </div>
             <div>
-              <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Released By (User ID)</span>
-              <span style="font-weight: 500;">${_escHtml(r.released_by) || '-'}</span>
+              <span style="color: var(--color-text-muted); display: block; font-size: 11px; text-transform: uppercase;">Recipient Name</span>
+              <span style="font-weight: 500;">${_escHtml(r.recipient_name) || '-'}</span>
             </div>
           </div>
           ${r.notes ? `<div style="margin-top: var(--space-2); font-size: var(--font-size-sm); padding-top: var(--space-2); border-top: 1px dashed var(--color-border-subtle); color: var(--color-text-muted);">

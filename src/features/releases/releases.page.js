@@ -92,6 +92,7 @@ function _renderTable(list) {
             <th>Batch #</th>
             <th>Qty Released</th>
             <th>Destination</th>
+            <th>Recipient</th>
             <th>Released By</th>
           </tr>
         </thead>
@@ -113,10 +114,11 @@ function _renderTable(list) {
                 ${r.quantity} ${_escHtml(r.batches?.commodities?.unit)}
               </td>
               <td>${_escHtml(r.barangay)}</td>
+              <td style="font-weight:var(--font-weight-medium);">${_escHtml(r.recipient_name) || '-'}</td>
               <td style="font-size:var(--font-size-sm);">${_escHtml(r.profiles?.full_name)}</td>
             </tr>
             <tr id="rn-${r.id}" style="display:none; background:var(--color-surface-alt);">
-              <td colspan="6" style="padding:var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-border-subtle); color:var(--color-text-muted); font-size:var(--font-size-sm);">
+              <td colspan="7" style="padding:var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-border-subtle); color:var(--color-text-muted); font-size:var(--font-size-sm);">
                 <strong>Notes:</strong> ${_escHtml(r.notes) || '<em>None</em>'}
               </td>
             </tr>
