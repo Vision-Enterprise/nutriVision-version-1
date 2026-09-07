@@ -1,11 +1,12 @@
 /**
  * Batch Management - Full-Screen Bulk Registration Workspace
  *
- * Handles:
- *   - Auto-increment batch numbering based on DB prefix conventions
- *   - Live interactive grid with Excel-style FX Bar
- *   - Integrated collapsible OCR ScannerComponent
- *   - Batch insertion loop with error handling
+ * MNAO Strict Validation Architecture:
+ *   - Anti-hallucination <select> dropdown pre-populated with DB commodities
+ *   - 100% Mandatory Expiration Dates and Packaging Units (strictly rejecting "UNT", "TBD", blank)
+ *   - Real-time reactivity for deterministic FEFO SKU and Batch Code generation
+ *   - Split Batch feature dividing quantities and prompting separate expiration dates
+ *   - Hard-blocked submission button until every row passes validation
  */
 
 import { supabase } from '../../core/supabase.js';
@@ -13,85 +14,112 @@ import { createBatch, fetchBatches } from './batches.service.js';
 import { escapeHtml } from './batches.render.js';
 import { ScannerComponent } from '../scanner/scanner.component.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { 
+  generateCommoditySKU, 
+  generateBatchCode, 
+  generateDuplicateSignature,
+  extractExpYYMM 
+} from '../../shared/utils/code-generator.util.js';
 
 let bulkRows = [];
-let baseIncrements = {};
+let availableCommodities = [];
 
-const COMMODITY_PREFIXES = {
-  "Therapeutic Food": "TF",
-  "Micronutrient Powder": "MNP",
-  "Fortified Milk": "FMP",
-  "Iron Folic Acid": "IFA",
-  "Champorado Porridge": "FRP"
-};
+/**
+ * Fuzzy matches raw OCR extracted commodity text against registered database commodities.
+ * @param {string} text 
+ * @param {Array} commodities 
+ * @returns {Object|null} Matched commodity record or null
+ */
+function fuzzyMatchCommodity(text, commodities) {
+  if (!text || !commodities || !commodities.length) return null;
+  const clean = text.toLowerCase().trim();
 
-function getPrefix(name) {
-  if (!name) return "UNK";
-  for (const [key, prefix] of Object.entries(COMMODITY_PREFIXES)) {
-    if (name.toLowerCase().includes(key.toLowerCase())) return prefix;
-  }
-  return "UNK";
-}
+  // 1. Exact match
+  let found = commodities.find(c => c.name.toLowerCase() === clean);
+  if (found) return found;
 
-async function fetchBaseIncrements() {
-  baseIncrements = {};
-  const year = new Date().getFullYear();
-  const { data } = await supabase
-    .from('batches')
-    .select('batch_number')
-    .like('batch_number', `%-${year}-%`);
-      
-  if (data) {
-    data.forEach(row => {
-      const parts = row.batch_number.split('-');
-      if (parts.length >= 3) {
-        const prefix = parts[0];
-        const inc = parseInt(parts[2], 10);
-        if (!isNaN(inc)) {
-          baseIncrements[prefix] = Math.max(baseIncrements[prefix] || 0, inc);
-        }
-      }
-    });
-  }
-}
+  // 2. Contains match
+  found = commodities.find(c => clean.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(clean));
+  if (found) return found;
 
-function generateBatchCode(commodityName, rowIndex) {
-  if (!commodityName) return "Auto-assigned";
-  const prefix = getPrefix(commodityName);
-  const year = new Date().getFullYear();
-   
-  let localOffset = 1;
-  for (let i = 0; i < rowIndex; i++) {
-    if (getPrefix(bulkRows[i].commodityName) === prefix) {
-      localOffset++;
+  // 3. Word token overlap
+  const words = clean.split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+  let bestMatch = null;
+  let maxScore = 0;
+
+  for (const c of commodities) {
+    const cWords = c.name.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+    let score = 0;
+    for (const w of words) {
+      if (cWords.includes(w)) score++;
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      bestMatch = c;
     }
   }
-   
-  const base = baseIncrements[prefix] || 0;
-  const finalInc = base + localOffset;
-  return `${prefix}-${year}-${String(finalInc).padStart(4, '0')}`;
+
+  return maxScore > 0 ? bestMatch : null;
 }
 
+/**
+ * Opens full-screen bulk registration workspace.
+ */
 export async function openFullScreenWorkspace({ commodities, profile, onSaveComplete }) {
   bulkRows = [];
-  await fetchBaseIncrements();
+  availableCommodities = commodities || [];
 
   const overlay = document.createElement('div');
   overlay.className = 'workspace-overlay';
   overlay.id = 'batch-workspace-overlay';
 
   overlay.innerHTML = `
+    <style>
+      .cell-invalid {
+        border: 1.5px solid #ef4444 !important;
+        background: #fef2f2 !important;
+        border-radius: 4px;
+      }
+      .ws-select-commodity {
+        cursor: pointer;
+      }
+      .ws-select-commodity option {
+        background: #ffffff;
+        color: var(--text-main);
+      }
+      .action-icon-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .action-icon-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      .split-btn:hover {
+        color: var(--color-primary) !important;
+      }
+      .delete-btn:hover {
+        color: #ef4444 !important;
+      }
+    </style>
+
     <div class="workspace-header">
       <div style="display:flex; align-items:center; gap:16px;">
          <h2 class="workspace-header-title">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
             Bulk Batch Registration
          </h2>
-         <span class="workspace-header-subtitle">NutriVision MNAO Intake</span>
+         <span class="workspace-header-subtitle">NutriVision MNAO Intake (FEFO Strict)</span>
       </div>
       <div class="workspace-actions">
          <button id="workspace-cancel-btn" style="background:transparent; border:none; font-weight:600; color:var(--text-muted); cursor:pointer; padding:10px 16px;">Cancel / Exit</button>
-         <button id="workspace-save-btn" class="btn-elevated">Register All Batches</button>
+         <button id="workspace-save-btn" class="btn-elevated" disabled title="Fill in all mandatory units and expiration dates to enable.">Register All Batches</button>
       </div>
     </div>
 
@@ -122,13 +150,14 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
            <table class="headless-grid">
               <thead>
                  <tr>
-                    <th style="min-width:180px;">Commodity</th>
-                    <th style="min-width:130px;">Batch Code</th>
-                    <th style="min-width:80px;">Qty</th>
-                    <th style="min-width:120px;">Del. Date</th>
-                    <th style="min-width:120px;">Exp. Date</th>
-                    <th style="min-width:160px;">Supplier</th>
-                    <th style="min-width:48px; text-align:center;"></th>
+                    <th style="min-width:200px;">Commodity</th>
+                    <th style="min-width:110px;">Unit</th>
+                    <th style="min-width:150px;">Batch Code</th>
+                    <th style="min-width:85px;">Qty</th>
+                    <th style="min-width:130px;">Del. Date</th>
+                    <th style="min-width:135px;">Exp. Date</th>
+                    <th style="min-width:150px;">Supplier</th>
+                    <th style="min-width:76px; text-align:center;">Actions</th>
                  </tr>
               </thead>
               <tbody id="bulk-table-body">
@@ -136,11 +165,14 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
               </tbody>
            </table>
            </div>
-           <div style="padding:16px;">
+           <div style="padding:16px; display:flex; justify-content:space-between; align-items:center;">
               <button id="bulk-add-row-btn" style="background:none; border:none; color:var(--color-primary); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                  Add New Row Manually
               </button>
+              <div id="validation-status-pill" style="font-size:12px; font-weight:600; color:var(--text-muted);">
+                 All rows must have valid Unit and Expiration Date
+              </div>
            </div>
          </div>
          <div class="workspace-footer">
@@ -153,10 +185,6 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
          </div>
       </div>
     </div>
-    
-    <datalist id="commodity-list-ws">
-      ${commodities.map(c => `<option value="${escapeHtml(c.name)}"></option>`).join('')}
-    </datalist>
   `;
 
   document.body.appendChild(overlay);
@@ -167,9 +195,28 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     onComplete: (parsedRows) => {
       const today = new Date().toISOString().split('T')[0];
       parsedRows.forEach(r => {
+        let matched = null;
+        if (r.commodityId) {
+          matched = availableCommodities.find(c => c.id === r.commodityId);
+        }
+        if (!matched && r.productName) {
+          matched = fuzzyMatchCommodity(r.productName, availableCommodities);
+        }
+
+        const commName = matched ? matched.name : (r.productName || '');
+        const commId = matched ? matched.id : '';
+        
+        let unit = matched?.unit || r.unit || '';
+        const upperUnit = unit.trim().toUpperCase();
+        if (['UNT', 'TBD', 'N/A', 'NA', 'NONE', '-'].includes(upperUnit)) {
+          unit = '';
+        }
+
         bulkRows.push({
           id: Date.now() + Math.random(),
-          commodityName: r.commodityId ? commodities.find(c => c.id === r.commodityId)?.name : (r.productName || ''),
+          commodityId: commId,
+          commodityName: commName,
+          unit: unit,
           qty: r.qty || '',
           deliveryDate: r.deliveryDate || today,
           expDate: r.expDate || '',
@@ -196,18 +243,23 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   const fxBar = document.getElementById('fx-bar-input');
   let fxTarget = null;
   document.getElementById('bulk-table-body')?.addEventListener('focusin', (e) => {
-    const inp = e.target.closest('input:not([disabled])');
+    const inp = e.target.closest('input:not([disabled]), select');
     if (!inp) return;
     fxTarget = inp;
     fxBar.value = inp.value;
     fxBar.removeAttribute('readonly');
   });
-  fxBar?.addEventListener('input', () => { if (fxTarget) fxTarget.value = fxBar.value; });
+  fxBar?.addEventListener('input', () => { 
+    if (fxTarget) {
+      fxTarget.value = fxBar.value;
+      fxTarget.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
   fxBar?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === 'Escape') {
       e.preventDefault();
       if (fxTarget) {
-        fxTarget.dispatchEvent(new Event('input', {bubbles: true}));
+        fxTarget.dispatchEvent(new Event('change', { bubbles: true }));
         fxTarget.blur();
         fxTarget = null;
       }
@@ -217,12 +269,14 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   });
 
   document.getElementById('workspace-cancel-btn')?.addEventListener('click', () => overlay.remove());
-  
+
   document.getElementById('bulk-add-row-btn')?.addEventListener('click', () => {
     syncBulkState();
     bulkRows.push({
-      id: Date.now(),
+      id: Date.now() + Math.random(),
+      commodityId: '',
       commodityName: '',
+      unit: '',
       qty: '',
       deliveryDate: new Date().toISOString().split('T')[0],
       expDate: '',
@@ -233,47 +287,89 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   });
 
   document.getElementById('workspace-save-btn')?.addEventListener('click', async () => {
-    await handleWorkspaceSave({ commodities, profile, overlay, onSaveComplete });
+    await handleWorkspaceSave({ profile, overlay, onSaveComplete });
   });
 }
 
+/**
+ * Computes deterministic Batch Code or returns incomplete state.
+ */
+function computeRowCode(commodityName, unit, expDate) {
+  try {
+    if (!commodityName || !unit || !expDate) {
+      return { code: '[ INCOMPLETE ]', isComplete: false };
+    }
+    const sku = generateCommoditySKU(commodityName, unit);
+    const code = generateBatchCode(sku, expDate);
+    return { sku, code, isComplete: true };
+  } catch (err) {
+    return { code: '[ INCOMPLETE ]', isComplete: false, error: err.message };
+  }
+}
+
+/**
+ * Updates a row's Batch Code visual cell in real time without causing DOM focus loss.
+ */
+function updateRowLiveCode(tr, row) {
+  const batchInput = tr.querySelector('.ws-input-batch');
+  if (!batchInput) return;
+
+  const result = computeRowCode(row.commodityName, row.unit, row.expDate);
+  if (result.isComplete) {
+    batchInput.value = result.code;
+    batchInput.style.color = 'var(--text-main)';
+    batchInput.style.fontWeight = '600';
+    batchInput.style.fontFamily = 'monospace';
+    row.sku = result.sku;
+    row.batchCode = result.code;
+  } else {
+    batchInput.value = '[ INCOMPLETE ]';
+    batchInput.style.color = '#dc2626';
+    batchInput.style.fontWeight = '700';
+    batchInput.style.fontFamily = 'monospace';
+    row.sku = '';
+    row.batchCode = '';
+  }
+}
+
+/**
+ * Renders the table rows and attaches granular real-time event listeners.
+ */
 function renderBulkTable() {
   const tbody = document.getElementById('bulk-table-body');
   if (!tbody) return;
 
   if (bulkRows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt or add manually.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
     document.getElementById('summary-commodities').textContent = '0';
     document.getElementById('summary-units').textContent = '0';
+    validateTableRows();
     return;
   }
 
-  let totalQty = 0;
-  let uniqueComms = new Set();
-
   tbody.innerHTML = bulkRows.map((row, index) => {
-    const batchCode = generateBatchCode(row.commodityName, index);
-     
-    if (row.commodityName) uniqueComms.add(row.commodityName.toLowerCase());
-    if (row.qty) totalQty += parseInt(row.qty, 10) || 0;
-
-    let expStyle = '';
-    if (row.expDate) {
-      const exp = new Date(row.expDate);
-      const now = new Date();
-      const diffDays = (exp - now) / (1000 * 60 * 60 * 24);
-      if (diffDays >= 0 && diffDays < 180) {
-        expStyle = 'background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;';
-      }
-    }
+    const codeResult = computeRowCode(row.commodityName, row.unit, row.expDate);
+    const displayBatchCode = codeResult.isComplete ? codeResult.code : '[ INCOMPLETE ]';
+    const batchStyle = codeResult.isComplete 
+      ? 'color:var(--text-main); font-weight:600; font-family:monospace;' 
+      : 'color:#dc2626; font-weight:700; font-family:monospace;';
 
     return `
       <tr class="bulk-row" data-index="${index}">
          <td>
-            <input list="commodity-list-ws" class="headless-input ws-input-commodity" placeholder="Type commodity..." value="${escapeHtml(row.commodityName)}" />
+            <select class="headless-input ws-select-commodity">
+               <option value="" disabled ${!row.commodityId ? 'selected' : ''}>-- Select Commodity --</option>
+               ${availableCommodities.map(c => {
+                 const isSelected = row.commodityId === c.id || (!row.commodityId && row.commodityName?.toLowerCase() === c.name.toLowerCase());
+                 return `<option value="${c.id}" data-unit="${escapeHtml(c.unit || '')}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (${escapeHtml(c.unit || 'No Unit')})</option>`;
+               }).join('')}
+            </select>
          </td>
          <td>
-            <input type="text" class="headless-input" value="${batchCode}" disabled />
+            <input type="text" class="headless-input ws-input-unit" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
+         </td>
+         <td>
+            <input type="text" class="headless-input ws-input-batch" value="${displayBatchCode}" disabled style="${batchStyle}" />
          </td>
          <td>
             <input type="number" class="headless-input ws-input-qty" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
@@ -282,100 +378,373 @@ function renderBulkTable() {
             <input type="date" class="headless-input ws-input-del" value="${escapeHtml(row.deliveryDate)}" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-exp" value="${escapeHtml(row.expDate)}" style="${expStyle}" />
+            <input type="date" class="headless-input ws-input-exp" value="${escapeHtml(row.expDate)}" />
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-sup" value="${escapeHtml(row.supplier)}" placeholder="Supplier..." />
+            <input type="text" class="headless-input ws-input-sup" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
          </td>
          <td style="text-align:center;">
-            <button class="bulk-delete-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:8px;">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
+            <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+               <button class="action-icon-btn split-btn bulk-split-btn" title="Split batch for dual expiration dates" style="color:var(--text-muted);">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M16 3h5v5"/>
+                     <path d="M8 3H3v5"/>
+                     <path d="M12 21V12"/>
+                     <path d="M21 3l-8.5 8.5"/>
+                     <path d="M3 3l8.5 8.5"/>
+                  </svg>
+               </button>
+               <button class="action-icon-btn delete-btn bulk-delete-btn" title="Remove line" style="color:var(--text-muted);">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M3 6h18"/>
+                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+               </button>
+            </div>
          </td>
       </tr>
     `;
   }).join('');
 
-  document.getElementById('summary-commodities').textContent = uniqueComms.size;
-  document.getElementById('summary-units').textContent = totalQty;
+  updateFooters();
+  bindRowEvents();
+  validateTableRows();
+}
 
-  document.querySelectorAll('.ws-input-commodity').forEach(input => {
-    input.addEventListener('change', () => { syncBulkState(); renderBulkTable(); });
-    input.addEventListener('blur', () => { syncBulkState(); renderBulkTable(); });
-  });
-  
-  document.querySelectorAll('.ws-input-qty').forEach(input => {
-    input.addEventListener('input', () => { syncBulkState(); renderBulkTable(); });
-  });
+/**
+ * Binds row-level event listeners for real-time reactivity without full re-rendering.
+ */
+function bindRowEvents() {
+  const rows = document.querySelectorAll('.bulk-row');
+  rows.forEach((tr, index) => {
+    const row = bulkRows[index];
+    if (!row) return;
 
-  document.querySelectorAll('.ws-input-exp').forEach(input => {
-    input.addEventListener('change', () => { syncBulkState(); renderBulkTable(); });
-  });
+    const commSelect = tr.querySelector('.ws-select-commodity');
+    const unitInput = tr.querySelector('.ws-input-unit');
+    const expInput = tr.querySelector('.ws-input-exp');
+    const qtyInput = tr.querySelector('.ws-input-qty');
+    const delInput = tr.querySelector('.ws-input-del');
+    const supInput = tr.querySelector('.ws-input-sup');
+    const splitBtn = tr.querySelector('.bulk-split-btn');
+    const deleteBtn = tr.querySelector('.bulk-delete-btn');
 
-  document.querySelectorAll('.bulk-delete-btn').forEach((btn, i) => {
-    btn.addEventListener('click', () => {
+    // 1. Commodity Dropdown Change
+    commSelect?.addEventListener('change', () => {
+      const selectedId = commSelect.value;
+      const matched = availableCommodities.find(c => c.id === selectedId);
+      if (matched) {
+        row.commodityId = matched.id;
+        row.commodityName = matched.name;
+        // Auto-assign unit if empty or changed
+        row.unit = matched.unit || '';
+        if (unitInput) unitInput.value = row.unit;
+      }
+      updateRowLiveCode(tr, row);
+      updateFooters();
+      validateTableRows();
+    });
+
+    // 2. Unit Field Input/Change
+    unitInput?.addEventListener('input', () => {
+      row.unit = unitInput.value;
+      updateRowLiveCode(tr, row);
+      validateTableRows();
+    });
+
+    // 3. Expiration Date Input/Change
+    expInput?.addEventListener('input', () => {
+      row.expDate = expInput.value;
+      updateRowLiveCode(tr, row);
+      validateTableRows();
+    });
+    expInput?.addEventListener('change', () => {
+      row.expDate = expInput.value;
+      updateRowLiveCode(tr, row);
+      validateTableRows();
+    });
+
+    // 4. Quantity Input
+    qtyInput?.addEventListener('input', () => {
+      row.qty = qtyInput.value;
+      updateFooters();
+      validateTableRows();
+    });
+
+    // 5. Delivery Date & Supplier
+    delInput?.addEventListener('input', () => { row.deliveryDate = delInput.value; validateTableRows(); });
+    supInput?.addEventListener('input', () => { row.supplier = supInput.value; });
+
+    // 6. Split Batch Action
+    splitBtn?.addEventListener('click', () => {
+      handleSplitRow(index);
+    });
+
+    // 7. Delete Row
+    deleteBtn?.addEventListener('click', () => {
       syncBulkState();
-      bulkRows.splice(i, 1);
+      bulkRows.splice(index, 1);
       renderBulkTable();
     });
   });
 }
 
+/**
+ * Handles the Split Batch feature.
+ * Takes current row quantity Q, divides it by 2 (rounding up/down if odd),
+ * duplicates row directly below it, and clears duplicate expiration date for separate entry.
+ */
+function handleSplitRow(index) {
+  syncBulkState();
+  const target = bulkRows[index];
+  if (!target) return;
+
+  const currentQty = parseInt(target.qty, 10);
+  if (isNaN(currentQty) || currentQty <= 1) {
+    SystemDialog.alert('Quantity must be at least 2 units to split into separate expiration batches.');
+    return;
+  }
+
+  // Divides quantity: ceil for first row, remainder for second row (conserves exact sum)
+  const q1 = Math.ceil(currentQty / 2);
+  const q2 = currentQty - q1;
+
+  target.qty = String(q1);
+
+  const splitDuplicate = {
+    ...target,
+    id: Date.now() + Math.random(),
+    qty: String(q2),
+    expDate: '', // Demands mandatory second expiration date entry
+    batchCode: ''
+  };
+
+  bulkRows.splice(index + 1, 0, splitDuplicate);
+  renderBulkTable();
+}
+
+/**
+ * Syncs DOM values into bulkRows array.
+ */
 function syncBulkState() {
   const rows = document.querySelectorAll('.bulk-row');
   rows.forEach((tr, i) => {
-    bulkRows[i].commodityName = tr.querySelector('.ws-input-commodity').value;
-    bulkRows[i].qty = tr.querySelector('.ws-input-qty').value;
-    bulkRows[i].deliveryDate = tr.querySelector('.ws-input-del').value;
-    bulkRows[i].expDate = tr.querySelector('.ws-input-exp').value;
-    bulkRows[i].supplier = tr.querySelector('.ws-input-sup').value;
+    if (!bulkRows[i]) return;
+    const commSelect = tr.querySelector('.ws-select-commodity');
+    const unitInput = tr.querySelector('.ws-input-unit');
+    const qtyInput = tr.querySelector('.ws-input-qty');
+    const delInput = tr.querySelector('.ws-input-del');
+    const expInput = tr.querySelector('.ws-input-exp');
+    const supInput = tr.querySelector('.ws-input-sup');
+
+    if (commSelect && commSelect.value) {
+      bulkRows[i].commodityId = commSelect.value;
+      const matched = availableCommodities.find(c => c.id === commSelect.value);
+      if (matched) bulkRows[i].commodityName = matched.name;
+    }
+    if (unitInput) bulkRows[i].unit = unitInput.value;
+    if (qtyInput) bulkRows[i].qty = qtyInput.value;
+    if (delInput) bulkRows[i].deliveryDate = delInput.value;
+    if (expInput) bulkRows[i].expDate = expInput.value;
+    if (supInput) bulkRows[i].supplier = supInput.value;
   });
 }
 
-async function handleWorkspaceSave({ commodities, profile, overlay, onSaveComplete }) {
-  syncBulkState();
-   
-  if (bulkRows.length === 0) return SystemDialog.alert('No rows to save.');
+/**
+ * Updates summary counts in workspace footer.
+ */
+function updateFooters() {
+  let totalQty = 0;
+  let uniqueComms = new Set();
 
-  let isValid = true;
   bulkRows.forEach(r => {
-    if (!r.commodityName || !r.qty || !r.deliveryDate || !r.expDate) {
-      isValid = false;
+    if (r.commodityId || r.commodityName) {
+      uniqueComms.add((r.commodityId || r.commodityName).toLowerCase());
+    }
+    const q = parseInt(r.qty, 10);
+    if (!isNaN(q) && q > 0) totalQty += q;
+  });
+
+  const commEl = document.getElementById('summary-commodities');
+  const unitEl = document.getElementById('summary-units');
+  if (commEl) commEl.textContent = uniqueComms.size;
+  if (unitEl) unitEl.textContent = totalQty;
+}
+
+/**
+ * Strict Visual Validation & Submission Block.
+ * Iterates through all rows. If Expiration Date or Unit is blank or invalid,
+ * applies red outline/background class. Hard-blocks the Register All Batches button.
+ */
+export function validateTableRows() {
+  const rows = document.querySelectorAll('.bulk-row');
+  const saveBtn = document.getElementById('workspace-save-btn');
+  const statusPill = document.getElementById('validation-status-pill');
+
+  let allValid = rows.length > 0;
+  let invalidCount = 0;
+
+  rows.forEach((tr, i) => {
+    const row = bulkRows[i];
+    if (!row) return;
+
+    const commSelect = tr.querySelector('.ws-select-commodity');
+    const unitInput = tr.querySelector('.ws-input-unit');
+    const expInput = tr.querySelector('.ws-input-exp');
+    const qtyInput = tr.querySelector('.ws-input-qty');
+
+    let rowValid = true;
+
+    // 1. Commodity Check
+    if (!row.commodityId && !row.commodityName) {
+      commSelect?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      commSelect?.classList.remove('cell-invalid');
+    }
+
+    // 2. Strict Unit Check (reject null, empty, UNT, TBD)
+    const cleanUnit = (row.unit || '').trim().toUpperCase();
+    const isUnitValid = cleanUnit && !['UNT', 'TBD', 'N/A', 'NA', 'NONE', '-'].includes(cleanUnit);
+    if (!isUnitValid) {
+      unitInput?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      unitInput?.classList.remove('cell-invalid');
+    }
+
+    // 3. Strict Expiration Date Check
+    let isExpValid = false;
+    if (row.expDate && row.expDate.trim() && !['TBD', 'N/A'].includes(row.expDate.trim().toUpperCase())) {
+      try {
+        extractExpYYMM(row.expDate);
+        isExpValid = true;
+      } catch {
+        isExpValid = false;
+      }
+    }
+    if (!isExpValid) {
+      expInput?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      expInput?.classList.remove('cell-invalid');
+    }
+
+    // 4. Quantity Check
+    const qNum = parseInt(row.qty, 10);
+    if (isNaN(qNum) || qNum <= 0) {
+      qtyInput?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      qtyInput?.classList.remove('cell-invalid');
+    }
+
+    if (!rowValid) {
+      allValid = false;
+      invalidCount++;
     }
   });
-   
-  let invalidComm = bulkRows.find(r => !commodities.find(c => c.name.toLowerCase() === r.commodityName.toLowerCase()));
-  if (invalidComm) return SystemDialog.alert('Invalid commodity name: "' + invalidComm.commodityName + '". Please select a valid commodity.');
-  if (!isValid) return SystemDialog.alert('Please fill in all required fields (Commodity, Qty, Delivery, Expiration).');
+
+  if (rows.length === 0) allValid = false;
+
+  if (saveBtn) {
+    saveBtn.disabled = !allValid;
+    if (!allValid) {
+      saveBtn.style.opacity = '0.5';
+      saveBtn.style.cursor = 'not-allowed';
+      if (statusPill) {
+        statusPill.textContent = rows.length === 0 
+          ? 'No batch rows available.'
+          : `${invalidCount} row(s) require attention (Unit and Expiration Date are mandatory).`;
+        statusPill.style.color = '#ef4444';
+      }
+    } else {
+      saveBtn.style.opacity = '1';
+      saveBtn.style.cursor = 'pointer';
+      if (statusPill) {
+        statusPill.textContent = 'All rows meet MNAO strict validation standards.';
+        statusPill.style.color = 'var(--color-primary)';
+      }
+    }
+  }
+
+  return allValid;
+}
+
+/**
+ * Handles batch registration submission with duplicate signature detection.
+ */
+async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
+  syncBulkState();
+
+  if (!validateTableRows()) {
+    return SystemDialog.alert('Cannot register batches: One or more rows have missing or invalid Expiration Dates, Units, or Quantities.');
+  }
+
+  // Duplicate signature fingerprint detection
+  const signatures = new Map();
+  const duplicates = [];
+
+  bulkRows.forEach((r, idx) => {
+    try {
+      const sku = generateCommoditySKU(r.commodityName, r.unit);
+      const sig = generateDuplicateSignature(r.receiptNumber, r.supplier, r.deliveryDate, sku, r.qty);
+      if (signatures.has(sig)) {
+        duplicates.push({ row: idx + 1, prev: signatures.get(sig) + 1, sku });
+      } else {
+        signatures.set(sig, idx);
+      }
+    } catch {}
+  });
+
+  if (duplicates.length > 0) {
+    const dupMsg = duplicates.map(d => `Row ${d.row} is identical to Row ${d.prev} (${d.sku})`).join('\n');
+    const proceed = await SystemDialog.confirm(
+      `Duplicate line signatures detected:\n${dupMsg}\n\nDo you want to proceed with registration anyway?`
+    );
+    if (!proceed) return;
+  }
 
   const btn = document.getElementById('workspace-save-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Registering Batches...';
+  }
 
   let successCount = 0;
   let errors = [];
 
   for (let i = 0; i < bulkRows.length; i++) {
     const row = bulkRows[i];
-    const batchCode = generateBatchCode(row.commodityName, i);
-      
-    const formData = {
-      commodity_id: commodities.find(c => c.name.toLowerCase() === row.commodityName.toLowerCase())?.id,
-      batch_number: batchCode,
-      quantity: row.qty,
-      delivery_date: row.deliveryDate,
-      expiration_date: row.expDate,
-      supplier: row.supplier,
-      notes: ''
-    };
-      
-    const res = await createBatch(formData, profile);
-    if (res.error) errors.push(res.error);
-    else successCount++;
+    try {
+      const sku = generateCommoditySKU(row.commodityName, row.unit);
+      const batchCode = generateBatchCode(sku, row.expDate);
+
+      const formData = {
+        commodity_id: row.commodityId,
+        batch_number: batchCode,
+        quantity: row.qty,
+        delivery_date: row.deliveryDate,
+        expiration_date: row.expDate,
+        supplier: row.supplier,
+        notes: row.notes || ''
+      };
+
+      const res = await createBatch(formData, profile);
+      if (res.error) {
+        errors.push(`Row ${i + 1} (${batchCode}): ${res.error}`);
+      } else {
+        successCount++;
+      }
+    } catch (err) {
+      errors.push(`Row ${i + 1}: ${err.message}`);
+    }
   }
 
-  if (errors.length > 0) SystemDialog.alert(`Saved ${successCount} batches, but encountered errors: \n` + errors.join('\n'));
-   
+  if (errors.length > 0) {
+    SystemDialog.alert(`Registered ${successCount} batches, but encountered errors:\n` + errors.join('\n'));
+  }
+
   overlay.remove();
   if (typeof onSaveComplete === 'function') onSaveComplete();
 }
