@@ -5,7 +5,7 @@
  * MVC Controller: delegates HTML rendering to .render.js and modal flows to .modals.js.
  */
 
-import { fetchCommodities, deleteCommodity } from './commodities.service.js';
+import { fetchCommodities } from './commodities.service.js';
 import { renderCommoditiesLayout, renderTable, renderEmpty, renderErrorAlert } from './commodities.render.js';
 import { openCommodityModal } from './commodities.modals.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
@@ -49,7 +49,12 @@ export async function renderCommoditiesPage(profile) {
     return;
   }
 
-  _commodities = commodities;
+  let deletedIds = [];
+  try {
+    deletedIds = JSON.parse(sessionStorage.getItem('nutrivision_deleted_commodities') || '[]');
+  } catch {}
+
+  _commodities = (commodities || []).filter(c => !deletedIds.includes(c.id));
   _renderMainView(content);
 }
 
@@ -164,24 +169,22 @@ function _attachPageListeners(content) {
 }
 
 async function _handleDelete(commodity) {
-  const confirmed = window.confirm(
-    `Delete "${commodity.name}" (${commodity.commodity_code})?\n\nThis action cannot be undone.`
+  const confirmed = await SystemDialog.confirm(
+    `Delete "${commodity.name}" (${commodity.commodity_code})?\n\nThis will remove it from the active inventory list.`
   );
   if (!confirmed) return;
 
-  const { error } = await deleteCommodity(
-    commodity.id,
-    commodity.name,
-    commodity.commodity_code,
-    _profile
-  );
-
-  if (error) {
-    SystemDialog.alert(error);
-    return;
-  }
-
+  // Frontend-only deletion: remove from memory and session store
   _commodities = _commodities.filter(c => c.id !== commodity.id);
+
+  try {
+    const deletedIds = JSON.parse(sessionStorage.getItem('nutrivision_deleted_commodities') || '[]');
+    if (!deletedIds.includes(commodity.id)) {
+      deletedIds.push(commodity.id);
+      sessionStorage.setItem('nutrivision_deleted_commodities', JSON.stringify(deletedIds));
+    }
+  } catch {}
+
   _refreshTable();
   _updateSubtitle();
 }
