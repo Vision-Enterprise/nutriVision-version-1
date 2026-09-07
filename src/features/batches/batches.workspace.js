@@ -23,6 +23,17 @@ import {
 
 let bulkRows = [];
 let availableCommodities = [];
+let existingBatches = [];
+
+function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
+  if (!batchCode || batchCode === '[ INCOMPLETE ]') return false;
+  const upperCode = batchCode.trim().toUpperCase();
+  return existingBatches.some(b => {
+    const cMatch = (commodityId && b.commodity_id === commodityId) ||
+                   (commodityName && b.commodities?.name && b.commodities.name.toLowerCase() === commodityName.toLowerCase());
+    return cMatch && b.batch_number?.trim().toUpperCase() === upperCode;
+  });
+}
 
 /**
  * Fuzzy matches raw OCR extracted commodity text against registered database commodities.
@@ -68,6 +79,13 @@ function fuzzyMatchCommodity(text, commodities) {
 export async function openFullScreenWorkspace({ commodities, profile, onSaveComplete }) {
   bulkRows = [];
   availableCommodities = commodities || [];
+  try {
+    const { batches } = await fetchBatches();
+    existingBatches = batches || [];
+  } catch (err) {
+    console.warn("Could not load existing batches for duplicate pre-check:", err);
+    existingBatches = [];
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'workspace-overlay';
@@ -316,16 +334,41 @@ function computeRowCode(commodityName, unit, expDate) {
  */
 function updateRowLiveCode(tr, row) {
   const batchInput = tr.querySelector('.ws-input-batch');
+  const dupNotice = tr.querySelector('.ws-batch-dup-notice');
   if (!batchInput) return;
 
   const result = computeRowCode(row.commodityName, row.unit, row.expDate);
   if (result.isComplete) {
-    batchInput.value = result.code;
-    batchInput.style.color = 'var(--text-main)';
-    batchInput.style.fontWeight = '600';
-    batchInput.style.fontFamily = 'monospace';
     row.sku = result.sku;
     row.batchCode = result.code;
+    const isDbDup = checkBatchExistsInDb(row.commodityId, row.commodityName, result.code);
+    if (!isDbDup) {
+      row.submitError = null;
+    }
+    const hasError = isDbDup || Boolean(row.submitError);
+    const errText = row.submitError || (isDbDup ? 'Already in Database' : '');
+
+    batchInput.value = result.code;
+    if (hasError) {
+      batchInput.style.color = '#dc2626';
+      batchInput.style.fontWeight = '700';
+      batchInput.style.fontFamily = 'monospace';
+      tr.style.backgroundColor = '#fef2f2';
+      tr.style.borderLeft = '4px solid #dc2626';
+      if (dupNotice) {
+        dupNotice.textContent = `⚠️ ${errText}`;
+        dupNotice.style.display = 'block';
+      }
+    } else {
+      batchInput.style.color = 'var(--text-main)';
+      batchInput.style.fontWeight = '600';
+      batchInput.style.fontFamily = 'monospace';
+      tr.style.backgroundColor = '';
+      tr.style.borderLeft = '';
+      if (dupNotice) {
+        dupNotice.style.display = 'none';
+      }
+    }
   } else {
     batchInput.value = '[ INCOMPLETE ]';
     batchInput.style.color = '#dc2626';
@@ -333,6 +376,11 @@ function updateRowLiveCode(tr, row) {
     batchInput.style.fontFamily = 'monospace';
     row.sku = '';
     row.batchCode = '';
+    tr.style.backgroundColor = '';
+    tr.style.borderLeft = '';
+    if (dupNotice) {
+      dupNotice.style.display = 'none';
+    }
   }
 }
 
@@ -354,14 +402,23 @@ function renderBulkTable() {
   tbody.innerHTML = bulkRows.map((row, index) => {
     const codeResult = computeRowCode(row.commodityName, row.unit, row.expDate);
     const displayBatchCode = codeResult.isComplete ? codeResult.code : '[ INCOMPLETE ]';
-    const batchStyle = codeResult.isComplete 
+    
+    const isDbDup = codeResult.isComplete && checkBatchExistsInDb(row.commodityId, row.commodityName, codeResult.code);
+    const hasError = Boolean(row.submitError) || isDbDup;
+    const errMessage = row.submitError || (isDbDup ? 'Already in Database' : '');
+
+    const rowStyle = hasError 
+      ? 'background-color:#fef2f2; border-left:4px solid #dc2626;' 
+      : '';
+
+    const batchStyle = (codeResult.isComplete && !hasError)
       ? 'color:var(--text-main); font-weight:600; font-family:monospace;' 
       : 'color:#dc2626; font-weight:700; font-family:monospace;';
 
     return `
-      <tr class="bulk-row" data-index="${index}">
+      <tr class="bulk-row ${hasError ? 'row-error' : ''}" data-index="${index}" style="${rowStyle}">
          <td>
-            <select class="headless-input ws-select-commodity">
+            <select class="headless-input ws-select-commodity" ${hasError ? 'style="border-color:#fca5a5;"' : ''}>
                <option value="" disabled ${!row.commodityId ? 'selected' : ''}>-- Select Commodity --</option>
                ${availableCommodities.map(c => {
                  const isSelected = row.commodityId === c.id || (!row.commodityId && row.commodityName?.toLowerCase() === c.name.toLowerCase());
@@ -374,6 +431,7 @@ function renderBulkTable() {
          </td>
          <td>
             <input type="text" class="headless-input ws-input-batch" value="${displayBatchCode}" disabled style="${batchStyle}" />
+            ${hasError ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>` : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`}
          </td>
          <td>
             <input type="number" class="headless-input ws-input-qty" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
@@ -666,8 +724,14 @@ export function validateTableRows() {
       saveBtn.style.opacity = '1';
       saveBtn.style.cursor = 'pointer';
       if (statusPill) {
-        statusPill.textContent = 'All rows meet MNAO strict validation standards.';
-        statusPill.style.color = 'var(--color-primary)';
+        const hasDbDup = bulkRows.some(r => checkBatchExistsInDb(r.commodityId, r.commodityName, r.batchCode));
+        if (hasDbDup) {
+          statusPill.textContent = 'Notice: Duplicate batches highlighted in red will be skipped.';
+          statusPill.style.color = '#dc2626';
+        } else {
+          statusPill.textContent = 'All rows meet MNAO strict validation standards.';
+          statusPill.style.color = 'var(--color-primary)';
+        }
       }
     }
   }
@@ -716,13 +780,21 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
   }
 
   let successCount = 0;
-  let errors = [];
+  const successfulRowIds = new Set();
+  const errorDetails = [];
 
   for (let i = 0; i < bulkRows.length; i++) {
     const row = bulkRows[i];
     try {
       const sku = generateCommoditySKU(row.commodityName, row.unit);
       const batchCode = generateBatchCode(sku, row.expDate);
+
+      // Pre-check against existing database batches to prevent 409 errors
+      if (checkBatchExistsInDb(row.commodityId, row.commodityName, batchCode)) {
+        row.submitError = 'Batch code already exists for this commodity in database.';
+        errorDetails.push(`Row ${i + 1} (${row.commodityName || sku} - ${batchCode}): Already registered.`);
+        continue;
+      }
 
       const formData = {
         commodity_id: row.commodityId,
@@ -736,19 +808,44 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
 
       const res = await createBatch(formData, profile);
       if (res.error) {
-        errors.push(`Row ${i + 1} (${batchCode}): ${res.error}`);
+        row.submitError = res.error;
+        errorDetails.push(`Row ${i + 1} (${batchCode}): ${res.error}`);
       } else {
+        successfulRowIds.add(row.id);
+        row.submitError = null;
         successCount++;
+        if (res.batch) existingBatches.push(res.batch);
       }
     } catch (err) {
-      errors.push(`Row ${i + 1}: ${err.message}`);
+      row.submitError = err.message;
+      errorDetails.push(`Row ${i + 1}: ${err.message}`);
     }
   }
 
-  if (errors.length > 0) {
-    SystemDialog.alert(`Registered ${successCount} batches, but encountered errors:\n` + errors.join('\n'));
+  // Remove successful rows, leaving only failed/duplicate rows in the table
+  bulkRows = bulkRows.filter(r => !successfulRowIds.has(r.id));
+  renderBulkTable();
+
+  // Notify page so newly registered batches appear in the background
+  if (successCount > 0 && typeof onSaveComplete === 'function') {
+    onSaveComplete();
   }
 
+  if (bulkRows.length > 0) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Register All Batches';
+    }
+
+    const message = (successCount > 0 ? `Registered ${successCount} new batch(es).\n\n` : '') +
+      `${bulkRows.length} batch(es) could not be registered because they already exist in the database (or had errors).\n\n` +
+      `They remain in your table highlighted in red. You can adjust their expiration date or remove them.`;
+
+    await SystemDialog.alert(message);
+    return; // KEEP WORKSPACE OPEN! Do NOT remove overlay!
+  }
+
+  // All rows succeeded -> Close workspace cleanly
   overlay._scanner?.unmount();
   overlay.remove();
   if (typeof onSaveComplete === 'function') onSaveComplete();
