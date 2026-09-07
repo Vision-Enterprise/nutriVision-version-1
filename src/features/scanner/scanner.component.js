@@ -16,6 +16,8 @@ export class ScannerComponent {
     this.isProcessingMobile = false;
     this.lastProcessedImageUrl = null;
     this.mobileScanCount = 0;
+    this.activeReceiptUrl = null;
+    this.isReceiptZoomed = false;
     this.apiBase = 'http://localhost:8000';
     this.init();
   }
@@ -53,7 +55,7 @@ export class ScannerComponent {
             <svg style="margin-bottom:16px; color:var(--color-text-muted, #5A7060);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <h3 style="margin:0 0 8px 0; color:var(--color-text, #1A2B1C);">Drag & drop document or click to scan file</h3>
             <p style="color:var(--color-text-muted, #5A7060); font-size:14px; margin:0 0 16px 0;">Supports PNG, JPG, JPEG</p>
-            <input type="file" id="scanner-file-input" accept="image/*" style="display:none;" />
+            <input type="file" id="scanner-file-input" name="scanner_file_input" aria-label="Upload document or receipt" accept="image/*" style="display:none;" />
             <button class="btn" style="background:#fff; color:var(--color-text, #1A2B1C); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="document.getElementById('scanner-file-input').click()">Select File</button>
           </div>
 
@@ -70,23 +72,25 @@ export class ScannerComponent {
             </div>
           </div>
 
-          <!-- 3. MOBILE SCANNER TAB (MD3 NutriVision Card) -->
-          <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; align-items:center; justify-content:center; background:var(--color-surface, #ffffff); border:1px solid var(--color-border, #D8E6DA); border-radius:20px; padding:24px 20px; text-align:center; overflow-y:auto; box-shadow:0 4px 16px rgba(27,122,62,0.06);">
-            <div style="max-width:400px; width:100%; display:flex; flex-direction:column; align-items:center;">
-              <div style="width:52px; height:52px; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:14px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- 3. MOBILE SCANNER TAB (MD3 NutriVision Card with Two Modes: Connect & Receipt Preview) -->
+          <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; background:var(--color-surface, #ffffff); border:1px solid var(--color-border, #D8E6DA); border-radius:20px; padding:16px; overflow:hidden; box-shadow:0 4px 16px rgba(27,122,62,0.06); position:relative;">
+            
+            <!-- VIEW A: Connect / QR Code Setup -->
+            <div id="mobile-view-connect" style="height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; overflow-y:auto; padding:12px;">
+              <div style="width:48px; height:48px; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:12px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
                   <line x1="12" y1="18" x2="12.01" y2="18"></line>
                 </svg>
               </div>
-              <h3 style="margin:0 0 6px 0; color:var(--color-text, #1A2B1C); font-size:17px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
-              <p style="margin:0 0 16px 0; color:var(--color-text-muted, #5A7060); font-size:13px; line-height:1.4;">
+              <h3 style="margin:0 0 4px 0; color:var(--color-text, #1A2B1C); font-size:16px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
+              <p style="margin:0 0 12px 0; color:var(--color-text-muted, #5A7060); font-size:12px; line-height:1.4;">
                 Scan with your phone to upload receipts.<br>
-                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Supports continuous batch scanning.)</span>
+                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Continuous batch scanning enabled.)</span>
               </p>
 
               <!-- QR Code Render Canvas/Box -->
-              <div id="scanner-qr-container" style="background:#ffffff; padding:14px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:16px; min-width:210px; min-height:210px; display:flex; align-items:center; justify-content:center;">
+              <div id="scanner-qr-container" style="background:#ffffff; padding:12px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:14px; min-width:200px; min-height:200px; display:flex; align-items:center; justify-content:center;">
                 <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--color-text-muted, #5A7060);">
                   <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid var(--color-border, #cbd5e1); border-top:2px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
                   <span style="font-size:12px;">Generating QR Code...</span>
@@ -94,17 +98,55 @@ export class ScannerComponent {
               </div>
 
               <!-- Connection Status Pill (MD3 Tonal Chip) -->
-              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary-dark, #0E5C2C); border:1px solid var(--color-border-strong, #B2C9B5); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:14px;">
+              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary-dark, #0E5C2C); border:1px solid var(--color-border-strong, #B2C9B5); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:12px;">
                 <span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span>
                 <span>Ready: Scan QR code with phone</span>
               </div>
 
               <!-- Direct URL for manual access -->
-              <div style="display:flex; align-items:center; gap:8px; width:100%; background:var(--color-surface, #fff); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:6px 10px;">
-                <input id="scanner-mobile-link-input" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:var(--color-text, #1A2B1C); outline:none;" value="Connecting..." />
+              <div style="display:flex; align-items:center; gap:8px; width:100%; max-width:360px; background:var(--color-surface, #fff); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:6px 10px; margin-bottom:10px;">
+                <input id="scanner-mobile-link-input" name="scanner_mobile_link_input" aria-label="Direct mobile connection link" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:var(--color-text, #1A2B1C); outline:none;" value="Connecting..." />
                 <button id="scanner-mobile-copy-btn" style="border:none; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:600; transition:background 0.15s ease;">Copy</button>
               </div>
+
+              <!-- Return to Active Receipt Button (displayed if an image was already scanned) -->
+              <button id="btn-show-active-receipt" style="display:none; border:1px solid var(--color-primary, #1B7A3E); background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; align-items:center; gap:6px; margin-top:4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>View Current Scanned Receipt</span>
+              </button>
             </div>
+
+            <!-- VIEW B: Live Scanned Receipt Preview & Comparison -->
+            <div id="mobile-view-preview" style="height:100%; width:100%; display:none; flex-direction:column; overflow:hidden;">
+              <!-- Header -->
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--color-border, #D8E6DA);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="mobile-preview-badge" style="background:var(--color-primary, #1B7A3E); color:#ffffff; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700; letter-spacing:0.3px;">Receipt #1</span>
+                  <span style="font-size:12px; font-weight:600; color:var(--color-text, #1A2B1C);">Live Comparison View</span>
+                </div>
+                <button id="btn-toggle-qr-view" title="Show QR code for connection" style="border:1px solid var(--color-border, #D8E6DA); background:#ffffff; color:var(--color-text-muted, #5A7060); padding:5px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s ease;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  <span>Show QR Code</span>
+                </button>
+              </div>
+
+              <!-- High-Resolution Scrollable & Zoomable Image Box -->
+              <div id="mobile-preview-container" style="flex:1; width:100%; min-height:0; display:flex; justify-content:center; align-items:center; background:#0F1811; border-radius:12px; overflow:auto; position:relative; padding:8px; margin:8px 0; border:1px solid rgba(27,122,62,0.2);">
+                <img id="mobile-receipt-preview-img" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; box-shadow:0 4px 20px rgba(0,0,0,0.5); cursor:zoom-in; transition:transform 0.2s cubic-bezier(0.2, 0, 0, 1);" alt="Active Scanned Physical Receipt" />
+              </div>
+
+              <!-- Status Footer -->
+              <div style="background:var(--color-surface-alt, #e8f5ee); border:1px solid var(--color-border, #D8E6DA); border-radius:10px; padding:8px 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <div id="mobile-preview-status-text" style="font-size:12px; font-weight:600; color:var(--color-primary-dark, #0E5C2C); display:flex; align-items:center; gap:6px;">
+                    <span style="width:7px; height:7px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block;"></span>
+                    <span>Ready for next scan</span>
+                  </div>
+                  <span style="font-size:11px; color:var(--color-text-subtle, #8FA892); font-weight:500;">Replaces on next scan</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <!-- 4. CROP TAB -->
@@ -121,16 +163,16 @@ export class ScannerComponent {
                <summary style="padding:12px 16px; font-weight:600; cursor:pointer; color:var(--text-main); outline:none;">Advanced Settings</summary>
                <div style="padding:16px; border-top:1px solid var(--color-border); display:flex; flex-direction:column; gap:12px; background:#fff;">
                   <div>
-                     <label style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:4px;">Scanning Mode</label>
-                     <select id="adv-scan-mode" style="width:100%; padding:8px; border:1px solid var(--color-border); border-radius:4px;">
+                     <label for="adv-scan-mode" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:4px;">Scanning Mode</label>
+                     <select id="adv-scan-mode" name="adv_scan_mode" aria-label="Scanning Mode" style="width:100%; padding:8px; border:1px solid var(--color-border); border-radius:4px;">
                         <option value="table">Table / Multi-Column (Auto)</option>
                         <option value="multi_line">Multi-Line Block</option>
                         <option value="single_line">Single Line Text</option>
                      </select>
                   </div>
                   <div>
-                     <label style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:4px;">Whitelist Preset</label>
-                     <select id="adv-whitelist" style="width:100%; padding:8px; border:1px solid var(--color-border); border-radius:4px;">
+                     <label for="adv-whitelist" style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:4px;">Whitelist Preset</label>
+                     <select id="adv-whitelist" name="adv_whitelist" aria-label="Whitelist Preset" style="width:100%; padding:8px; border:1px solid var(--color-border); border-radius:4px;">
                         <option value="">All Characters</option>
                         <option value="0123456789">Numbers Only</option>
                         <option value="0123456789/-.">Dates Only</option>
@@ -228,6 +270,73 @@ export class ScannerComponent {
         }
       });
     }
+
+    // Toggle to QR Code view
+    const btnToggleQr = this.container.querySelector('#btn-toggle-qr-view');
+    if (btnToggleQr) {
+      btnToggleQr.addEventListener('click', () => {
+        const connectView = this.container.querySelector('#mobile-view-connect');
+        const previewView = this.container.querySelector('#mobile-view-preview');
+        if (previewView) previewView.style.display = 'none';
+        if (connectView) connectView.style.display = 'flex';
+      });
+    }
+
+    // Toggle back to Active Receipt Preview view
+    const btnShowActiveReceipt = this.container.querySelector('#btn-show-active-receipt');
+    if (btnShowActiveReceipt) {
+      btnShowActiveReceipt.addEventListener('click', () => {
+        const connectView = this.container.querySelector('#mobile-view-connect');
+        const previewView = this.container.querySelector('#mobile-view-preview');
+        if (connectView) connectView.style.display = 'none';
+        if (previewView) previewView.style.display = 'flex';
+      });
+    }
+
+    // Toggle zoom on receipt preview image for reading details
+    const receiptImg = this.container.querySelector('#mobile-receipt-preview-img');
+    if (receiptImg) {
+      receiptImg.addEventListener('click', () => {
+        this.isReceiptZoomed = !this.isReceiptZoomed;
+        if (this.isReceiptZoomed) {
+          receiptImg.style.transform = 'scale(1.8)';
+          receiptImg.style.cursor = 'zoom-out';
+        } else {
+          receiptImg.style.transform = 'scale(1)';
+          receiptImg.style.cursor = 'zoom-in';
+        }
+      });
+    }
+  }
+
+  displayMobileReceipt(imageUrl, receiptCount) {
+    this.activeReceiptUrl = imageUrl;
+    this.isReceiptZoomed = false;
+    const connectView = this.container.querySelector('#mobile-view-connect');
+    const previewView = this.container.querySelector('#mobile-view-preview');
+    const img = this.container.querySelector('#mobile-receipt-preview-img');
+    const badge = this.container.querySelector('#mobile-preview-badge');
+    const statusText = this.container.querySelector('#mobile-preview-status-text');
+    const btnShowActiveReceipt = this.container.querySelector('#btn-show-active-receipt');
+
+    if (img) {
+      img.src = imageUrl;
+      img.style.transform = 'scale(1)';
+      img.style.cursor = 'zoom-in';
+    }
+    if (badge) {
+      badge.textContent = `Receipt #${receiptCount}`;
+    }
+    if (statusText) {
+      statusText.innerHTML = `<span class="spinner" style="display:inline-block; width:11px; height:11px; border:2px solid var(--color-primary, #1B7A3E); border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span><span>Receipt #${receiptCount} received! Extracting data...</span>`;
+    }
+    if (connectView) connectView.style.display = 'none';
+    if (previewView) previewView.style.display = 'flex';
+    if (btnShowActiveReceipt) {
+      btnShowActiveReceipt.style.display = 'inline-flex';
+      const labelSpan = btnShowActiveReceipt.querySelector('span');
+      if (labelSpan) labelSpan.textContent = `View Active Receipt (#${receiptCount})`;
+    }
   }
 
   switchTab(tabId) {
@@ -265,6 +374,14 @@ export class ScannerComponent {
       if (tabId === 'camera') this.container.querySelector('#tab-camera').style.display = 'flex';
       if (tabId === 'mobile') {
         this.container.querySelector('#tab-mobile').style.display = 'flex';
+        const connectView = this.container.querySelector('#mobile-view-connect');
+        const previewView = this.container.querySelector('#mobile-view-preview');
+        if (this.activeReceiptUrl && previewView && connectView) {
+          if (connectView.style.display !== 'flex' && previewView.style.display !== 'flex') {
+            previewView.style.display = 'flex';
+            connectView.style.display = 'none';
+          }
+        }
         this.initMobileScanner();
       }
     }
@@ -364,6 +481,11 @@ export class ScannerComponent {
           this.lastProcessedImageUrl = data.latest_image_url;
           this.mobileScanCount = data.image_count || (this.mobileScanCount + 1);
 
+          const fullImageUrl = `${this.apiBase}${data.latest_image_url}`;
+
+          // INSTANTLY display the receipt image so the user sees it without delay!
+          this.displayMobileReceipt(fullImageUrl, this.mobileScanCount);
+
           const statusPill = this.container.querySelector('#scanner-mobile-status');
           if (statusPill) {
             statusPill.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--color-primary, #1B7A3E); border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span><span>Receipt #${this.mobileScanCount} received! Extracting data...</span>`;
@@ -373,7 +495,6 @@ export class ScannerComponent {
           await fetch(`${this.apiBase}/api/mobile/consume/${this.mobileSessionId}`, { method: 'POST' });
 
           // Fetch the cropped image blob directly from server
-          const fullImageUrl = `${this.apiBase}${data.latest_image_url}`;
           const imgRes = await fetch(fullImageUrl);
           const blob = await imgRes.blob();
 
@@ -583,9 +704,15 @@ export class ScannerComponent {
 
     if (sourceTab === 'mobile') {
       const statusPill = this.container.querySelector('#scanner-mobile-status');
+      const previewStatusText = this.container.querySelector('#mobile-preview-status-text');
+      const receiptLabel = receiptIndex ? `Receipt #${receiptIndex}` : 'Receipt';
+      const successMsg = `${parsedRows.length} item(s) extracted from ${receiptLabel}! Ready for next scan`;
+
       if (statusPill) {
-        const receiptLabel = receiptIndex ? `Receipt #${receiptIndex}` : 'Receipt';
-        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>${parsedRows.length} item(s) extracted from ${receiptLabel}! Ready for next scan</span>`;
+        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>${successMsg}</span>`;
+      }
+      if (previewStatusText) {
+        previewStatusText.innerHTML = `<span style="width:7px; height:7px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block;"></span><span>${successMsg}</span>`;
       }
     } else {
       this.destroyCropper();

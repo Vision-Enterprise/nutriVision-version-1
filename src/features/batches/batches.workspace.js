@@ -161,7 +161,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       <div class="workspace-panel-right">
          <div class="fx-bar-wrapper">
            <span class="fx-bar-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-           <input class="fx-bar-input" id="fx-bar-input" placeholder="Click a cell to edit its value here..." readonly />
+           <input class="fx-bar-input" id="fx-bar-input" name="fx_bar_input" aria-label="Formula bar cell editor" placeholder="Click a cell to edit its value here..." readonly />
          </div>
          <div class="headless-grid-container" style="border-radius:0 0 8px 8px;">
            <div class="headless-grid-scroll" style="overflow-x:auto; flex:1;">
@@ -415,10 +415,12 @@ function renderBulkTable() {
       ? 'color:var(--text-main); font-weight:600; font-family:monospace;' 
       : 'color:#dc2626; font-weight:700; font-family:monospace;';
 
+    const rowKey = row.id ? String(row.id).replace('.', '_') : index;
+
     return `
       <tr class="bulk-row ${hasError ? 'row-error' : ''}" data-index="${index}" style="${rowStyle}">
          <td>
-            <select class="headless-input ws-select-commodity" ${hasError ? 'style="border-color:#fca5a5;"' : ''}>
+            <select class="headless-input ws-select-commodity" id="ws-comm-${rowKey}" name="commodity_${rowKey}" aria-label="Commodity" ${hasError ? 'style="border-color:#fca5a5;"' : ''}>
                <option value="" disabled ${!row.commodityId ? 'selected' : ''}>-- Select Commodity --</option>
                ${availableCommodities.map(c => {
                  const isSelected = row.commodityId === c.id || (!row.commodityId && row.commodityName?.toLowerCase() === c.name.toLowerCase());
@@ -427,23 +429,23 @@ function renderBulkTable() {
             </select>
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-unit" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
+            <input type="text" class="headless-input ws-input-unit" id="ws-unit-${rowKey}" name="unit_${rowKey}" aria-label="Unit of measure" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-batch" value="${displayBatchCode}" disabled style="${batchStyle}" />
+            <input type="text" class="headless-input ws-input-batch" id="ws-batch-${rowKey}" name="batch_code_${rowKey}" aria-label="Batch Code" value="${displayBatchCode}" disabled style="${batchStyle}" />
             ${hasError ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>` : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`}
          </td>
          <td>
-            <input type="number" class="headless-input ws-input-qty" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
+            <input type="number" class="headless-input ws-input-qty" id="ws-qty-${rowKey}" name="qty_${rowKey}" aria-label="Quantity" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-del" value="${escapeHtml(row.deliveryDate)}" />
+            <input type="date" class="headless-input ws-input-del" id="ws-del-${rowKey}" name="delivery_date_${rowKey}" aria-label="Delivery Date" value="${escapeHtml(row.deliveryDate)}" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-exp" value="${escapeHtml(row.expDate)}" />
+            <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" />
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-sup" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
+            <input type="text" class="headless-input ws-input-sup" id="ws-sup-${rowKey}" name="supplier_${rowKey}" aria-label="Supplier" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
          </td>
          <td style="text-align:center;">
             <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
