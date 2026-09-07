@@ -42,8 +42,11 @@ export async function renderAdvisorPage(profile) {
   const { success, data, error } = advisorRes;
   _advChartData = !chartRes.error ? chartRes : null;
   
+  const loadingEl = document.getElementById('advisor-loading');
+  if (!loadingEl) return;
+
   if (!success) {
-    document.getElementById('advisor-loading').innerHTML = `
+    loadingEl.innerHTML = `
       <div class="alert alert-error">
         Failed to load advisor data: ${error}
       </div>
@@ -51,8 +54,9 @@ export async function renderAdvisorPage(profile) {
     return;
   }
 
-  document.getElementById('advisor-loading').style.display = 'none';
+  loadingEl.style.display = 'none';
   const contentContainer = document.getElementById('advisor-content');
+  if (!contentContainer) return;
   contentContainer.style.overflowX = 'hidden';
   contentContainer.innerHTML = renderAdvisorLayout(data);
   contentContainer.style.display = 'block';

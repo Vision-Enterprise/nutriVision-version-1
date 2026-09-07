@@ -26,6 +26,7 @@ import { fetchProfile }                  from './features/auth/auth.service.js';
 import { renderLoginPage }               from './features/auth/auth.page.js';
 import { renderShell }                   from './shared/components/shell.component.js';
 import { APP_NAME }                      from './shared/constants/app.constants.js';
+import { initRealtimeSync, destroyRealtimeSync } from './core/realtime.js';
 
 // ── Application State ──────────────────────────────────────────────
 // currentProfile holds the signed-in user's profile.
@@ -62,21 +63,14 @@ async function initApp() {
   // All good — restore authenticated state
   currentProfile = profile;
   renderShell(profile, handleLogoutComplete);
+  initRealtimeSync();
 }
 
 // ── Auth State Listener ────────────────────────────────────────────
 // Listens for auth events AFTER the initial load.
-// Handles:
-//   - SIGNED_OUT   → show login page (user clicked logout, or session expired)
-//   - TOKEN_REFRESHED → no UI change needed (Supabase refreshed silently)
-//
-// WHY use onAuthStateChange in addition to getSession()?
-// getSession() is a one-time check at startup.
-// onAuthStateChange handles ongoing events while the app is running.
-// If a session expires in the background, this fires SIGNED_OUT
-// and we redirect to login automatically — without requiring user action.
 onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT') {
+    destroyRealtimeSync();
     currentProfile = null;
     renderLoginPage(handleLoginSuccess);
   }
@@ -91,6 +85,7 @@ onAuthStateChange((event, session) => {
 function handleLoginSuccess(profile) {
   currentProfile = profile;
   renderShell(profile, handleLogoutComplete);
+  initRealtimeSync();
 }
 
 // ── Render Functions ───────────────────────────────────────────────
@@ -128,6 +123,7 @@ function renderLoading() {
  * Re-shows the login page.
  */
 function handleLogoutComplete() {
+  destroyRealtimeSync();
   currentProfile = null;
   renderLoginPage(handleLoginSuccess);
 }

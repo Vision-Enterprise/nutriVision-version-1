@@ -17,21 +17,30 @@ import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constan
  */
 export async function fetchBatches() {
   try {
-    const { data, error } = await supabase
+    const { data: rawBatches, error } = await supabase
       .from('batches')
       .select(`
         id, batch_number, quantity,
         delivery_date, expiration_date,
         supplier, notes, commodity_id,
+        record_status, deleted_at,
         commodities (
-          id, name, commodity_code, unit
+          id, name, commodity_code, unit, deleted_at
         )
       `)
+      .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
       .order('expiration_date', { ascending: true });
 
     if (error) throw error;
-    return { batches: data, error: null };
+
+    const batches = (rawBatches || []).filter(b => 
+      b.record_status === RECORD_STATUS.ACTIVE &&
+      b.deleted_at === null &&
+      (!b.commodities || b.commodities.deleted_at === null)
+    );
+
+    return { batches, error: null };
   } catch (err) {
     console.error('[BatchService] fetchBatches:', err);
     return { batches: [], error: 'Failed to load batches.' };
@@ -177,6 +186,13 @@ export async function updateBatch(id, formData, profile) {
  */
 export async function voidBatch(id, batchNumber, commodityName, reason, profile) {
   try {
+    // 1. Attempt RPC first (Security Definer, bypasses RLS safely)
+    const { error: rpcErr } = await supabase.rpc('archive_batch', { batch_id: id, reason });
+    if (!rpcErr) {
+      return { error: null };
+    }
+
+    // 2. Fallback to direct update if RPC is not yet created
     const { error } = await supabase
       .from('batches')
       .update({ 
@@ -203,8 +219,8 @@ export async function voidBatch(id, batchNumber, commodityName, reason, profile)
     const msg = err?.message || JSON.stringify(err);
     const code = err?.code || '';
     console.error(`[BatchService] voidBatch FAILED (HTTP ${err?.status}, code: ${code}):`, msg, err);
-    if (code === '42703') return { error: `DB column missing: ${msg}. Run the archive migration SQL in Supabase.` };
-    if (err?.status === 403 || code === '42501') return { error: 'Permission denied (403). You need to add an RLS UPDATE policy for the batches table in Supabase.' };
+    if (code === '42703') return { error: `DB column missing: ${msg}. Run database/04_archive_commodities.sql in Supabase.` };
+    if (err?.status === 403 || code === '42501') return { error: 'Permission denied (403). Run database/04_archive_commodities.sql in Supabase to update batch RLS policies.' };
     return { error: `Failed to void batch: ${msg}` };
   }
 }

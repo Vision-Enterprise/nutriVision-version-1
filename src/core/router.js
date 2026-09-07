@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Hash Router
  *
  * A lightweight client-side router for NutriVision.
@@ -99,6 +99,13 @@ class Router {
     // Always resolve the current route, even on subsequent calls.
     // This handles the re-login-after-logout scenario where the listener
     // is already set but the page content must be rendered again.
+    this._resolve();
+  }
+
+  /**
+   * Re-renders the current route with fresh data.
+   */
+  refresh() {
     this._resolve();
   }
 

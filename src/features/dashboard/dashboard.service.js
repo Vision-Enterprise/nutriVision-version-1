@@ -36,14 +36,29 @@ export async function fetchDashboardStats() {
     if (commoditiesError) throw commoditiesError;
 
     // 2. Get all active batches with their expiration dates
-    // For V1, we pull the active batches and compute in JS.
-    // If the database gets huge, this logic might move to a PostgreSQL View or RPC.
-    const { data: batches, error: batchesError } = await supabase
+    // Must be strictly active, in-stock (>0), non-deleted, and parent commodity non-deleted
+    const { data: rawBatches, error: batchesError } = await supabase
       .from('batches')
-      .select('expiration_date')
-      .is('deleted_at', null);
+      .select(`
+        id,
+        expiration_date,
+        quantity,
+        record_status,
+        deleted_at,
+        commodities ( id, deleted_at )
+      `)
+      .is('deleted_at', null)
+      .eq('record_status', RECORD_STATUS.ACTIVE)
+      .gt('quantity', 0);
 
     if (batchesError) throw batchesError;
+
+    const batches = (rawBatches || []).filter(b => 
+      b.record_status === RECORD_STATUS.ACTIVE &&
+      b.deleted_at === null &&
+      (b.quantity || 0) > 0 &&
+      (!b.commodities || b.commodities.deleted_at === null)
+    );
 
     // 3. Compute expiration breakdown
     const summary = {
@@ -136,18 +151,29 @@ export async function fetchChartData() {
     if (releasesError) throw releasesError;
 
     // 2. Fetch active batches with commodity names for stock per commodity
-    const { data: batches, error: batchesError } = await supabase
+    const { data: rawBatches, error: batchesError } = await supabase
       .from('batches')
       .select(`
         quantity,
         expiration_date,
-        commodities ( name )
+        record_status,
+        deleted_at,
+        commodities ( name, deleted_at )
       `)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .eq('record_status', RECORD_STATUS.ACTIVE)
+      .gt('quantity', 0);
       
     if (batchesError) throw batchesError;
 
-    return { releases, batches, error: null };
+    const batches = (rawBatches || []).filter(b => 
+      b.record_status === RECORD_STATUS.ACTIVE &&
+      b.deleted_at === null &&
+      (b.quantity || 0) > 0 &&
+      (!b.commodities || b.commodities.deleted_at === null)
+    );
+
+    return { releases: releases || [], batches, error: null };
   } catch (err) {
     console.error('[DashboardService] fetchChartData error:', err);
     return { releases: [], batches: [], error: 'Failed to load chart data.' };

@@ -35,23 +35,30 @@ export function initDashboardCharts(chartData, expirationSummary) {
     stockMap[name] = (stockMap[name] || 0) + b.quantity;
   });
   
+  const stockLabels = Object.keys(stockMap);
+  const stockValues = Object.values(stockMap);
+  const hasStock = stockLabels.length > 0;
+
   const ctxStock = document.getElementById('chart-stock')?.getContext('2d');
   if (ctxStock) {
     _chartInstances['stock'] = new Chart(ctxStock, {
       type: 'bar',
       data: {
-        labels: Object.keys(stockMap),
+        labels: hasStock ? stockLabels : ['No Active Stock'],
         datasets: [{
           label: 'Total Available Quantity',
-          data: Object.values(stockMap),
-          backgroundColor: colors.primary,
+          data: hasStock ? stockValues : [0],
+          backgroundColor: hasStock ? colors.primary : '#d1d5db',
           borderRadius: 4
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: { 
+          legend: { display: false },
+          tooltip: { enabled: hasStock }
+        },
         scales: {
           y: { beginAtZero: true, grid: { color: colors.grid } },
           x: { grid: { display: false } }
@@ -94,27 +101,39 @@ export function initDashboardCharts(chartData, expirationSummary) {
   // 3. Expiration Status
   const ctxExpiry = document.getElementById('chart-expiry')?.getContext('2d');
   if (ctxExpiry && expirationSummary) {
+    const totalBatchesCount = (expirationSummary[EXPIRATION_STATUS.GOOD] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.MODERATE] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.NEAR_EXPIRY] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.EXPIRED] || 0);
+
+    const hasBatches = totalBatchesCount > 0;
+
     _chartInstances['expiry'] = new Chart(ctxExpiry, {
       type: 'pie',
       data: {
-        labels: ['Good', 'Moderate', 'Near Expiry', 'Expired'],
+        labels: hasBatches 
+          ? ['Good', 'Moderate', 'Near Expiry', 'Expired'] 
+          : ['No Active Batches'],
         datasets: [{
-          data: [
+          data: hasBatches ? [
             expirationSummary[EXPIRATION_STATUS.GOOD] || 0,
             expirationSummary[EXPIRATION_STATUS.MODERATE] || 0,
             expirationSummary[EXPIRATION_STATUS.NEAR_EXPIRY] || 0,
             expirationSummary[EXPIRATION_STATUS.EXPIRED] || 0
-          ],
-          backgroundColor: [colors.primary, colors.secondary, colors.warning, colors.danger],
+          ] : [1],
+          backgroundColor: hasBatches 
+            ? [colors.primary, colors.secondary, colors.warning, colors.danger]
+            : ['#e5e7eb'],
           borderWidth: 0,
-          hoverOffset: 4
+          hoverOffset: hasBatches ? 4 : 0
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right', labels: { boxWidth: 12 } }
+          legend: { position: 'right', labels: { boxWidth: 12 } },
+          tooltip: { enabled: hasBatches }
         }
       }
     });

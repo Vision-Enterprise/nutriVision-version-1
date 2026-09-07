@@ -4,24 +4,29 @@ import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.con
 
 export async function fetchAdvisorData() {
   try {
-    // 1. Fetch commodities with their batches
-    const { data: commodities, error: commError } = await supabase
+    // 1. Fetch only ACTIVE commodities with their batches
+    const { data: rawCommodities, error: commError } = await supabase
       .from('commodities')
       .select(`
         id, 
         name, 
         category,
+        deleted_at,
         batches (
           id,
           batch_number,
           quantity,
           expiration_date,
-          deleted_at
+          deleted_at,
+          record_status
         )
       `)
+      .is('deleted_at', null)
       .order('name');
       
     if (commError) throw commError;
+
+    const commodities = (rawCommodities || []).filter(c => !c.deleted_at);
 
     // 2. Fetch upcoming events (next 30 days)
     const today = new Date();
@@ -48,16 +53,20 @@ export async function fetchAdvisorData() {
     let expiringSoon = [];
     let suggestedActions = [];
 
-    // Analyze each commodity
+    // Analyze each active commodity
     commodities.forEach(c => {
-      let activeBatches = c.batches?.filter(b => b.deleted_at === null && b.record_status !== RECORD_STATUS.VOIDED) || [];
+      let activeBatches = (c.batches || []).filter(b => 
+        b.deleted_at === null && 
+        b.record_status === RECORD_STATUS.ACTIVE && 
+        (b.quantity || 0) > 0
+      );
       let totalQty = activeBatches.reduce((sum, b) => sum + (b.quantity || 0), 0);
       totalBatches += activeBatches.length;
       
       if (totalQty === 0) {
         lowStockCount++;
-        suggestedActions.push({ type: 'warning', title: `Archive Empty Batches or Restock`, desc: c.name });
-      } else if (totalQty < 50) { // Arbitrary low stock threshold
+        suggestedActions.push({ type: 'warning', title: `Restock Required`, desc: `${c.name} has 0 available units in stock.` });
+      } else if (totalQty < 50) {
         lowStockCount++;
       }
 
@@ -79,7 +88,7 @@ export async function fetchAdvisorData() {
         warningQty
       });
 
-      // Check expirations
+      // Check expirations on active batches with stock
       activeBatches.forEach(b => {
         if (!b.expiration_date) return;
         const status = getExpirationStatus(b.expiration_date);
@@ -103,7 +112,7 @@ export async function fetchAdvisorData() {
     });
 
     // Check Events
-    events.forEach(e => {
+    (events || []).forEach(e => {
       suggestedActions.push({ type: 'info', title: `Prepare stock for Event`, desc: `${e.title} (${e.start_date})` });
     });
 
@@ -116,7 +125,6 @@ export async function fetchAdvisorData() {
     return {
       success: true,
       data: {
-        
         totalActiveItems,
         totalBatches,
         lowStockCount,
@@ -124,7 +132,7 @@ export async function fetchAdvisorData() {
         warningExpiringCount,
         healthData,
         expiringSoon,
-        events,
+        events: events || [],
         suggestedActions
       }
     };

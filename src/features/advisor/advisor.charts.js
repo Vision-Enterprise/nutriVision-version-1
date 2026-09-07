@@ -31,23 +31,30 @@ export function initAdvCharts(chartData, expirationSummary) {
     stockMap[name] = (stockMap[name] || 0) + b.quantity;
   });
   
+  const stockLabels = Object.keys(stockMap);
+  const stockValues = Object.values(stockMap);
+  const hasStock = stockLabels.length > 0;
+
   const ctxStock = document.getElementById('adv-chart-stock')?.getContext('2d');
   if (ctxStock) {
     _advChartInstances['stock'] = new Chart(ctxStock, {
       type: 'bar',
       data: {
-        labels: Object.keys(stockMap),
+        labels: hasStock ? stockLabels : ['No Active Stock'],
         datasets: [{
           label: 'Total Available Quantity',
-          data: Object.values(stockMap),
-          backgroundColor: colors.primary,
+          data: hasStock ? stockValues : [0],
+          backgroundColor: hasStock ? colors.primary : '#d1d5db',
           borderRadius: 4
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
+        plugins: { 
+          legend: { display: false },
+          tooltip: { enabled: hasStock }
+        }
       }
     });
   }
@@ -80,24 +87,39 @@ export function initAdvCharts(chartData, expirationSummary) {
   // 3. Expiration Status
   const ctxExpiry = document.getElementById('adv-chart-expiry')?.getContext('2d');
   if (ctxExpiry && expirationSummary) {
+    const totalBatchesCount = (expirationSummary[EXPIRATION_STATUS.GOOD] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.MODERATE] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.NEAR_EXPIRY] || 0) +
+      (expirationSummary[EXPIRATION_STATUS.EXPIRED] || 0);
+
+    const hasBatches = totalBatchesCount > 0;
+
     _advChartInstances['expiry'] = new Chart(ctxExpiry, {
       type: 'pie',
       data: {
-        labels: ['Good', 'Moderate', 'Near Expiry', 'Expired'],
+        labels: hasBatches 
+          ? ['Good', 'Moderate', 'Near Expiry', 'Expired'] 
+          : ['No Active Batches'],
         datasets: [{
-          data: [
+          data: hasBatches ? [
             expirationSummary[EXPIRATION_STATUS.GOOD] || 0,
             expirationSummary[EXPIRATION_STATUS.MODERATE] || 0,
             expirationSummary[EXPIRATION_STATUS.NEAR_EXPIRY] || 0,
             expirationSummary[EXPIRATION_STATUS.EXPIRED] || 0
-          ],
-          backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+          ] : [1],
+          backgroundColor: hasBatches 
+            ? ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'] 
+            : ['#e5e7eb'],
           borderWidth: 0,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { boxWidth: 12 } },
+          tooltip: { enabled: hasBatches }
+        }
       }
     });
   }

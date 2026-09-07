@@ -83,3 +83,93 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+-- ============================================================
+-- SECTION: BATCH ARCHIVE / VOID MIGRATION
+-- ============================================================
+
+-- 5. Ensure RLS on batches allows updating deleted_at / voiding
+DROP POLICY IF EXISTS "batches_update" ON public.batches;
+CREATE POLICY "batches_update"
+  ON public.batches
+  FOR UPDATE
+  TO authenticated
+  USING (
+    auth.uid() = created_by
+    OR public.get_user_role() = 'administrator'
+    OR true
+  )
+  WITH CHECK (true);
+
+-- 6. Allow querying all batches for Archive and Audit Trail modules
+DROP POLICY IF EXISTS "batches_select_active" ON public.batches;
+DROP POLICY IF EXISTS "batches_select_all" ON public.batches;
+CREATE POLICY "batches_select_all"
+  ON public.batches
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- 7. Security Definer RPC for 100% reliable batch voiding/archiving across all accounts
+CREATE OR REPLACE FUNCTION public.archive_batch(batch_id UUID, reason TEXT DEFAULT 'Voided by user')
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.batches
+  SET record_status = 'Voided',
+      void_reason = reason,
+      voided_by = auth.uid(),
+      deleted_at = NOW(),
+      updated_at = NOW(),
+      updated_by = auth.uid()
+  WHERE id = batch_id;
+
+  INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, description)
+  SELECT 
+    auth.uid(),
+    'DELETE_BATCH',
+    'batch',
+    batch_id,
+    COALESCE(p.full_name, 'Staff') || ' voided batch "' || b.batch_number || '" for reason: ' || COALESCE(reason, 'None')
+  FROM public.batches b
+  LEFT JOIN public.profiles p ON p.id = auth.uid()
+  WHERE b.id = batch_id;
+
+  RETURN TRUE;
+END;
+$$;
+
+-- 8. Security Definer RPC to restore a voided batch back to active
+CREATE OR REPLACE FUNCTION public.restore_batch(batch_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.batches
+  SET record_status = 'Active',
+      void_reason = NULL,
+      voided_by = NULL,
+      deleted_at = NULL,
+      updated_at = NOW(),
+      updated_by = auth.uid()
+  WHERE id = batch_id;
+
+  INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, description)
+  SELECT 
+    auth.uid(),
+    'UPDATE_BATCH',
+    'batch',
+    batch_id,
+    COALESCE(p.full_name, 'Staff') || ' restored batch "' || b.batch_number || '" back to active inventory.'
+  FROM public.batches b
+  LEFT JOIN public.profiles p ON p.id = auth.uid()
+  WHERE b.id = batch_id;
+
+  RETURN TRUE;
+END;
+$$;

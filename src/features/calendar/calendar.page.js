@@ -8,7 +8,7 @@
  */
 
 import { supabase }              from '../../core/supabase.js';
-import { EXPIRATION_THRESHOLDS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_THRESHOLDS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import {
   syncFromSupabase,
   syncPendingWrites,
@@ -53,13 +53,22 @@ async function loadAllEvents(info, successCb, failCb) {
     const start = info.startStr.split('T')[0];
     const end   = info.endStr.split('T')[0];
 
-    // 1. Batch events from Supabase
-    const { data: batches } = await supabase
+    // 1. Batch events from Supabase (strictly active batches with available stock)
+    const { data: rawBatches } = await supabase
       .from('batches')
-      .select('id, batch_number, quantity, delivery_date, expiration_date, supplier, commodities(name, unit)')
+      .select('id, batch_number, quantity, delivery_date, expiration_date, supplier, record_status, deleted_at, commodities(name, unit, deleted_at)')
       .is('deleted_at', null)
+      .eq('record_status', RECORD_STATUS.ACTIVE)
+      .gt('quantity', 0)
       .or(`delivery_date.gte.${start},expiration_date.gte.${start}`)
       .lte('delivery_date', end);
+
+    const batches = (rawBatches || []).filter(b => 
+      b.record_status === RECORD_STATUS.ACTIVE &&
+      b.deleted_at === null &&
+      (b.quantity || 0) > 0 &&
+      (!b.commodities || b.commodities.deleted_at === null)
+    );
 
     const batchEvents = [];
     (batches || []).forEach(b => {
