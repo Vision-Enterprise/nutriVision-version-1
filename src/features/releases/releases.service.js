@@ -5,7 +5,7 @@ export async function fetchReleases() {
     const { data, error } = await supabase
       .from('releases')
       .select(`
-        id, quantity, barangay, notes, released_at,
+        id, quantity, barangay, recipient_name, notes, released_at,
         batches (
           batch_number,
           commodities ( name, commodity_code, unit )

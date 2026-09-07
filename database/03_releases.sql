@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.releases (
   batch_id         UUID        NOT NULL REFERENCES public.batches(id),
   quantity         INTEGER     NOT NULL CHECK (quantity > 0),
   barangay         TEXT        NOT NULL,
+  recipient_name   TEXT,
   released_by      UUID        NOT NULL REFERENCES public.profiles(id),
   released_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   notes            TEXT

@@ -806,6 +806,13 @@ function _openReleaseModal(batch) {
             </div>
 
             <div class="form-group">
+              <label for="release-recipient" class="form-label form-label--required">Recipient / Receiver Name</label>
+              <input type="text" id="release-recipient" name="recipient_name" class="form-input"
+                     placeholder="Full name of the person receiving..." required />
+              <span class="form-error" id="error-release-recipient" role="alert"></span>
+            </div>
+
+            <div class="form-group">
               <label for="release-notes" class="form-label">Notes (optional)</label>
               <textarea id="release-notes" name="notes" class="form-input" rows="2" 
                         placeholder="Purpose of release..."></textarea>
@@ -840,6 +847,7 @@ function _openReleaseModal(batch) {
     // Validate
     const qtyInput = document.getElementById('release-quantity');
     const brgyInput = document.getElementById('release-barangay');
+    const recipientInput = document.getElementById('release-recipient');
     const notesInput = document.getElementById('release-notes');
     const qty = parseInt(qtyInput.value, 10);
     const brgy = brgyInput.value.trim();
@@ -857,6 +865,12 @@ function _openReleaseModal(batch) {
     if (!brgy) {
       brgyInput.classList.add('form-input--error');
       document.getElementById('error-release-barangay').textContent = 'Destination barangay is required.';
+      valid = false;
+    }
+    const recipient = recipientInput.value.trim();
+    if (!recipient) {
+      recipientInput.classList.add('form-input--error');
+      document.getElementById('error-release-recipient').textContent = 'Recipient name is required.';
       valid = false;
     }
     
@@ -878,6 +892,7 @@ function _openReleaseModal(batch) {
       qty, 
       batch.quantity, 
       brgy, 
+      recipient, 
       notesInput.value, 
       _profile
     );
