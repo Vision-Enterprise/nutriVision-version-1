@@ -7,6 +7,7 @@ const CATEGORY_KW = {
                 'article', 'goods', 'medicine', 'supplement', 'material', 'detail'],
   qty:         ['qty', 'quantity', 'amount', 'pieces', 'pcs', 'count', 'volume', 'total'],
   expDate:     ['exp', 'expiry', 'expiration', 'best', 'use', 'shelf'],
+  delDate:     ['delivery', 'del', 'received', 'arrival', 'inward', 'entry'],
   genericDate: ['date', 'dated'],
   mfgDate:     ['mfg', 'manufacture', 'production'],
   unit:        ['unit', 'uunit', 'uom', 'measure', 'pack', 'packaging', 'form', 'units'],
@@ -204,7 +205,7 @@ function assignWordToColumn(word, columns) {
 }
 
 function parseDataLine(line, columns) {
-  const buffers = { productName: [], qty: [], expDate: [], genericDate: [], mfgDate: [], unit: [], supplier: [] };
+  const buffers = { productName: [], qty: [], expDate: [], delDate: [], genericDate: [], mfgDate: [], unit: [], supplier: [] };
   
   for (const word of line.words) {
     if (!word.text.trim()) continue;
@@ -227,10 +228,8 @@ function parseDataLine(line, columns) {
   record.qty = (record.qty || '').replace(/[^\d]/g, '');
   
   let finalExpDate = record.expDate || '';
-  let finalDelDate = record.genericDate || '';
+  let finalDelDate = record.delDate || record.genericDate || '';
   
-  // Removed date shifting logic to preserve Del. Date as intended.
-
   if (/^\d{1,3}$/.test(record.productName)) record.productName = '';
 
   return {
@@ -374,7 +373,7 @@ export function parseHtmlTableData(htmlString) {
     const tds = Array.from(trs[i].querySelectorAll('td'));
     if (tds.length === 0) continue;
     
-    let record = { productName: '', qty: '', unit: '', supplier: '', genericDate: '', expDate: '' };
+    let record = { productName: '', qty: '', unit: '', supplier: '', genericDate: '', delDate: '', expDate: '' };
     tds.forEach((td, colIdx) => {
       const cat = headers[colIdx];
       if (cat && record[cat] !== undefined) {
@@ -384,26 +383,29 @@ export function parseHtmlTableData(htmlString) {
     
     record.qty = (record.qty || '').replace(/[^\d]/g, '');
     
-    // Global Date Sorting
-    const combinedDateStr = (record.genericDate + ' ' + record.expDate).trim();
-    const dates = extractAllDates(combinedDateStr);
+    const expDates = extractAllDates(record.expDate);
+    const delDates = extractAllDates(record.delDate);
+    const genericDates = extractAllDates(record.genericDate);
     
     let finalExpDate = '';
     let finalDelDate = '';
-    
-    if (dates.length >= 2) {
-        dates.sort((a, b) => new Date(a) - new Date(b));
-        finalDelDate = dates[0];
-        finalExpDate = dates[dates.length - 1]; 
-    } else if (dates.length === 1) {
-        const parsed = new Date(dates[0]);
-        if (!isNaN(parsed)) {
-            const diffDays = (parsed - new Date()) / (1000 * 60 * 60 * 24);
-            if (diffDays > 90) finalExpDate = dates[0];
-            else finalDelDate = dates[0];
-        } else {
-            finalDelDate = dates[0];
-        }
+
+    if (expDates.length > 0 && delDates.length > 0) {
+      finalExpDate = expDates[0];
+      finalDelDate = delDates[0];
+    } else if (expDates.length > 0) {
+      finalExpDate = expDates[0];
+      if (delDates.length > 0) finalDelDate = delDates[0];
+      else if (genericDates.length > 0) finalDelDate = genericDates[0];
+    } else if (delDates.length > 0) {
+      finalDelDate = delDates[0];
+      if (genericDates.length > 0) finalExpDate = genericDates[0];
+    } else if (genericDates.length >= 2) {
+      genericDates.sort((a, b) => new Date(a) - new Date(b));
+      finalDelDate = genericDates[0];
+      finalExpDate = genericDates[genericDates.length - 1];
+    } else if (genericDates.length === 1) {
+      finalExpDate = genericDates[0];
     }
     
     if (record.productName || record.qty || finalExpDate || finalDelDate) {
