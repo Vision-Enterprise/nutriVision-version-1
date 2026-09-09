@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Reusable Component Styles
  *
  * These CSS classes are used across multiple features.
@@ -1099,5 +1099,321 @@
   align-items: center;
   font-size: 14px;
   color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BULK RELEASE WORKSPACE
+   Full-screen two-panel manifest UI (no sidebar change needed).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bulk-release-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - var(--header-height, 64px));
+  background: var(--color-background);
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Top bar ────────────────────────────────────────────────────── */
+.bulk-release-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-2) var(--space-4);
+}
+
+.bulk-release-topbar__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-1);
+  line-height: 1.2;
+}
+
+.bulk-release-topbar__sub {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  margin: 0;
+}
+
+/* ── Split body ─────────────────────────────────────────────────── */
+.bulk-release-body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-2) var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .bulk-release-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Panels ─────────────────────────────────────────────────────── */
+.bulk-release-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.bulk-release-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.bulk-release-panel__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bulk-release-stock-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Filters bar ────────────────────────────────────────────────── */
+.bulk-release-filters {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ── Batch table rows ───────────────────────────────────────────── */
+.bulk-batch-row {
+  transition: background-color 0.15s ease;
+}
+
+.bulk-batch-row:not(.bulk-batch-row--disabled):hover {
+  background-color: var(--color-surface-alt);
+}
+
+.bulk-batch-row--selected {
+  background-color: rgba(234, 107, 26, 0.06) !important;
+}
+
+.bulk-batch-row--disabled {
+  pointer-events: none;
+}
+
+/* ── Cart (right panel) ─────────────────────────────────────────── */
+.bulk-release-cart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.bulk-release-cart__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.bulk-release-cart-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Cart items ─────────────────────────────────────────────────── */
+.bulk-cart-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  animation: cart-slide-in 0.18s ease;
+}
+
+@keyframes cart-slide-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0);   }
+}
+
+.bulk-cart-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bulk-cart-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.bulk-cart-item__code {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.bulk-cart-item__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.bulk-cart-item__max {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Destination form ───────────────────────────────────────────── */
+.bulk-release-destination {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Confirm button bar ─────────────────────────────────────────── */
+.bulk-release-action-bar {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Bulk Release button — orange, system theme */
+#bulk-confirm-btn {
+  background: linear-gradient(135deg, #ea6b1a 0%, #f08030 100%);
+  border-color: #ea6b1a;
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(234, 107, 26, 0.3);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+#bulk-confirm-btn:not(:disabled):hover {
+  background: linear-gradient(135deg, #d45e10 0%, #ea6b1a 100%);
+  box-shadow: 0 4px 16px rgba(234, 107, 26, 0.45);
+  transform: translateY(-1px);
+}
+
+#bulk-confirm-btn:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(234, 107, 26, 0.3);
+}
+
+#bulk-confirm-btn:disabled {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* ── Success screen ─────────────────────────────────────────────── */
+.bulk-release-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-16) var(--space-8);
+  max-width: 520px;
+  margin: 0 auto;
+  animation: fade-in 0.3s ease;
+}
+
+.bulk-release-success__icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-5);
+  color: var(--color-success);
+}
+
+.bulk-release-success__title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-2);
+}
+
+.bulk-release-success__sub {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-6);
+}
+
+/* ── Bulk Release trigger button (in Batches header) ────────────── */
+.btn-bulk-release {
+  background: linear-gradient(135deg, #ea6b1a 0%, #f08030 100%);
+  border-color: #ea6b1a;
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+  box-shadow: 0 2px 6px rgba(234, 107, 26, 0.28);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.btn-bulk-release:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d45e10 0%, #ea6b1a 100%);
+  border-color: #d45e10;
+  box-shadow: 0 4px 14px rgba(234, 107, 26, 0.42);
+  transform: translateY(-1px);
+}
+
+.btn-bulk-release:active:not(:disabled) {
+  transform: translateY(0);
 }
 
