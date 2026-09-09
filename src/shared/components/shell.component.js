@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Application Shell Component
  *
  * Renders the full authenticated application layout:
@@ -38,6 +38,7 @@ import { renderCommoditiesPage } from '../../features/commodities/commodities.pa
 import { renderBatchesPage }    from '../../features/batches/batches.page.js';
 import { renderArchivePage }    from '../../features/archive/archive.page.js';
 import { renderReleasesPage }   from '../../features/releases/releases.page.js';
+import { renderBulkReleasePage } from '../../features/bulk-release/bulk-release.page.js';
 import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
 import { renderAccountPage }     from '../../features/account/account.page.js';
@@ -272,7 +273,8 @@ export function renderShell(profile, onLogout) {
     .register('commodities', renderCommoditiesPage)
     .register('batches',     renderBatchesPage)
     .register('archive',     renderArchivePage)
-      .register('releases',    renderReleasesPage)
+    .register('releases',    renderReleasesPage)
+    .register('bulk-release',renderBulkReleasePage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage)
