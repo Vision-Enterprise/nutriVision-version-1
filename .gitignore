@@ -1,9 +1,13 @@
 node_modules/
-.env
-.env.local
-.DS_Store
 dist/
+.DS_Store
 __pycache__/
 backend/venv/
 backend/temp/
 ocr_service/venv/
+
+# Environment files
+.env
+.env.*
+*.env
+!.env.example
