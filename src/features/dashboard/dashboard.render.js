@@ -51,7 +51,7 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
 
     <!-- Quick Access Buttons -->
     <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-6);">
-      <a href="#/batches" class="btn btn-bulk-release" style="text-decoration: none;">
+      <a href="#/bulk-release" class="btn btn-bulk-release" style="text-decoration: none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.5"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

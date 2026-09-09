@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Bulk Release - Page Controller
  *
  * Manages all state and interactions for the Bulk Release full-screen workspace.
@@ -10,6 +10,8 @@
  *   HTML    -> bulk-release.render.js
  *   DB      -> bulk-release.service.js
  */
+
+import { router } from '../../core/router.js';
 
 import {
   fetchActiveBatchesForRelease,
@@ -376,4 +378,16 @@ function _setFieldError(inputId, errorId, message) {
   document.getElementById(inputId)?.classList.add('form-input--error');
   const el = document.getElementById(errorId);
   if (el) el.textContent = message;
+}
+
+/**
+ * Render the Bulk Release workspace as a standalone page route.
+ */
+export function renderBulkReleasePage(profile) {
+  openBulkReleaseWorkspace({
+    profile,
+    onClose: () => {
+      router.navigate('dashboard');
+    }
+  });
 }
