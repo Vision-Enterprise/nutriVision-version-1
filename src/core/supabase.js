@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Supabase Client â€” Single Instance
  *
  * WHY a single exported instance?
@@ -35,7 +35,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Guard: if .env.local is missing or incomplete, fail immediately with
 // a clear, actionable message instead of a confusing downstream error.
@@ -44,7 +44,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     '[NutriVision] Supabase configuration is missing.\n\n' +
     'Create a .env.local file in the project root with:\n' +
     '  VITE_SUPABASE_URL=https://your-project-id.supabase.co\n' +
-    '  VITE_SUPABASE_ANON_KEY=your-anon-key-here\n\n' +
+    '  VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key-here\n\n' +
     'Get these values from: Supabase Dashboard â†’ Settings â†’ API'
   );
 }
