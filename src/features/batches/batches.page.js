@@ -13,6 +13,7 @@ import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { renderBatchesLayout, renderTable, renderEmpty, renderErrorAlert } from './batches.render.js';
 import { openEditBatchModal, openVoidBatchModal, openReleaseBatchModal } from './batches.modals.js';
 import { openFullScreenWorkspace } from './batches.workspace.js';
+import { openBulkReleaseWorkspace } from '../bulk-release/bulk-release.page.js';
 
 // ── State ───────────────────────────────────────────────────────────────────
 let _batches      = [];
@@ -115,6 +116,22 @@ function _attachPageListeners() {
         } else {
           window.location.reload();
         }
+      }
+    });
+  });
+
+  document.getElementById('bulk-release-btn')?.addEventListener('click', () => {
+    openBulkReleaseWorkspace({
+      profile: _profile,
+      onClose: async (results) => {
+        // Always reload batches after bulk release (or cancel)
+        const reloadRes = await fetchBatches();
+        if (!reloadRes.error) {
+          _batches = reloadRes.batches;
+        }
+        // Re-render the full batches view
+        const content = document.getElementById('page-content');
+        if (content) _renderMainView(content);
       }
     });
   });
