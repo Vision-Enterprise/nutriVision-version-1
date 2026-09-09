@@ -53,11 +53,17 @@ export function renderShell(profile, onLogout) {
   const app     = document.getElementById('app');
   const isAdmin = isAdministrator(profile);
 
-  // â”€â”€ Shell HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Check initial state from localStorage
+  const isCompressed = localStorage.getItem('sidebar_compressed') === 'true';
+  if (isCompressed) {
+    document.body.classList.add('sidebar--compressed');
+  }
+
+  // ── Shell HTML ─────────────────────────────────────────────────────────────
   app.innerHTML = `
     <div class="app-layout" id="app-layout">
 
-      <!-- â”€â”€ Sidebar (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+      <!-- ── Sidebar (desktop only) ────────────────────────────────────────────── -->
       <aside
         class="sidebar"
         id="sidebar"
@@ -65,11 +71,18 @@ export function renderShell(profile, onLogout) {
         aria-label="Main navigation"
       >
 
-        <!-- Brand logo -->
-        <div class="sidebar__logo" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: var(--space-4) var(--space-4);">
-          <img src="${logoUrl}" alt="NutriVision Logo" style="height: 32px; width: auto; max-width: 100%; display: block;" />
-          <div class="sidebar__logo-sub" style="margin-left: 2px;">MNAO - Manolo Fortich</div>
-        </div><!-- Main navigation -->
+        <!-- Brand logo & Toggle -->
+        <div class="sidebar__logo" style="display: flex; align-items: flex-start; justify-content: space-between; padding: var(--space-4); width: 100%;">
+          <div class="sidebar__logo-content" style="display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
+            <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" style="height: 32px; width: auto; display: block;" />
+            <div class="sidebar__logo-sub" style="margin-left: 2px;">MNAO - Manolo Fortich</div>
+          </div>
+          <button id="sidebar-toggle-btn" class="btn btn-ghost" style="padding: 8px; border-radius: 50%; min-width: unset; height: auto;" aria-label="Toggle Sidebar">
+            <span class="icon">menu</span>
+          </button>
+        </div>
+        
+        <!-- Main navigation -->
         <nav class="sidebar__nav" aria-label="Main menu">
 
           <span class="sidebar__nav-label">Main</span>
@@ -82,7 +95,7 @@ export function renderShell(profile, onLogout) {
             aria-label="Dashboard"
           >
             <span class="icon" aria-hidden="true">dashboard</span>
-            Dashboard
+            <span class="sidebar__nav-text">Dashboard</span>
           </button>
           <button
             class="sidebar__nav-item"
@@ -92,7 +105,7 @@ export function renderShell(profile, onLogout) {
             aria-label="Inventory Advisor"
           >
             <span class="icon" aria-hidden="true">insights</span>
-            Advisor
+            <span class="sidebar__nav-text">Advisor</span>
           </button>
 
           <button
@@ -103,7 +116,7 @@ export function renderShell(profile, onLogout) {
             aria-label="Commodity Management"
           >
             <span class="icon" aria-hidden="true">inventory_2</span>
-            Commodities
+            <span class="sidebar__nav-text">Commodities</span>
           </button>
 
           <button
@@ -114,11 +127,11 @@ export function renderShell(profile, onLogout) {
             aria-label="Batch Management"
           >
             <span class="icon" aria-hidden="true">package_2</span>
-            Batches
+            <span class="sidebar__nav-text">Batches</span>
           </button>
           <button class="sidebar__nav-item" data-route="archive" id="nav-archive" type="button" aria-label="Data Archive">
             <span class="icon" aria-hidden="true">archive</span>
-            Archive
+            <span class="sidebar__nav-text">Archive</span>
           </button>
             <button
               class="sidebar__nav-item"
@@ -128,7 +141,7 @@ export function renderShell(profile, onLogout) {
               aria-label="Releases Ledger"
             >
               <span class="icon" aria-hidden="true">local_shipping</span>
-              Releases
+              <span class="sidebar__nav-text">Releases</span>
             </button>
 
           <button
@@ -139,7 +152,7 @@ export function renderShell(profile, onLogout) {
             aria-label="Program Calendar"
           >
             <span class="icon" aria-hidden="true">calendar_month</span>
-            Calendar
+            <span class="sidebar__nav-text">Calendar</span>
           </button>
 
           ${isAdmin ? `
@@ -153,7 +166,7 @@ export function renderShell(profile, onLogout) {
             aria-label="User Management"
           >
             <span class="icon" aria-hidden="true">group</span>
-            User Management
+            <span class="sidebar__nav-text">User Management</span>
           </button>
 
           <button
@@ -164,13 +177,13 @@ export function renderShell(profile, onLogout) {
             aria-label="Audit Logs"
           >
             <span class="icon" aria-hidden="true">history</span>
-            Audit Logs
+            <span class="sidebar__nav-text">Audit Logs</span>
           </button>
           ` : ''}
 
         </nav>
 
-        <!-- Sidebar footer â€” account settings -->
+        <!-- Sidebar footer — account settings -->
         <div class="sidebar__footer">
           <button
             class="sidebar__nav-item"
@@ -180,13 +193,13 @@ export function renderShell(profile, onLogout) {
             aria-label="Account Settings"
           >
             <span class="icon" aria-hidden="true">manage_accounts</span>
-            Account
+            <span class="sidebar__nav-text">Account</span>
           </button>
         </div>
 
       </aside>
 
-      <!-- â”€â”€ Main Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+      <!-- ── Main Wrapper ───────────────────────────────────────────────────────── -->
       <div class="main-wrapper" id="main-wrapper">
 
         <!-- Sticky top header -->
@@ -210,14 +223,14 @@ export function renderShell(profile, onLogout) {
           </div>
         </header>
 
-        <!-- Page content â€” routes render here -->
+        <!-- Page content — routes render here -->
         <main class="page-content" id="page-content" role="main" tabindex="-1">
           <!-- Populated by the router -->
         </main>
 
       </div>
 
-      <!-- â”€â”€ Mobile Bottom Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+      <!-- ── Mobile Bottom Nav ────────────────────────────────────────────────── -->
       <nav
         class="mobile-nav"
         id="mobile-nav"
@@ -250,9 +263,19 @@ export function renderShell(profile, onLogout) {
     </div>
   `;
 
-  // â”€â”€ Event Listeners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Event Listeners ─────────────────────────────────────────────────────────
 
-  // Nav item clicks â€” navigate via router
+  // Sidebar toggle
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('sidebar--compressed');
+      const isNowCompressed = document.body.classList.contains('sidebar--compressed');
+      localStorage.setItem('sidebar_compressed', isNowCompressed);
+    });
+  }
+
+  // Nav item clicks — navigate via router
   document.querySelectorAll('[data-route]').forEach(btn => {
     btn.addEventListener('click', () => {
       router.navigate(`#/${btn.dataset.route}`);

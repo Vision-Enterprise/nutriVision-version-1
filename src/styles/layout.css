@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Application Layout
  *
  * Defines the two-layout system:
@@ -52,6 +52,11 @@
   flex-direction: column;
   z-index: var(--z-sidebar);
   overflow-y: auto;
+  transition: width var(--transition-base);
+}
+
+body.sidebar--compressed .sidebar {
+  width: var(--sidebar-width-compressed);
 }
 
 .sidebar__logo {
@@ -61,6 +66,11 @@
   padding: var(--space-5) var(--space-5);
   border-bottom: 1px solid var(--color-border);
   text-decoration: none;
+  justify-content: flex-start;
+}
+body.sidebar--compressed .sidebar__logo {
+  justify-content: center;
+  padding: var(--space-5) 0;
 }
 
 .sidebar__logo-icon {
@@ -103,6 +113,9 @@
   letter-spacing: 0.07em;
   padding: var(--space-3) var(--space-3) var(--space-1);
 }
+body.sidebar--compressed .sidebar__nav-label {
+  display: none;
+}
 
 .sidebar__nav-item {
   display: flex;
@@ -123,6 +136,20 @@
   text-align: left;
 }
 
+body.sidebar--compressed .sidebar__nav-item {
+  justify-content: center;
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+body.sidebar--compressed .sidebar__nav-text,
+body.sidebar--compressed .sidebar__logo-text,
+body.sidebar--compressed .sidebar__logo-sub {
+  display: none;
+}
+
 .sidebar__nav-item:hover {
   background-color: #d1fae5;
   color: #065f46;
@@ -135,11 +162,23 @@
   padding-left: calc(var(--space-3) - 4px);
 }
 
+body.sidebar--compressed .sidebar__nav-item--active {
+  border-left: none;
+  background-color: #d1fae5;
+  color: #065f46;
+  padding-left: 0;
+}
+
 .sidebar__nav-item--active:hover {
   background-color: #d1fae5;
   color: #065f46;
   border-left: 4px solid #ea6b1a;
   padding-left: calc(var(--space-3) - 4px);
+}
+
+body.sidebar--compressed .sidebar__nav-item--active:hover {
+  border-left: none;
+  padding-left: 0;
 }
 
 .sidebar__nav-item svg {
@@ -164,6 +203,11 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  transition: margin-left var(--transition-base);
+}
+
+body.sidebar--compressed .main-wrapper {
+  margin-left: var(--sidebar-width-compressed);
 }
 
 /* â”€â”€ App Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
