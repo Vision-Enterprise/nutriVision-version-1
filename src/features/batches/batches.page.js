@@ -59,6 +59,17 @@ export async function renderBatchesPage(profile) {
   _commodities = commRes.commodities;
 
   _renderMainView(content);
+
+  // Auto-open workspace if action=add is in the hash
+  if (window.location.hash.includes('action=add')) {
+    // Clean up the hash to prevent re-opening on refresh
+    window.history.replaceState(null, '', '#/batches');
+    
+    // Give the DOM a tiny bit of time to render the button
+    setTimeout(() => {
+      document.getElementById('add-batch-btn')?.click();
+    }, 50);
+  }
 }
 
 // ── View Coordination ───────────────────────────────────────────────────────

@@ -61,7 +61,7 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
         Bulk Release
       </a>
       
-      <a href="#/batches" class="btn btn-primary" style="text-decoration: none;">
+      <a href="#/batches?action=add" class="btn btn-primary" style="text-decoration: none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.5"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
