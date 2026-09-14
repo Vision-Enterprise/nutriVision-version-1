@@ -37,8 +37,14 @@ function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
 
 /**
  * Fuzzy matches raw OCR extracted commodity text against registered database commodities.
- * @param {string} text 
- * @param {Array} commodities 
+ *
+ * STRICT MODE — threshold raised to prevent phantom matches:
+ *   - Exact match: always accepted.
+ *   - Contains match: only accepted if OCR text length >= 60% of commodity name length.
+ *   - Token overlap: requires >= 2 meaningful word matches (score=1 is too loose).
+ *
+ * @param {string} text
+ * @param {Array} commodities
  * @returns {Object|null} Matched commodity record or null
  */
 function fuzzyMatchCommodity(text, commodities) {
@@ -49,17 +55,24 @@ function fuzzyMatchCommodity(text, commodities) {
   let found = commodities.find(c => c.name.toLowerCase() === clean);
   if (found) return found;
 
-  // 2. Contains match
-  found = commodities.find(c => clean.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(clean));
+  // 2. Contains match — guard against short OCR snippets matching long commodity names
+  found = commodities.find(c => {
+    const cName = c.name.toLowerCase();
+    const ocrContainsComm = clean.includes(cName);
+    const commContainsOcr = cName.includes(clean) && clean.length >= Math.floor(cName.length * 0.6);
+    return ocrContainsComm || commContainsOcr;
+  });
   if (found) return found;
 
-  // 3. Word token overlap
-  const words = clean.split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+  // 3. Word token overlap — MINIMUM 2 meaningful tokens required to prevent false positives.
+  // Score of 1 (e.g. "Nutri" matching "Nutri-Med MMS" AND "Nutri-Foods Rice Porridge") is rejected.
+  const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'use', 'per', 'box', 'pack', 'sac', 'tab']);
+  const words = clean.split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
   let bestMatch = null;
   let maxScore = 0;
 
   for (const c of commodities) {
-    const cWords = c.name.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+    const cWords = c.name.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
     let score = 0;
     for (const w of words) {
       if (cWords.includes(w)) score++;
@@ -70,7 +83,8 @@ function fuzzyMatchCommodity(text, commodities) {
     }
   }
 
-  return maxScore > 0 ? bestMatch : null;
+  // Require at least 2 meaningful token overlaps — score=1 is ambiguous, leave unmatched
+  return maxScore >= 2 ? bestMatch : null;
 }
 
 /**
@@ -314,10 +328,18 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
 }
 
 /**
- * Computes deterministic Batch Code or returns incomplete state.
+ * Computes deterministic Batch Code or returns incomplete/blocked state.
+ *
+ * REGISTRY GUARD: Code generation is BLOCKED if commodityId is empty.
+ * Unregistered commodities (fuzzy-miss or manual free-text) must never
+ * produce a usable batch code — they must be resolved in the dropdown first.
  */
-function computeRowCode(commodityName, unit, expDate) {
+function computeRowCode(commodityId, commodityName, unit, expDate) {
   try {
+    // Block code gen entirely if commodity not confirmed in registry
+    if (!commodityId) {
+      return { code: '[ NOT REGISTERED ]', isComplete: false, notRegistered: true };
+    }
     if (!commodityName || !unit || !expDate) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
     }
@@ -337,7 +359,26 @@ function updateRowLiveCode(tr, row) {
   const dupNotice = tr.querySelector('.ws-batch-dup-notice');
   if (!batchInput) return;
 
-  const result = computeRowCode(row.commodityName, row.unit, row.expDate);
+  const result = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
+
+  if (result.notRegistered) {
+    // Commodity not in registry — hard block
+    batchInput.value = '[ NOT REGISTERED ]';
+    batchInput.style.color = '#b45309';
+    batchInput.style.fontWeight = '700';
+    batchInput.style.fontFamily = 'monospace';
+    tr.style.backgroundColor = '#fffbeb';
+    tr.style.borderLeft = '4px solid #f59e0b';
+    row.sku = '';
+    row.batchCode = '';
+    if (dupNotice) {
+      dupNotice.textContent = '⚠️ Select a registered commodity';
+      dupNotice.style.color = '#b45309';
+      dupNotice.style.display = 'block';
+    }
+    return;
+  }
+
   if (result.isComplete) {
     row.sku = result.sku;
     row.batchCode = result.code;
@@ -357,6 +398,7 @@ function updateRowLiveCode(tr, row) {
       tr.style.borderLeft = '4px solid #dc2626';
       if (dupNotice) {
         dupNotice.textContent = `⚠️ ${errText}`;
+        dupNotice.style.color = '#dc2626';
         dupNotice.style.display = 'block';
       }
     } else {
@@ -400,30 +442,52 @@ function renderBulkTable() {
   }
 
   tbody.innerHTML = bulkRows.map((row, index) => {
-    const codeResult = computeRowCode(row.commodityName, row.unit, row.expDate);
-    const displayBatchCode = codeResult.isComplete ? codeResult.code : '[ INCOMPLETE ]';
-    
+    const codeResult = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
+
+    // Determine display code and row state
+    const isNotRegistered = Boolean(codeResult.notRegistered);
+    const displayBatchCode = codeResult.isComplete
+      ? codeResult.code
+      : isNotRegistered ? '[ NOT REGISTERED ]' : '[ INCOMPLETE ]';
+
     const isDbDup = codeResult.isComplete && checkBatchExistsInDb(row.commodityId, row.commodityName, codeResult.code);
     const hasError = Boolean(row.submitError) || isDbDup;
     const errMessage = row.submitError || (isDbDup ? 'Already in Database' : '');
 
-    const rowStyle = hasError 
-      ? 'background-color:#fef2f2; border-left:4px solid #dc2626;' 
-      : '';
+    // Row background: amber for unregistered, red for dup/error, normal otherwise
+    const rowStyle = isNotRegistered
+      ? 'background-color:#fffbeb; border-left:4px solid #f59e0b;'
+      : hasError
+        ? 'background-color:#fef2f2; border-left:4px solid #dc2626;'
+        : '';
 
-    const batchStyle = (codeResult.isComplete && !hasError)
-      ? 'color:var(--text-main); font-weight:600; font-family:monospace;' 
-      : 'color:#dc2626; font-weight:700; font-family:monospace;';
+    const batchStyle = isNotRegistered
+      ? 'color:#b45309; font-weight:700; font-family:monospace;'
+      : (codeResult.isComplete && !hasError)
+        ? 'color:var(--text-main); font-weight:600; font-family:monospace;'
+        : 'color:#dc2626; font-weight:700; font-family:monospace;';
 
     const rowKey = row.id ? String(row.id).replace('.', '_') : index;
 
+    // Commodity select border color
+    const commSelectStyle = isNotRegistered
+      ? 'style="border-color:#f59e0b; background:#fffbeb;"'
+      : hasError ? 'style="border-color:#fca5a5;"' : '';
+
+    // Batch notice message
+    const batchNoticeHtml = isNotRegistered
+      ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#b45309; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ Select a registered commodity</div>`
+      : hasError
+        ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>`
+        : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`;
+
     return `
-      <tr class="bulk-row ${hasError ? 'row-error' : ''}" data-index="${index}" style="${rowStyle}">
+      <tr class="bulk-row ${isNotRegistered ? 'row-unregistered' : hasError ? 'row-error' : ''}" data-index="${index}" style="${rowStyle}">
          <td>
-            <select class="headless-input ws-select-commodity" id="ws-comm-${rowKey}" name="commodity_${rowKey}" aria-label="Commodity" ${hasError ? 'style="border-color:#fca5a5;"' : ''}>
+            <select class="headless-input ws-select-commodity" id="ws-comm-${rowKey}" name="commodity_${rowKey}" aria-label="Commodity" ${commSelectStyle}>
                <option value="" disabled ${!row.commodityId ? 'selected' : ''}>-- Select Commodity --</option>
                ${availableCommodities.map(c => {
-                 const isSelected = row.commodityId === c.id || (!row.commodityId && row.commodityName?.toLowerCase() === c.name.toLowerCase());
+                 const isSelected = row.commodityId === c.id;
                  return `<option value="${c.id}" data-unit="${escapeHtml(c.unit || '')}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (${escapeHtml(c.unit || 'No Unit')})</option>`;
                }).join('')}
             </select>
@@ -433,7 +497,7 @@ function renderBulkTable() {
          </td>
          <td>
             <input type="text" class="headless-input ws-input-batch" id="ws-batch-${rowKey}" name="batch_code_${rowKey}" aria-label="Batch Code" value="${displayBatchCode}" disabled style="${batchStyle}" />
-            ${hasError ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>` : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`}
+            ${batchNoticeHtml}
          </td>
          <td>
             <input type="number" class="headless-input ws-input-qty" id="ws-qty-${rowKey}" name="qty_${rowKey}" aria-label="Quantity" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
@@ -659,8 +723,8 @@ export function validateTableRows() {
 
     let rowValid = true;
 
-    // 1. Commodity Check
-    if (!row.commodityId && !row.commodityName) {
+    // 1. Commodity Registry Check — must have a confirmed registry ID, not just a name
+    if (!row.commodityId) {
       commSelect?.classList.add('cell-invalid');
       rowValid = false;
     } else {
