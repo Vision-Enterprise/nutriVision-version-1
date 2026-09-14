@@ -106,7 +106,7 @@ export class ScannerComponent {
             
             <!-- VIEW A: Connect / QR Code Setup -->
             <div id="mobile-view-connect" style="height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; overflow-y:auto; padding:12px;">
-              <div style="width:48px; height:48px; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:12px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
+              <div style="width:52px; height:52px; flex-shrink:0; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:12px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
                   <line x1="12" y1="18" x2="12.01" y2="18"></line>
@@ -119,7 +119,7 @@ export class ScannerComponent {
               </p>
 
               <!-- QR Code Render Canvas/Box -->
-              <div id="scanner-qr-container" style="background:#ffffff; padding:12px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:14px; min-width:200px; min-height:200px; display:flex; align-items:center; justify-content:center;">
+              <div id="scanner-qr-container" style="background:#ffffff; padding:20px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:14px; display:inline-flex; align-items:center; justify-content:center;">
                 <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--color-text-muted, #5A7060);">
                   <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid var(--color-border, #cbd5e1); border-top:2px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
                   <span style="font-size:12px;">Generating QR Code...</span>
