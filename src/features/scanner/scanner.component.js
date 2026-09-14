@@ -105,44 +105,47 @@ export class ScannerComponent {
           <div id="tab-mobile" style="display:none; height:100%; flex-direction:column; background:var(--color-surface, #ffffff); border:1px solid var(--color-border, #D8E6DA); border-radius:20px; padding:16px; overflow:hidden; box-shadow:0 4px 16px rgba(27,122,62,0.06); position:relative;">
             
             <!-- VIEW A: Connect / QR Code Setup -->
-            <div id="mobile-view-connect" style="height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; overflow-y:auto; padding:12px;">
-              <div style="width:52px; height:52px; flex-shrink:0; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:12px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
-                </svg>
-              </div>
-              <h3 style="margin:0 0 4px 0; color:var(--color-text, #1A2B1C); font-size:16px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
-              <p style="margin:0 0 12px 0; color:var(--color-text-muted, #5A7060); font-size:12px; line-height:1.4;">
-                Scan with your phone to upload receipts.<br>
-                <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Continuous batch scanning enabled.)</span>
-              </p>
-
-              <!-- QR Code Render Canvas/Box -->
-              <div id="scanner-qr-container" style="background:#ffffff; padding:20px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:14px; display:inline-flex; align-items:center; justify-content:center;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--color-text-muted, #5A7060);">
-                  <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid var(--color-border, #cbd5e1); border-top:2px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
-                  <span style="font-size:12px;">Generating QR Code...</span>
+            <div id="mobile-view-connect" style="height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; overflow-y:auto; padding:12px;">
+              <div style="margin:auto; display:flex; flex-direction:column; align-items:center; width:100%;">
+                <div style="width:52px; height:52px; flex-shrink:0; background:var(--color-primary-bg, #E8F5E9); border:1.5px solid var(--color-border-strong, #B2C9B5); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-primary, #1B7A3E); margin-bottom:8px; box-shadow:0 2px 8px rgba(27,122,62,0.1);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
                 </div>
-              </div>
+                <h3 style="margin:0 0 4px 0; color:var(--color-text, #1A2B1C); font-size:16px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
+                <p style="margin:0 0 8px 0; color:var(--color-text-muted, #5A7060); font-size:12px; line-height:1.4;">
+                  Scan with your phone to upload receipts.<br>
+                  <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Continuous batch scanning enabled.)</span>
+                </p>
 
-              <!-- Connection Status Pill (MD3 Tonal Chip) -->
-              <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary-dark, #0E5C2C); border:1px solid var(--color-border-strong, #B2C9B5); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:12px;">
-                <span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span>
-                <span>Ready: Scan QR code with phone</span>
-              </div>
+                <!-- QR Code Render Canvas/Box -->
+                <div id="scanner-qr-container" style="background:#ffffff; padding:16px; border-radius:14px; border:1px solid var(--color-border, #D8E6DA); box-shadow:0 2px 10px rgba(27,122,62,0.06); margin-bottom:10px; display:inline-flex; align-items:center; justify-content:center;">
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--color-text-muted, #5A7060);">
+                    <span class="spinner" style="display:inline-block; width:20px; height:20px; border:2px solid var(--color-border, #cbd5e1); border-top:2px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
+                    <span style="font-size:12px;">Generating QR Code...</span>
+                  </div>
+                </div>
 
-              <!-- Direct URL for manual access -->
-              <div style="display:flex; align-items:center; gap:8px; width:100%; max-width:360px; background:var(--color-surface, #fff); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:6px 10px; margin-bottom:10px;">
-                <input id="scanner-mobile-link-input" name="scanner_mobile_link_input" aria-label="Direct mobile connection link" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:var(--color-text, #1A2B1C); outline:none;" value="Connecting..." />
-                <button id="scanner-mobile-copy-btn" style="border:none; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:600; transition:background 0.15s ease;">Copy</button>
-              </div>
+                <!-- Connection Status Pill (MD3 Tonal Chip) -->
+                <div id="scanner-mobile-status" style="display:inline-flex; align-items:center; gap:8px; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary-dark, #0E5C2C); border:1px solid var(--color-border-strong, #B2C9B5); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; margin-bottom:10px;">
+                  <span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span>
+                  <span>Ready: Scan QR code with phone</span>
+                </div>
 
-              <!-- Return to Active Receipt Button (displayed if an image was already scanned) -->
-              <button id="btn-show-active-receipt" style="display:none; border:1px solid var(--color-primary, #1B7A3E); background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; align-items:center; gap:6px; margin-top:4px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span>View Current Scanned Receipt</span>
-              </button>
+                <!-- Direct URL for manual access -->
+                <div style="display:flex; align-items:center; gap:8px; width:100%; max-width:360px; background:var(--color-surface, #fff); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:6px 10px; margin-bottom:4px;">
+                  <input id="scanner-mobile-link-input" name="scanner_mobile_link_input" aria-label="Direct mobile connection link" readonly style="flex:1; border:none; background:transparent; font-size:11px; font-family:monospace; color:var(--color-text, #1A2B1C); outline:none;" value="Connecting..." />
+                  <button id="scanner-mobile-copy-btn" style="border:none; background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:600; transition:background 0.15s ease;">Copy</button>
+                </div>
+
+
+                <!-- Return to Active Receipt Button (displayed if an image was already scanned) -->
+                <button id="btn-show-active-receipt" style="display:none; border:1px solid var(--color-primary, #1B7A3E); background:var(--color-primary-bg, #E8F5E9); color:var(--color-primary, #1B7A3E); padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; align-items:center; gap:6px; margin-top:4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span>View Current Scanned Receipt</span>
+                </button>
+              </div> <!-- End centering wrapper -->
             </div>
 
             <!-- VIEW B: Live Scanned Receipt Preview & Comparison -->
