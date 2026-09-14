@@ -51,12 +51,41 @@ export class ScannerComponent {
         <!-- TABS CONTENT -->
         <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
           <!-- 1. UPLOAD TAB -->
-          <div id="tab-upload" class="drag-zone" style="display:block; background:var(--color-surface, #fff); border:2px dashed var(--color-border-strong, #B2C9B5); border-radius:16px;">
-            <svg style="margin-bottom:16px; color:var(--color-text-muted, #5A7060);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            <h3 style="margin:0 0 8px 0; color:var(--color-text, #1A2B1C);">Drag & drop document or click to scan file</h3>
-            <p style="color:var(--color-text-muted, #5A7060); font-size:14px; margin:0 0 16px 0;">Supports PNG, JPG, JPEG</p>
-            <input type="file" id="scanner-file-input" name="scanner_file_input" aria-label="Upload document or receipt" accept="image/*" style="display:none;" />
-            <button class="btn" style="background:#fff; color:var(--color-text, #1A2B1C); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="document.getElementById('scanner-file-input').click()">Select File</button>
+          <div id="tab-upload" style="display:flex; flex-direction:column; height:100%; min-height:0;">
+
+            <!-- VIEW A: Drop zone (shown before scan) -->
+            <div id="upload-view-dropzone" class="drag-zone" style="display:flex; flex-direction:column; flex:1; background:var(--color-surface, #fff); border:2px dashed var(--color-border-strong, #B2C9B5); border-radius:16px; align-items:center; justify-content:center; padding:24px; text-align:center;">
+              <svg style="margin-bottom:16px; color:var(--color-text-muted, #5A7060);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <h3 style="margin:0 0 8px 0; color:var(--color-text, #1A2B1C);">Drag &amp; drop document or click to scan file</h3>
+              <p style="color:var(--color-text-muted, #5A7060); font-size:14px; margin:0 0 16px 0;">Supports PNG, JPG, JPEG</p>
+              <input type="file" id="scanner-file-input" name="scanner_file_input" aria-label="Upload document or receipt" accept="image/*" style="display:none;" />
+              <button class="btn" style="background:#fff; color:var(--color-text, #1A2B1C); border:1px solid var(--color-border, #D8E6DA); border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="document.getElementById('scanner-file-input').click()">Select File</button>
+            </div>
+
+            <!-- VIEW B: Image preview after scan (like Mobile Scanner) -->
+            <div id="upload-view-preview" style="display:none; flex-direction:column; flex:1; background:var(--color-surface,#fff); border:1px solid var(--color-border,#D8E6DA); border-radius:16px; overflow:hidden;">
+              <!-- Header bar -->
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--color-surface-alt,#e8f5ee); border-bottom:1px solid var(--color-border,#D8E6DA);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="upload-preview-badge" style="background:var(--color-primary,#1B7A3E); color:#fff; font-size:11px; font-weight:700; padding:2px 10px; border-radius:999px;">Scanned File</span>
+                  <span style="font-size:12px; font-weight:600; color:var(--color-text,#1A2B1C);">Live Comparison View</span>
+                </div>
+                <button id="upload-scan-another-btn" style="border:1px solid var(--color-border,#D8E6DA); background:#fff; color:var(--color-text,#1A2B1C); padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  Scan Another File
+                </button>
+              </div>
+              <!-- Scanned image (scrollable, click to zoom) -->
+              <div style="flex:1; overflow:auto; background:#111; display:flex; align-items:center; justify-content:center; min-height:0;">
+                <img id="upload-preview-img" src="" alt="Scanned receipt" style="max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in; transition:transform 0.2s ease;" />
+              </div>
+              <!-- Status bar -->
+              <div id="upload-preview-status" style="display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--color-primary-bg,#E8F5E9); border-top:1px solid var(--color-border,#D8E6DA); font-size:12px; font-weight:600; color:var(--color-primary-dark,#0E5C2C);">
+                <span class="spinner" style="display:inline-block; width:11px; height:11px; border:2px solid var(--color-primary,#1B7A3E); border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>
+                <span>Extracting data...</span>
+              </div>
+            </div>
+
           </div>
 
           <!-- 2. CAMERA TAB -->
@@ -555,6 +584,10 @@ export class ScannerComponent {
 
   initCropper(imageSrc, autoProcess = false, sourceTab = 'upload') {
     this.sourceTab = sourceTab;
+    // Store so the upload preview can display it after OCR
+    if (sourceTab === 'upload') {
+      this._lastUploadSrc = imageSrc;
+    }
     this.switchTab('crop');
     const img = this.container.querySelector('#scanner-crop-img');
     this.destroyCropper();
@@ -592,6 +625,34 @@ export class ScannerComponent {
     };
 
     img.src = imageSrc;
+
+    // Bind upload-preview interactions (idempotent — only once)
+    if (!this._uploadPreviewBound) {
+      this._uploadPreviewBound = true;
+
+      // Scan Another File button → reset back to dropzone
+      this.container.addEventListener('click', (e) => {
+        if (e.target.closest('#upload-scan-another-btn')) {
+          const dropzone = this.container.querySelector('#upload-view-dropzone');
+          const preview  = this.container.querySelector('#upload-view-preview');
+          const previewImg = this.container.querySelector('#upload-preview-img');
+          if (dropzone) dropzone.style.display = 'flex';
+          if (preview)  preview.style.display  = 'none';
+          if (previewImg) { previewImg.src = ''; previewImg.style.transform = 'scale(1)'; }
+          this._lastUploadSrc = null;
+          this._uploadZoomed = false;
+        }
+      });
+
+      // Click-to-zoom on upload preview image
+      this.container.addEventListener('click', (e) => {
+        const img = e.target.closest('#upload-preview-img');
+        if (!img) return;
+        this._uploadZoomed = !this._uploadZoomed;
+        img.style.transform = this._uploadZoomed ? 'scale(1.8)' : 'scale(1)';
+        img.style.cursor    = this._uploadZoomed ? 'zoom-out' : 'zoom-in';
+      });
+    }
   }
 
   destroyCropper() {
@@ -715,9 +776,29 @@ export class ScannerComponent {
         previewStatusText.innerHTML = `<span style="width:7px; height:7px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block;"></span><span>${successMsg}</span>`;
       }
     } else {
-      this.destroyCropper();
+      // Upload / Camera tab — show image preview view instead of reverting to blank dropzone
       const returnTab = this.sourceTab || 'upload';
+      this.destroyCropper();
       this.switchTab(returnTab);
+
+      if (returnTab === 'upload') {
+        // Show the scanned image in the upload preview view
+        const dropzone = this.container.querySelector('#upload-view-dropzone');
+        const preview  = this.container.querySelector('#upload-view-preview');
+        const img      = this.container.querySelector('#upload-preview-img');
+        const status   = this.container.querySelector('#upload-preview-status');
+
+        if (img && this._lastUploadSrc) {
+          img.src = this._lastUploadSrc;
+        }
+
+        if (dropzone) dropzone.style.display = 'none';
+        if (preview)  preview.style.display  = 'flex';
+        if (status) {
+          status.innerHTML = `<span style="width:7px; height:7px; background:var(--color-primary,#1B7A3E); border-radius:50%; display:inline-block;"></span><span>${parsedRows.length} item(s) extracted! Verify against the image above.</span>`;
+        }
+      }
+
       const fileInput = this.container.querySelector('#scanner-file-input');
       if (fileInput) fileInput.value = '';
     }
