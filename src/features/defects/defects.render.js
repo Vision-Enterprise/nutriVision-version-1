@@ -54,9 +54,11 @@ export function renderDefectsLayout() {
               <th>Batch ID</th>
               <th>Commodity</th>
               <th>Defect Classification</th>
+              <th>Scope</th>
               <th>Qty Affected</th>
               <th>Action Taken</th>
               <th>Reported By</th>
+              <th style="text-align: right;">Actions</th>
             </tr>
           </thead>
           <tbody id="defect-incidents-tbody">
@@ -101,7 +103,7 @@ export function renderDefectsLayout() {
 export function renderIncidentEmptyState() {
   return `
     <tr>
-      <td colspan="7" style="text-align: center; color: var(--color-text-muted); padding: var(--space-10);">
+      <td colspan="9" style="text-align: center; color: var(--color-text-muted); padding: var(--space-10);">
         <span class="icon" style="font-size: 36px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">inventory</span>
         No incidents logged yet. Click "Log Incident" to report defective stock.
       </td>
@@ -118,15 +120,36 @@ export function renderIncidentRows(incidents = []) {
       ? '<span class="badge badge-expired" style="font-size:11px;">Disposed</span>'
       : '<span class="badge badge-near-expiry" style="font-size:11px;">Quarantine</span>';
 
+    const scopeBadge = inc.scope === 'entire_batch'
+      ? '<span style="font-size: 11px; background: #e0e0e0; padding: 2px 6px; border-radius: 4px;">Entire Batch</span>'
+      : '<span style="font-size: 11px; background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">Partial</span>';
+
+    let qtyStr = `${inc.quantity_affected} ${inc.batches?.commodities?.unit || ''}`;
+    let actionHtml = '—';
+
+    if (inc.action_taken === 'Quarantined') {
+      // Fallback for legacy records before the column was added
+      const remaining = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
+      
+      // Show only the remaining amount so it's not confusing
+      qtyStr = `${remaining} ${inc.batches?.commodities?.unit || ''}`;
+      
+      if (remaining > 0) {
+        actionHtml = `<button class="btn btn-sm btn-restore-incident" data-id="${inc.id}" style="font-size: 11px; padding: 4px 8px;">Restore</button>`;
+      }
+    }
+
     return `
       <tr>
         <td style="font-size: var(--font-size-sm); color: var(--color-text-muted);">${date}</td>
         <td style="font-weight: var(--font-weight-medium); font-family: monospace;">${inc.batches?.batch_number || '—'}</td>
         <td>${inc.batches?.commodities?.name || '—'}</td>
         <td style="font-size: var(--font-size-sm);">${inc.classification}</td>
-        <td>${inc.quantity_affected} ${inc.batches?.commodities?.unit || ''}</td>
+        <td>${scopeBadge}</td>
+        <td>${qtyStr}</td>
         <td>${badge}</td>
         <td style="font-size: var(--font-size-sm);">${inc.reporter_name || '—'}</td>
+        <td style="text-align: right;">${actionHtml}</td>
       </tr>
     `;
   }).join('');

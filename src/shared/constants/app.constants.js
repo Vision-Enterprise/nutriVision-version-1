@@ -97,6 +97,7 @@ export const AUDIT_ACTIONS = {
   DELETE_BATCH:       'DELETE_BATCH',
   RELEASE_BATCH:      'RELEASE_BATCH',
   FLAG_DEFECT:        'FLAG_DEFECT',
+  RESTORE_QUARANTINE: 'RESTORE_QUARANTINE',
 };
 
 // ── Commodity Categories ───────────────────────────────────────────────────
