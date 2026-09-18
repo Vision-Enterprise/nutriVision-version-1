@@ -148,8 +148,10 @@ function _renderModal(batches, profile, onSuccess) {
           <div class="form-group">
             <label class="form-label form-label--required" for="defect-action">Action to Take</label>
             <select id="defect-action" class="form-select">
-              <option value="Disposed">Dispose</option>
-              <option value="Quarantined">Quarantine</option>
+              <option value="Dispose">Dispose (Partial/Full)</option>
+              <option value="Quarantine">Quarantine (Partial/Full)</option>
+              <option value="Dispose Entire Batch">Dispose Entire Batch</option>
+              <option value="Quarantine Entire Batch">Quarantine Entire Batch</option>
             </select>
           </div>
         </div>
@@ -237,6 +239,22 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
   const previewName  = overlay.querySelector('#defect-evidence-name');
   const removeBtn    = overlay.querySelector('#defect-evidence-remove');
   const dropzone     = overlay.querySelector('#defect-evidence-dropzone');
+  const actionSelect = overlay.querySelector('#defect-action');
+  const qtyInput     = overlay.querySelector('#defect-qty');
+
+  // ── Action selection / Qty auto-fill ───────────────────────────────────────
+  actionSelect.addEventListener('change', () => {
+    if (!selectedBatch) return;
+    const isEntireBatch = actionSelect.value.includes('Entire Batch');
+    if (isEntireBatch) {
+      qtyInput.value = selectedBatch.quantity;
+      qtyInput.readOnly = true;
+      qtyInput.style.background = 'var(--color-surface-alt)';
+    } else {
+      qtyInput.readOnly = false;
+      qtyInput.style.background = '';
+    }
+  });
 
   // ── Image upload / preview ─────────────────────────────────────────────────
   fileInput.addEventListener('change', () => {
@@ -398,4 +416,137 @@ function _readFileAsBase64(file, callback) {
   reader.onload = (e) => callback(e.target.result);
   reader.onerror = () => console.error('[DefectModal] FileReader error');
   reader.readAsDataURL(file);
+}
+
+// ─── Restore Modal ─────────────────────────────────────────────────────────────
+
+import { restoreFromQuarantine } from './defects.service.js';
+
+export function openRestoreModal(incident, profile, onSuccess) {
+  // Fallback for legacy records
+  const remaining = incident.remaining_quarantined !== null 
+    ? incident.remaining_quarantined 
+    : incident.quantity_affected;
+
+  // Remove any existing modal
+  document.getElementById('restore-modal-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'restore-modal-overlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background: var(--color-surface, #fff);
+      border-radius: var(--radius-xl, 16px);
+      width: 100%; max-width: 480px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+    ">
+      <div style="
+        padding: var(--space-5) var(--space-6);
+        border-bottom: 1px solid var(--color-border);
+        display: flex; align-items: center; gap: var(--space-3);
+      ">
+        <span class="icon" style="color: var(--color-primary); font-size: 24px;">settings_backup_restore</span>
+        <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin:0;">Restore from Quarantine</h2>
+      </div>
+
+      <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5);">
+        
+        <div style="
+          background: var(--color-surface-alt, #f8faf9);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          padding: var(--space-4);
+          display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);
+        ">
+          <div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Batch Number</div>
+            <div style="font-weight: var(--font-weight-bold); font-family: monospace;">${incident.batches?.batch_number}</div>
+          </div>
+          <div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Commodity</div>
+            <div style="font-weight: var(--font-weight-semibold);">${incident.batches?.commodities?.name}</div>
+          </div>
+          <div style="grid-column: span 2;">
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Remaining Quarantined</div>
+            <div style="font-weight: var(--font-weight-bold); color: var(--color-exp-near); font-size: 16px;">
+              ${remaining} ${incident.batches?.commodities?.unit || ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label form-label--required" for="restore-qty">Quantity to Restore</label>
+          <input type="number" id="restore-qty" class="form-input" min="1" max="${remaining}" placeholder="e.g. 5">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="restore-notes">Restoration Notes (Optional)</label>
+          <textarea id="restore-notes" class="form-textarea" rows="2" placeholder="Reason for restoration..."></textarea>
+        </div>
+
+        <div id="restore-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
+      </div>
+
+      <div style="
+        padding: var(--space-4) var(--space-6);
+        border-top: 1px solid var(--color-border);
+        display: flex; justify-content: flex-end; gap: var(--space-3);
+      ">
+        <button id="btn-restore-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="btn-restore-confirm" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
+          <span class="icon" style="font-size: 18px;">check</span>
+          Confirm Restore
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const errorEl = overlay.querySelector('#restore-error');
+  const qtyInput = overlay.querySelector('#restore-qty');
+
+  overlay.querySelector('#btn-restore-cancel').addEventListener('click', () => {
+    document.body.removeChild(overlay);
+  });
+
+  overlay.querySelector('#btn-restore-confirm').addEventListener('click', async () => {
+    const qty = parseInt(qtyInput.value, 10);
+    const notes = overlay.querySelector('#restore-notes').value.trim();
+
+    if (!qty || qty < 1) {
+      errorEl.textContent = 'Please enter a valid quantity.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (qty > remaining) {
+      errorEl.textContent = `Cannot restore more than ${remaining}.`;
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = overlay.querySelector('#btn-restore-confirm');
+    btn.disabled = true;
+    btn.textContent = 'Restoring...';
+    errorEl.style.display = 'none';
+
+    const { error } = await restoreFromQuarantine(incident.id, incident.batches.id, qty, profile, notes);
+    
+    if (error) {
+      errorEl.textContent = 'Error: ' + error;
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '<span class="icon" style="font-size: 18px;">check</span> Confirm Restore';
+      return;
+    }
+
+    document.body.removeChild(overlay);
+    if (typeof onSuccess === 'function') onSuccess();
+  });
 }

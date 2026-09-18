@@ -49,6 +49,7 @@ export async function fetchDefectIncidents(filter = 'all') {
       .select(`
         id, classification, quantity_affected, action_taken,
         evidence_url, remarks, reported_at, reported_by,
+        scope, remaining_quarantined,
         batches!inner (
           id, batch_number, quantity,
           commodities!inner ( id, name, unit )
@@ -94,7 +95,7 @@ export async function fetchDefectIncidents(filter = 'all') {
  *   batchId: string,
  *   classification: string,
  *   quantityAffected: number,
- *   actionTaken: 'Disposed'|'Quarantined',
+ *   actionTaken: 'Dispose'|'Quarantine'|'Dispose Entire Batch'|'Quarantine Entire Batch',
  *   remarks: string
  * }} incidentData
  * @param {Object} profile - logged-in user profile
@@ -102,6 +103,10 @@ export async function fetchDefectIncidents(filter = 'all') {
  */
 export async function logDefectIncident(incidentData, profile) {
   const { batchId, classification, quantityAffected, actionTaken, remarks } = incidentData;
+
+  const dbActionTaken = actionTaken.includes('Dispose') ? 'Disposed' : 'Quarantined';
+  const scope = actionTaken.includes('Entire Batch') ? 'entire_batch' : 'partial';
+  const remainingQuarantined = dbActionTaken === 'Quarantined' ? quantityAffected : null;
 
   try {
     // 1. Insert the incident record
@@ -111,7 +116,9 @@ export async function logDefectIncident(incidentData, profile) {
         batch_id:          batchId,
         classification,
         quantity_affected: quantityAffected,
-        action_taken:      actionTaken,
+        action_taken:      dbActionTaken,
+        scope,
+        remaining_quarantined: remainingQuarantined,
         remarks:           remarks || null,
         reported_by:       profile.id,
         reported_at:       new Date().toISOString(),
@@ -121,31 +128,134 @@ export async function logDefectIncident(incidentData, profile) {
 
     if (insertErr) throw insertErr;
 
-    // 2. Update the batch status to remove it from active inventory
-    const newStatus = actionTaken === 'Disposed'
-      ? RECORD_STATUS.DISPOSED
-      : RECORD_STATUS.QUARANTINED;
+    // 2. Fetch current quantity to compute remainder
+    const { data: current, error: fetchErr } = await supabase
+      .from('batches')
+      .select('quantity, record_status')
+      .eq('id', batchId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    // Calculate new quantity
+    const newQuantity = scope === 'entire_batch' 
+      ? 0 
+      : Math.max(0, (current.quantity || 0) - quantityAffected);
+
+    // Calculate new status
+    let newStatus = current.record_status;
+    if (newQuantity === 0 || scope === 'entire_batch') {
+      newStatus = dbActionTaken; // 'Disposed' or 'Quarantined'
+    } else {
+      newStatus = RECORD_STATUS.ACTIVE;
+    }
 
     const { error: updateErr } = await supabase
       .from('batches')
-      .update({ record_status: newStatus })
+      .update({ record_status: newStatus, quantity: newQuantity })
       .eq('id', batchId);
 
     if (updateErr) throw updateErr;
 
-    // 3. Audit log
-    await supabase.from('audit_logs').insert({
-      user_id:     profile.id,
-      action:      AUDIT_ACTIONS.FLAG_DEFECT,
-      entity_type: 'batch',
-      entity_id:   batchId,
-      description: `${actionTaken} batch. Classification: ${classification}. Qty affected: ${quantityAffected}.`,
-    }).catch(e => console.warn(`${MODULE} audit log failed (non-blocking):`, e));
+    // 3. Audit log (best-effort, non-blocking)
+    try {
+      await supabase.from('audit_logs').insert({
+        user_id:     profile.id,
+        action:      AUDIT_ACTIONS.FLAG_DEFECT,
+        entity_type: 'batch',
+        entity_id:   batchId,
+        description: `${actionTaken} batch. Classification: ${classification}. Qty affected: ${quantityAffected}.`,
+      });
+    } catch (auditErr) {
+      console.warn(`${MODULE} audit log failed (non-blocking):`, auditErr);
+    }
 
     console.log(`${MODULE} logDefectIncident: incident ${incident.id} logged, batch ${batchId} → ${newStatus}`);
     return { data: incident, error: null };
   } catch (err) {
     console.error(`${MODULE} logDefectIncident:`, err);
     return { data: null, error: err.message || 'Failed to log incident.' };
+  }
+}
+
+/**
+ * Restores a quantity of quarantined items back to the active batch.
+ */
+export async function restoreFromQuarantine(incidentId, batchId, restoreQty, profile, notes = '') {
+  try {
+    // 1. Fetch current incident and batch state
+    const [ { data: incident, error: incErr }, { data: batch, error: batchErr } ] = await Promise.all([
+      supabase.from('defect_incidents').select('remaining_quarantined, quantity_affected').eq('id', incidentId).single(),
+      supabase.from('batches').select('quantity, record_status').eq('id', batchId).single()
+    ]);
+
+    if (incErr) throw incErr;
+    if (batchErr) throw batchErr;
+
+    const remaining = incident.remaining_quarantined !== null 
+      ? incident.remaining_quarantined 
+      : incident.quantity_affected;
+
+    if (remaining < restoreQty) {
+      throw new Error('Restore quantity exceeds remaining quarantined stock.');
+    }
+
+    // 2. Update incident remaining_quarantined
+    const newRemaining = remaining - restoreQty;
+    const { error: incUpdateErr } = await supabase
+      .from('defect_incidents')
+      .update({ remaining_quarantined: newRemaining })
+      .eq('id', incidentId);
+      
+    if (incUpdateErr) throw incUpdateErr;
+
+    // 3. Update batch quantity and status
+    const newBatchQty = batch.quantity + restoreQty;
+    let newBatchStatus = batch.record_status;
+    
+    // If the batch receives restored stock, it becomes Active again
+    // (Regardless of whether it was Quarantined, Disposed, or Depleted)
+    if (newBatchQty > 0) {
+      newBatchStatus = RECORD_STATUS.ACTIVE;
+    }
+
+    const { error: batchUpdateErr } = await supabase
+      .from('batches')
+      .update({ quantity: newBatchQty, record_status: newBatchStatus })
+      .eq('id', batchId);
+      
+    if (batchUpdateErr) throw batchUpdateErr;
+
+    // 4. Log the restore in defect_restores
+    const { error: restoreErr } = await supabase
+      .from('defect_restores')
+      .insert({
+        incident_id: incidentId,
+        batch_id: batchId,
+        restored_quantity: restoreQty,
+        restored_by: profile.id,
+        notes: notes || null
+      });
+
+    if (restoreErr) throw restoreErr;
+
+    // 5. Audit Log (best-effort)
+    try {
+      await supabase.from('audit_logs').insert({
+        user_id: profile.id,
+        action: AUDIT_ACTIONS.RESTORE_QUARANTINE,
+        entity_type: 'batch',
+        entity_id: batchId,
+        description: `Restored ${restoreQty} units from quarantine.`
+      });
+    } catch (auditErr) {
+      console.warn(`${MODULE} audit log failed:`, auditErr);
+    }
+
+    console.log(`${MODULE} restored ${restoreQty} units to batch ${batchId}`);
+    return { error: null };
+  } catch (err) {
+    console.error(`${MODULE} restoreFromQuarantine:`, err);
+    return { error: err.message || 'Failed to restore quarantine stock.' };
   }
 }

@@ -51,7 +51,7 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
             font-size: 14px; font-weight: 600;
             display: flex; align-items: center; gap: 6px;
           ">
-            <span style="font-family:'Material Symbols Outlined';font-size:18px;">print</span>
+            <span class="icon" style="font-size:18px;">print</span>
             Print / Save PDF
           </button>
         </div>
@@ -88,7 +88,7 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   const now          = new Date();
   const generatedStr = now.toLocaleString('en-PH', { dateStyle: 'long', timeStyle: 'short' });
   const comm         = batch.commodities;
-  const actionLabel  = incident.actionTaken === 'Disposed' ? 'Disposal Record' : 'Quarantine Notice';
+  const actionLabel  = incident.actionTaken.includes('Dispose') ? 'Disposal Record' : 'Quarantine Notice';
   const fileName     = `Incident_Report_${batch.batch_number.replace(/\s+/g, '_')}_${now.toISOString().split('T')[0]}.pdf`;
 
   return `<!DOCTYPE html>
@@ -151,9 +151,9 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   <div class="section-title">Incident Details</div>
   <table class="detail-table">
     <tr><td>Defect Classification</td><td>${incident.classification}</td></tr>
-    <tr><td>Action Taken</td><td>${incident.actionTaken === 'Disposed'
-      ? '<span class="badge-disposed">Disposed &amp; Deducted</span>'
-      : '<span class="badge-quarantine">Quarantine — Entire Batch</span>'
+    <tr><td>Action Taken</td><td>${incident.actionTaken.includes('Dispose')
+      ? `<span class="badge-disposed">${incident.actionTaken}</span>`
+      : `<span class="badge-quarantine">${incident.actionTaken}</span>`
     }</td></tr>
     <tr><td>Date Reported</td><td>${generatedStr}</td></tr>
     <tr><td>Reported By</td><td>${profile?.full_name || 'Unknown'}</td></tr>

@@ -4,7 +4,7 @@
 
 import { fetchDefectIncidents } from './defects.service.js';
 import { renderDefectsLayout, renderIncidentRows, renderPdfArchiveRows, renderPdfArchiveEmptyState } from './defects.render.js';
-import { openLogIncidentModal } from './defects.modal.js';
+import { openLogIncidentModal, openRestoreModal } from './defects.modal.js';
 import { getDefectPdfFileName } from './defects.pdf.js';
 
 const MODULE     = '[Defects]';
@@ -12,6 +12,7 @@ const ARCHIVE_KEY = 'nutrivision_defect_pdf_archive';
 
 let _profile     = null;
 let _currentFilter = 'all';
+let _incidentsData = [];
 
 export async function renderDefectsPage(profile) {
   _profile = profile;
@@ -43,6 +44,20 @@ function _bindEvents() {
       await _loadIncidents();
     });
   });
+
+  // Table event delegation for Restore
+  document.getElementById('defect-incidents-tbody')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-restore-incident');
+    if (btn) {
+      const id = btn.dataset.id;
+      const incident = _incidentsData.find(i => i.id === id);
+      if (incident) {
+        openRestoreModal(incident, _profile, async () => {
+          await _loadIncidents();
+        });
+      }
+    }
+  });
 }
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
@@ -53,7 +68,7 @@ async function _loadIncidents() {
 
   tbody.innerHTML = `
     <tr>
-      <td colspan="7" style="text-align:center; color: var(--color-text-muted); padding: var(--space-8);">
+      <td colspan="9" style="text-align:center; color: var(--color-text-muted); padding: var(--space-8);">
         <span class="icon" style="font-size:28px; display:block; opacity:0.4; animation: spin 1s linear infinite;">progress_activity</span>
       </td>
     </tr>
@@ -66,8 +81,17 @@ async function _loadIncidents() {
     return;
   }
 
-  tbody.innerHTML = renderIncidentRows(data);
-  console.log(`${MODULE} loaded ${data.length} incidents [filter: ${_currentFilter}]`);
+  _incidentsData = data || [];
+
+  // Filter out fully restored quarantined incidents
+  const visibleData = _incidentsData.filter(inc => {
+    if (inc.action_taken !== 'Quarantined') return true;
+    const remaining = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
+    return remaining > 0;
+  });
+
+  tbody.innerHTML = renderIncidentRows(visibleData);
+  console.log(`${MODULE} loaded ${data.length} incidents, showing ${visibleData.length} [filter: ${_currentFilter}]`);
 }
 
 // ─── PDF Archive (localStorage) ───────────────────────────────────────────────
