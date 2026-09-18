@@ -96,6 +96,7 @@ export const AUDIT_ACTIONS = {
   UPDATE_BATCH:       'UPDATE_BATCH',
   DELETE_BATCH:       'DELETE_BATCH',
   RELEASE_BATCH:      'RELEASE_BATCH',
+  FLAG_DEFECT:        'FLAG_DEFECT',
 };
 
 // ── Commodity Categories ───────────────────────────────────────────────────
@@ -169,7 +170,9 @@ export const BARANGAYS = [
 // 🌟 Record Statuses 🌟
 // Used for the 3-state record lifecycle.
 export const RECORD_STATUS = {
-  ACTIVE: 'Active',
-  DEPLETED: 'Depleted',
-  VOIDED: 'Voided',
+  ACTIVE:      'Active',
+  DEPLETED:    'Depleted',
+  VOIDED:      'Voided',
+  DISPOSED:    'Disposed',
+  QUARANTINED: 'Quarantined',
 };
