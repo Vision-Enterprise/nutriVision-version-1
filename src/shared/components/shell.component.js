@@ -42,6 +42,7 @@ import { renderBulkReleasePage } from '../../features/bulk-release/bulk-release.
 import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
 import { renderAccountPage }     from '../../features/account/account.page.js';
+import { renderReportsPage }     from '../../features/reports/reports.page.js';
 
 /**
  * Render the application shell and start routing.
@@ -153,6 +154,17 @@ export function renderShell(profile, onLogout) {
           >
             <span class="icon" aria-hidden="true">calendar_month</span>
             <span class="sidebar__nav-text">Calendar</span>
+          </button>
+
+          <button
+            class="sidebar__nav-item"
+            data-route="reports"
+            id="nav-reports"
+            type="button"
+            aria-label="Analytics and Reporting"
+          >
+            <span class="icon" aria-hidden="true">assessment</span>
+            <span class="sidebar__nav-text">Reports</span>
           </button>
 
           ${isAdmin ? `
@@ -298,6 +310,7 @@ export function renderShell(profile, onLogout) {
     .register('archive',     renderArchivePage)
     .register('releases',    renderReleasesPage)
     .register('bulk-release',renderBulkReleasePage)
+    .register('reports',     renderReportsPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage)
