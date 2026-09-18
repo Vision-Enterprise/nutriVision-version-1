@@ -121,13 +121,15 @@ function _handleModelChange(e) {
 
   // Update active card styling
   _el.querySelectorAll('.report-model-option').forEach(el => {
-    el.style.border = '1px solid var(--color-border, #D8E6DA)';
+    el.style.border = '1px solid var(--color-border)';
+    el.style.boxShadow = 'none';
     el.style.background = 'transparent';
   });
   const parent = e.target.closest('.report-model-option');
   if (parent) {
-    parent.style.border = '1px solid var(--color-primary, #1B7A3E)';
-    parent.style.background = 'var(--color-primary-bg, #E8F5E9)';
+    parent.style.border = '1px solid var(--color-primary)';
+    parent.style.boxShadow = 'inset 3px 0 0 var(--color-primary)';
+    parent.style.background = '#f4fbf5';
   }
 
   // Show/hide contextual filters
@@ -219,15 +221,26 @@ async function _handleGenerate(format) {
     }
 
     if (format === 'CSV') {
+      // CSV: save immediately — clicking export = action taken
       exportToCSV(dataRes.data, modelId, filters);
       _saveToArchive(modelId, reportTitle, filters, 'CSV');
+      _refreshArchiveTable();
     } else {
-      // PDF and PRINT both open the print modal
-      showPrintPreview(reportTitle, dataRes.data, modelId, filters, _profile);
-      _saveToArchive(modelId, reportTitle, filters, 'PDF');
+      // PDF/PRINT: only save to archive if user clicks "Print / Save PDF" in the modal
+      // Cancelled previews are NOT saved
+      showPrintPreview(
+        reportTitle,
+        dataRes.data,
+        modelId,
+        filters,
+        _profile,
+        () => {
+          // onConfirm — called only when user clicks Print button
+          _saveToArchive(modelId, reportTitle, filters, 'PDF');
+          _refreshArchiveTable();
+        }
+      );
     }
-
-    _refreshArchiveTable();
 
   } catch (err) {
     console.error(`${MODULE} _handleGenerate error:`, err);

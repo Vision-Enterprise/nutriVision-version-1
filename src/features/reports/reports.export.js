@@ -36,11 +36,11 @@ export function exportToCSV(data, modelId, filters) {
       const comm = `"${b.commodities?.name}"`;
       const batch = `"${b.batch_number}"`;
       const qty = b.quantity;
-      const expDate = b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : 'N/A';
+      const expDate = b.expiration_date ? new Date(b.expiration_date).toLocaleDateString() : 'N/A';
       
       let daysLeft = 'N/A';
-      if (b.expiry_date) {
-        const diff = new Date(b.expiry_date) - new Date();
+      if (b.expiration_date) {
+        const diff = new Date(b.expiration_date) - new Date();
         daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
       }
       

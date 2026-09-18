@@ -1,161 +1,204 @@
 /**
- * Renders the main reports HTML layout.
+ * Reports Module — Render
+ * Uses the system design system classes exclusively:
+ *   .page-header, .card, .card-header, .card-title
+ *   .form-group, .form-label, .form-input, .form-select, .form-row
+ *   .btn, .btn-primary, .btn-ghost
+ *   .table, .badge
  */
+
 export function renderReportsLayout() {
   return `
-    <div class="page-header" style="margin-bottom: 24px;">
-      <h1 class="page-title" style="margin: 0; font-size: 24px; color: var(--color-text, #1A2B1C);">Analytics & Reporting</h1>
-      <p class="page-subtitle" style="margin: 4px 0 0 0; color: var(--color-text-muted, #5A7060); font-size: 14px;">Generate and export official LGU operational data.</p>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-header__title">Analytics &amp; Reporting</h1>
+      <p class="page-header__subtitle">Generate and export official LGU operational data.</p>
     </div>
 
     <!-- Report Configuration Card -->
-    <div class="card" style="background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #D8E6DA); border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(27,122,62,0.03);">
-      
-      <div style="padding: 16px 24px; border-bottom: 1px solid var(--color-border, #D8E6DA); display: flex; align-items: center; gap: 8px;">
-        <span class="icon" style="color: var(--color-primary, #1B7A3E);">settings</span>
-        <h2 style="margin: 0; font-size: 16px; color: var(--color-text, #1A2B1C);">Report Configuration</h2>
+    <div class="card" style="padding: 0; margin-bottom: var(--space-6); overflow: hidden;">
+
+      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+          <span class="icon" style="color: var(--color-primary); font-size: 20px;">tune</span>
+          <h2 class="card-title">Report Configuration</h2>
+        </div>
       </div>
 
-      <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; min-height: 250px;">
-        
-        <!-- Left: Model Selection -->
+      <div style="padding: var(--space-6); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10); align-items: start;">
+
+        <!-- Left: Data Model Selection -->
         <div>
-          <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted, #5A7060); margin-bottom: 12px;">Select Data Model</label>
-          
-          <!-- Option 1: Distribution -->
-          <label class="report-model-option active" style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--color-primary, #1B7A3E); background: var(--color-primary-bg, #E8F5E9); border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;">
-            <input type="radio" name="report_model" value="distribution" checked style="margin-top: 4px; accent-color: var(--color-primary, #1B7A3E);">
+          <p class="form-label" style="text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-bottom: var(--space-3);">Select Data Model</p>
+
+          <label class="report-model-option" data-model="distribution" style="
+            display: flex; align-items: flex-start; gap: var(--space-3);
+            padding: var(--space-4); border-radius: var(--radius-lg);
+            border: 1px solid var(--color-primary); box-shadow: inset 3px 0 0 var(--color-primary); background: #f4fbf5;
+            margin-bottom: var(--space-3); cursor: pointer;
+            transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
+          ">
+            <input type="radio" name="report_model" value="distribution" checked
+              style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: 600; color: var(--color-text, #1A2B1C); margin-bottom: 4px;">Distribution & Dispatch Ledger</div>
-              <div style="font-size: 12px; color: var(--color-text-muted, #5A7060);">Track items released to barangays.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Distribution &amp; Dispatch Ledger</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Track items released to barangays.</div>
             </div>
           </label>
 
-          <!-- Option 2: FEFO -->
-          <label class="report-model-option" style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--color-border, #D8E6DA); border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;">
-            <input type="radio" name="report_model" value="fefo" style="margin-top: 4px; accent-color: var(--color-primary, #1B7A3E);">
+          <label class="report-model-option" data-model="fefo" style="
+            display: flex; align-items: flex-start; gap: var(--space-3);
+            padding: var(--space-4); border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border); box-shadow: none; background: transparent;
+            margin-bottom: var(--space-3); cursor: pointer;
+            transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
+          ">
+            <input type="radio" name="report_model" value="fefo"
+              style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: 600; color: var(--color-text, #1A2B1C); margin-bottom: 4px;">FEFO Wastage & Expiry Risk</div>
-              <div style="font-size: 12px; color: var(--color-text-muted, #5A7060);">Audit items nearing critical expiry thresholds.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">FEFO Wastage &amp; Expiry Risk</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Audit items nearing critical expiry thresholds.</div>
             </div>
           </label>
 
-          <!-- Option 3: Allocation -->
-          <label class="report-model-option" style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--color-border, #D8E6DA); border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-            <input type="radio" name="report_model" value="allocation" style="margin-top: 4px; accent-color: var(--color-primary, #1B7A3E);">
+          <label class="report-model-option" data-model="allocation" style="
+            display: flex; align-items: flex-start; gap: var(--space-3);
+            padding: var(--space-4); border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border); box-shadow: none; background: transparent;
+            cursor: pointer;
+            transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
+          ">
+            <input type="radio" name="report_model" value="allocation"
+              style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: 600; color: var(--color-text, #1A2B1C); margin-bottom: 4px;">Current Allocation Balances</div>
-              <div style="font-size: 12px; color: var(--color-text-muted, #5A7060);">Overall snapshot of active MNAO inventory.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Current Allocation Balances</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Overall snapshot of active MNAO inventory.</div>
             </div>
           </label>
         </div>
 
         <!-- Right: Filters -->
-        <div>
-          <!-- Date Range (Only for Distribution) -->
-          <div id="filter-group-dates" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+
+          <!-- Date range — only for Distribution -->
+          <div id="filter-group-dates" class="form-row">
             <div class="form-group">
-              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted, #5A7060); margin-bottom: 8px;">Date Range Start</label>
-              <input type="date" id="report-date-start" class="form-control" style="width: 100%;">
+              <label class="form-label" for="report-date-start">Date Range Start</label>
+              <input type="date" id="report-date-start" class="form-input">
             </div>
             <div class="form-group">
-              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted, #5A7060); margin-bottom: 8px;">Date Range End</label>
-              <input type="date" id="report-date-end" class="form-control" style="width: 100%;">
+              <label class="form-label" for="report-date-end">Date Range End</label>
+              <input type="date" id="report-date-end" class="form-input">
             </div>
           </div>
 
-          <!-- Commodity Filter (All models) -->
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted, #5A7060); margin-bottom: 8px;">Filter by Commodity (Optional)</label>
-            <select id="report-filter-commodity" class="form-control" style="width: 100%;">
+          <!-- Commodity filter — all models -->
+          <div class="form-group">
+            <label class="form-label" for="report-filter-commodity">Filter by Commodity <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+            <select id="report-filter-commodity" class="form-select">
               <option value="all">All Commodities</option>
-              <!-- Populated by JS -->
             </select>
           </div>
 
-          <!-- Destination Filter (Only for Distribution) -->
+          <!-- Barangay filter — Distribution only -->
           <div id="filter-group-destination" class="form-group">
-            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted, #5A7060); margin-bottom: 8px;">Filter by Destination (Optional)</label>
-            <select id="report-filter-barangay" class="form-control" style="width: 100%;">
+            <label class="form-label" for="report-filter-barangay">Filter by Destination <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+            <select id="report-filter-barangay" class="form-select">
               <option value="all">All Barangays</option>
-              <!-- Populated by JS -->
             </select>
           </div>
-        </div>
 
+        </div>
       </div>
 
-      <!-- Actions -->
-      <div style="padding: 16px 24px; border-top: 1px solid var(--color-border, #D8E6DA); display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; gap: 12px;">
-          <button id="btn-generate-pdf" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
-            <span class="icon" style="font-size: 18px;">picture_as_pdf</span> Generate PDF
+      <!-- Action Bar -->
+      <div style="
+        padding: var(--space-4) var(--space-6);
+        border-top: 1px solid var(--color-border);
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--color-surface-alt, #f8faf9);
+      ">
+        <div style="display: flex; gap: var(--space-3);">
+          <button id="btn-generate-pdf" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
+            <span class="icon" style="font-size: 18px;">picture_as_pdf</span>
+            Generate PDF
           </button>
-          <button id="btn-export-csv" class="btn" style="display: flex; align-items: center; gap: 8px; border: 1px solid var(--color-border, #D8E6DA); background: white;">
-            <span class="icon" style="font-size: 18px;">grid_on</span> Export as Excel (.csv)
+          <button id="btn-export-csv" class="btn" style="display: flex; align-items: center; gap: var(--space-2); border: 1px solid var(--color-border);">
+            <span class="icon" style="font-size: 18px;">grid_on</span>
+            Export as Excel (.csv)
           </button>
         </div>
-        
-        <button id="btn-print-preview" class="btn btn-ghost" style="display: flex; align-items: center; gap: 8px;">
-          <span class="icon" style="font-size: 18px;">print</span> Print Preview
+        <button id="btn-print-preview" class="btn btn-ghost" style="display: flex; align-items: center; gap: var(--space-2);">
+          <span class="icon" style="font-size: 18px;">print</span>
+          Print Preview
         </button>
       </div>
 
     </div>
 
     <!-- Report Archive Card -->
-    <div class="card" style="background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #D8E6DA); border-radius: 12px; box-shadow: 0 4px 12px rgba(27,122,62,0.03);">
-      
-      <div style="padding: 16px 24px; border-bottom: 1px solid var(--color-border, #D8E6DA); display: flex; align-items: center; gap: 8px;">
-        <span class="icon" style="color: var(--color-text-muted, #5A7060);">history</span>
-        <h2 style="margin: 0; font-size: 16px; color: var(--color-text, #1A2B1C);">Report Archive</h2>
+    <div class="card" style="padding: 0; overflow: hidden;">
+
+      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+          <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">history</span>
+          <h2 class="card-title">Report Archive</h2>
+        </div>
+        <p class="card-subtitle" style="margin: 0;">Last 20 generated reports. Click download to re-generate.</p>
       </div>
 
       <div class="table-container">
-        <table class="table" style="width: 100%;">
+        <table class="table">
           <thead>
             <tr>
-              <th style="font-size: 11px; text-transform: uppercase;">Report Name</th>
-              <th style="font-size: 11px; text-transform: uppercase;">Parameters</th>
-              <th style="font-size: 11px; text-transform: uppercase;">Generated On</th>
-              <th style="font-size: 11px; text-transform: uppercase;">Format</th>
-              <th style="font-size: 11px; text-transform: uppercase; text-align: right;">Action</th>
+              <th>Report Name</th>
+              <th>Parameters</th>
+              <th>Generated On</th>
+              <th>Format</th>
+              <th style="text-align: right;">Action</th>
             </tr>
           </thead>
           <tbody id="report-archive-tbody">
-            <!-- Populated by JS -->
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--color-text-muted, #5A7060); padding: 32px;">No archived reports found.</td>
+              <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: var(--space-8);">
+                <span class="icon" style="font-size: 32px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">history</span>
+                No archived reports yet. Generate one above.
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
+
     </div>
   `;
 }
 
 /**
- * Renders the rows for the report archive table.
+ * Renders archive table rows.
  */
 export function renderArchiveRows(historyArr = []) {
-  if (historyArr.length === 0) {
-    return `<tr><td colspan="5" style="text-align: center; color: var(--color-text-muted, #5A7060); padding: 32px;">No archived reports found.</td></tr>`;
+  if (!historyArr || historyArr.length === 0) {
+    return `
+      <tr>
+        <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: var(--space-8);">
+          <span class="icon" style="font-size: 32px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">history</span>
+          No archived reports yet. Generate one above.
+        </td>
+      </tr>
+    `;
   }
 
   return historyArr.map(item => {
-    const badgeColor = item.format === 'PDF' ? '#ef4444' : '#10b981';
-    const badgeBg = item.format === 'PDF' ? '#fee2e2' : '#d1fae5';
-    
+    const isPdf = item.format === 'PDF';
+    const badgeClass = isPdf ? 'badge badge-near-expiry' : 'badge badge-active';
     return `
       <tr>
-        <td style="font-weight: 500;">${item.name}</td>
-        <td style="color: var(--color-text-muted, #5A7060); font-size: 12px;">${item.parameters}</td>
-        <td>${item.generatedOn}</td>
-        <td>
-          <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">${item.format}</span>
-        </td>
+        <td style="font-weight: var(--font-weight-medium);">${item.name}</td>
+        <td style="color: var(--color-text-muted); font-size: var(--font-size-sm);">${item.parameters}</td>
+        <td style="font-size: var(--font-size-sm);">${item.generatedOn}</td>
+        <td><span class="${badgeClass}">${item.format}</span></td>
         <td style="text-align: right;">
-          <button class="btn btn-icon btn-replay-report" data-id="${item.id}" title="Re-generate" style="color: var(--color-primary, #1B7A3E);">
+          <button class="btn btn-icon btn-replay-report" data-id="${item.id}" title="Re-generate this report">
             <span class="icon">download</span>
           </button>
         </td>

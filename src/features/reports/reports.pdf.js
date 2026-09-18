@@ -56,10 +56,10 @@ function generateReportHTML(title, data, modelId, filters, profile) {
       </tr>
     `;
     data.forEach(b => {
-      const date = b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : 'N/A';
+      const date = b.expiration_date ? new Date(b.expiration_date).toLocaleDateString() : 'N/A';
       let daysLeft = 'N/A';
-      if (b.expiry_date) {
-        const diff = new Date(b.expiry_date) - new Date();
+      if (b.expiration_date) {
+        const diff = new Date(b.expiration_date) - new Date();
         daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
       }
       tableRows += `
@@ -160,7 +160,7 @@ function generateReportHTML(title, data, modelId, filters, profile) {
 /**
  * Shows the Print Preview Modal and handles actual printing
  */
-export function showPrintPreview(title, data, modelId, filters, profile) {
+export function showPrintPreview(title, data, modelId, filters, profile, onConfirm) {
   // 1. Generate HTML
   const htmlContent = generateReportHTML(title, data, modelId, filters, profile);
 
@@ -257,5 +257,7 @@ export function showPrintPreview(title, data, modelId, filters, profile) {
   printBtn.onclick = () => {
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
+    // Only save to archive after user confirms print — not on modal open
+    if (typeof onConfirm === 'function') onConfirm();
   };
 }

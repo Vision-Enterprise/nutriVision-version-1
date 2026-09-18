@@ -2,7 +2,7 @@ import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS } from '../../shared/constants/app.constants.js';
 
 /**
- * Helper to fetch profiles for name mapping
+ * Helper to fetch profiles for name mapping.
  */
 async function _getProfileMap() {
   try {
@@ -17,10 +17,16 @@ async function _getProfileMap() {
 }
 
 /**
- * 1. Distribution & Dispatch Ledger
- * Fetches releases, joining batches and commodities.
- * Strictly excludes VOIDED batches and archived commodities.
+ * NOTE on PostgREST nested filters:
+ * Filtering on related-table columns via dot notation (e.g. `.is('batches.commodities.deleted_at', null)`)
+ * causes 400 errors in PostgREST. Instead we:
+ *   1. Remove those filters from the DB query.
+ *   2. Apply them client-side after fetch (safe for LGU data volumes).
+ *   3. Use the `!inner` join to restrict to rows that HAVE a matching commodity.
  */
+
+// ─── 1. Distribution & Dispatch Ledger ────────────────────────────────────────
+
 export async function fetchDistributionLedger(filters = {}) {
   try {
     let query = supabase
@@ -32,15 +38,13 @@ export async function fetchDistributionLedger(filters = {}) {
           commodities!inner ( id, name, commodity_code, unit, deleted_at )
         )
       `)
-      .neq('batches.record_status', RECORD_STATUS.VOIDED)
-      .is('batches.commodities.deleted_at', null)
       .order('released_at', { ascending: false });
 
+    // Date range filters (on top-level column — OK)
     if (filters.dateFrom) query = query.gte('released_at', filters.dateFrom);
-    if (filters.dateTo) query = query.lte('released_at', filters.dateTo + 'T23:59:59.999Z');
-    if (filters.commodityId && filters.commodityId !== 'all') {
-      query = query.eq('batches.commodities.id', filters.commodityId);
-    }
+    if (filters.dateTo)   query = query.lte('released_at', filters.dateTo + 'T23:59:59.999Z');
+
+    // Barangay filter (top-level column — OK)
     if (filters.barangay && filters.barangay !== 'all') {
       query = query.eq('barangay', filters.barangay);
     }
@@ -48,14 +52,28 @@ export async function fetchDistributionLedger(filters = {}) {
     const [res, profileMap] = await Promise.all([query, _getProfileMap()]);
     if (res.error) throw res.error;
 
-    // Filter out if any got through due to inner join quirks in PostgREST
-    let data = res.data.filter(r => r.batches && r.batches.commodities);
+    // Client-side filters (PostgREST nested null/eq filters cause 400)
+    let data = res.data.filter(r => {
+      const batch = r.batches;
+      const comm  = batch?.commodities;
+      if (!batch || !comm) return false;
+      // Exclude VOIDED batches
+      if (batch.record_status === RECORD_STATUS.VOIDED) return false;
+      // Exclude soft-deleted commodities
+      if (comm.deleted_at) return false;
+      // Commodity filter
+      if (filters.commodityId && filters.commodityId !== 'all') {
+        if (comm.id !== filters.commodityId) return false;
+      }
+      return true;
+    });
 
     data = data.map(r => ({
       ...r,
       released_by_name: profileMap[r.released_by] || 'Unknown Staff'
     }));
 
+    console.log(`[ReportsService] fetchDistributionLedger: ${data.length} rows`);
     return { data, error: null };
   } catch (err) {
     console.error('[ReportsService] fetchDistributionLedger:', err);
@@ -63,75 +81,71 @@ export async function fetchDistributionLedger(filters = {}) {
   }
 }
 
-/**
- * 2. FEFO Wastage & Expiry Risk
- * Fetches ACTIVE batches nearing expiry.
- */
+// ─── 2. FEFO Wastage & Expiry Risk ────────────────────────────────────────────
+
 export async function fetchFefoRiskBatches(filters = {}) {
   try {
-    let query = supabase
+    // Only filter on direct batch columns — no nested column filters
+    const { data, error } = await supabase
       .from('batches')
       .select(`
-        id, batch_number, quantity, expiry_date, record_status,
+        id, batch_number, quantity, expiration_date, record_status,
         commodities!inner ( id, name, commodity_code, unit, deleted_at )
       `)
       .eq('record_status', RECORD_STATUS.ACTIVE)
-      .is('commodities.deleted_at', null)
-      .not('expiry_date', 'is', null)
-      .order('expiry_date', { ascending: true });
+      .not('expiration_date', 'is', null)
+      .order('expiration_date', { ascending: true });
 
-    if (filters.commodityId && filters.commodityId !== 'all') {
-      query = query.eq('commodities.id', filters.commodityId);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
 
     const thresholdDays = filters.thresholdDays ? parseInt(filters.thresholdDays, 10) : 90;
-    const now = new Date();
     const thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() + thresholdDays);
+    thresholdDate.setDate(thresholdDate.getDate() + thresholdDays);
 
-    let filteredData = data.filter(b => b.commodities);
-    
-    // Filter by date threshold manually since doing it in DB with exact days is tricky via PostgREST
-    filteredData = filteredData.filter(b => {
-      const exp = new Date(b.expiry_date);
-      return exp <= thresholdDate;
+    // Client-side: exclude soft-deleted commodities, apply commodity + date filters
+    const filtered = data.filter(b => {
+      const comm = b.commodities;
+      if (!comm) return false;
+      if (comm.deleted_at) return false;
+      if (filters.commodityId && filters.commodityId !== 'all') {
+        if (comm.id !== filters.commodityId) return false;
+      }
+      return new Date(b.expiration_date) <= thresholdDate;
     });
 
-    return { data: filteredData, error: null };
+    console.log(`[ReportsService] fetchFefoRiskBatches: ${filtered.length} rows`);
+    return { data: filtered, error: null };
   } catch (err) {
     console.error('[ReportsService] fetchFefoRiskBatches:', err);
     return { data: [], error: 'Failed to load FEFO risk report.' };
   }
 }
 
-/**
- * 3. Current Allocation Balances
- * Sums quantities of ACTIVE batches per commodity.
- */
+// ─── 3. Current Allocation Balances ───────────────────────────────────────────
+
 export async function fetchAllocationBalances(filters = {}) {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('batches')
       .select(`
-        id, quantity, expiry_date, record_status,
+        id, quantity, expiration_date, record_status,
         commodities!inner ( id, name, commodity_code, unit, category, deleted_at )
       `)
-      .eq('record_status', RECORD_STATUS.ACTIVE)
-      .is('commodities.deleted_at', null);
+      .eq('record_status', RECORD_STATUS.ACTIVE);
 
-    if (filters.commodityId && filters.commodityId !== 'all') {
-      query = query.eq('commodities.id', filters.commodityId);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
 
-    const validData = data.filter(b => b.commodities);
-    
-    // Group and aggregate
+    // Client-side: exclude soft-deleted commodities, apply commodity filter
+    const validData = data.filter(b => {
+      const comm = b.commodities;
+      if (!comm || comm.deleted_at) return false;
+      if (filters.commodityId && filters.commodityId !== 'all') {
+        if (comm.id !== filters.commodityId) return false;
+      }
+      return true;
+    });
+
+    // Group and aggregate by commodity
     const grouped = {};
     for (const batch of validData) {
       const cId = batch.commodities.id;
@@ -143,18 +157,17 @@ export async function fetchAllocationBalances(filters = {}) {
           oldestExpiry: null
         };
       }
-      
       grouped[cId].totalQuantity += batch.quantity;
       grouped[cId].batchCount += 1;
-      
-      if (batch.expiry_date) {
-        if (!grouped[cId].oldestExpiry || new Date(batch.expiry_date) < new Date(grouped[cId].oldestExpiry)) {
-          grouped[cId].oldestExpiry = batch.expiry_date;
+      if (batch.expiration_date) {
+        if (!grouped[cId].oldestExpiry || new Date(batch.expiration_date) < new Date(grouped[cId].oldestExpiry)) {
+          grouped[cId].oldestExpiry = batch.expiration_date;
         }
       }
     }
 
     const result = Object.values(grouped).sort((a, b) => a.commodity.name.localeCompare(b.commodity.name));
+    console.log(`[ReportsService] fetchAllocationBalances: ${result.length} commodities`);
     return { data: result, error: null };
   } catch (err) {
     console.error('[ReportsService] fetchAllocationBalances:', err);
@@ -162,9 +175,8 @@ export async function fetchAllocationBalances(filters = {}) {
   }
 }
 
-/**
- * Fetch filter options: Active Commodities
- */
+// ─── Filter option helpers ─────────────────────────────────────────────────────
+
 export async function fetchCommodityOptions() {
   try {
     const { data, error } = await supabase
@@ -172,31 +184,25 @@ export async function fetchCommodityOptions() {
       .select('id, name, unit')
       .is('deleted_at', null)
       .order('name', { ascending: true });
-    
     if (error) throw error;
     return { data, error: null };
   } catch (err) {
+    console.error('[ReportsService] fetchCommodityOptions:', err);
     return { data: [], error: err.message };
   }
 }
 
-/**
- * Fetch filter options: Distinct Barangays from releases
- */
 export async function fetchBarangayOptions() {
   try {
-    // We can just get all releases and find unique barangays, or use a view if one exists.
-    // For now, getting all releases is fine for typical LGU sizes.
     const { data, error } = await supabase
       .from('releases')
       .select('barangay')
-      .neq('barangay', null);
-    
+      .not('barangay', 'is', null);
     if (error) throw error;
-    
-    const unique = [...new Set(data.map(r => r.barangay))].sort();
+    const unique = [...new Set(data.map(r => r.barangay))].filter(Boolean).sort();
     return { data: unique, error: null };
   } catch (err) {
+    console.error('[ReportsService] fetchBarangayOptions:', err);
     return { data: [], error: err.message };
   }
 }
