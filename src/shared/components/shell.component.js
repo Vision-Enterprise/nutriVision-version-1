@@ -43,6 +43,7 @@ import { renderUsersPage }       from '../../features/users/users.page.js';
 import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page.js';
 import { renderAccountPage }     from '../../features/account/account.page.js';
 import { renderReportsPage }     from '../../features/reports/reports.page.js';
+import { renderDefectsPage }     from '../../features/defects/defects.page.js';
 
 /**
  * Render the application shell and start routing.
@@ -165,6 +166,17 @@ export function renderShell(profile, onLogout) {
           >
             <span class="icon" aria-hidden="true">assessment</span>
             <span class="sidebar__nav-text">Reports</span>
+          </button>
+
+          <button
+            class="sidebar__nav-item"
+            data-route="defects"
+            id="nav-defects"
+            type="button"
+            aria-label="Defect and Quarantine Log"
+          >
+            <span class="icon" aria-hidden="true">warning</span>
+            <span class="sidebar__nav-text">Defect Log</span>
           </button>
 
           ${isAdmin ? `
@@ -311,6 +323,7 @@ export function renderShell(profile, onLogout) {
     .register('releases',    renderReleasesPage)
     .register('bulk-release',renderBulkReleasePage)
     .register('reports',     renderReportsPage)
+    .register('defects',     renderDefectsPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage)
