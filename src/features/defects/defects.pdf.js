@@ -17,6 +17,16 @@ const ORG_ADDRESS = 'Manolo Fortich, Bukidnon';
  * @param {Function} onConfirm   - called only when user clicks Print/Save
  */
 export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
+  const isDispose  = (incident.actionTaken || incident.action_taken || '').toLowerCase().includes('dispos');
+  const prefix     = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
+  const cleanBatch = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const dateStr    = new Date().toISOString().split('T')[0];
+  const pdfTitle   = `${prefix}_${cleanBatch}_${dateStr}`;
+  const originalTitle = document.title;
+
+  // Set top-level document title so browser print dialog pre-fills exact file name
+  document.title = pdfTitle;
+
   const html = _generateIncidentReportHTML(incident, batch, profile);
 
   // ── Overlay ────────────────────────────────────────────────────────────────
@@ -73,10 +83,27 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
   doc.write(html);
   doc.close();
 
-  cancelBtn.onclick = () => document.body.removeChild(overlay);
+  const cleanup = () => {
+    document.title = originalTitle;
+    if (document.body.contains(overlay)) {
+      document.body.removeChild(overlay);
+    }
+  };
+
+  cancelBtn.onclick = cleanup;
   printBtn.onclick  = () => {
+    document.title = pdfTitle;
+    try {
+      if (iframe.contentDocument) iframe.contentDocument.title = pdfTitle;
+    } catch (e) {}
+
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
+
+    const restore = () => { document.title = originalTitle; };
+    window.addEventListener('afterprint', restore, { once: true });
+    setTimeout(restore, 3000);
+
     // Only save to DB after confirming print
     if (typeof onConfirm === 'function') onConfirm();
   };
@@ -86,15 +113,24 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
 
 function _generateIncidentReportHTML(incident, batch, profile) {
   const now          = new Date();
+  const dateStr      = now.toISOString().split('T')[0];
   const generatedStr = now.toLocaleString('en-PH', { dateStyle: 'long', timeStyle: 'short' });
-  const comm         = batch.commodities;
-  const actionLabel  = incident.actionTaken.includes('Dispose') ? 'Disposal Record' : 'Quarantine Notice';
-  const fileName     = `Incident_Report_${batch.batch_number.replace(/\s+/g, '_')}_${now.toISOString().split('T')[0]}.pdf`;
+  const comm         = batch?.commodities;
+  
+  const actionStr    = (incident.actionTaken || incident.action_taken || '').toLowerCase();
+  const isDispose    = actionStr.includes('dispos');
+  const actionLabel  = isDispose ? 'Disposal Record' : 'Quarantine Notice';
+  const prefix       = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
+  const cleanBatch   = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfTitle     = `${prefix}_${cleanBatch}_${dateStr}`;
+
+  const evidenceImg  = incident.imageData || incident.evidenceUrl || incident.evidence_url;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>${pdfTitle}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a1a; padding: 32px 40px; }
@@ -150,13 +186,13 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   <!-- Incident Details -->
   <div class="section-title">Incident Details</div>
   <table class="detail-table">
-    <tr><td>Defect Classification</td><td>${incident.classification}</td></tr>
-    <tr><td>Action Taken</td><td>${incident.actionTaken.includes('Dispose')
-      ? `<span class="badge-disposed">${incident.actionTaken}</span>`
-      : `<span class="badge-quarantine">${incident.actionTaken}</span>`
+    <tr><td>Defect Classification</td><td>${incident.classification || 'Inspection / Damage'}</td></tr>
+    <tr><td>Action Taken</td><td>${isDispose
+      ? `<span class="badge-disposed">${incident.actionTaken || incident.action_taken || 'Disposed'}</span>`
+      : `<span class="badge-quarantine">${incident.actionTaken || incident.action_taken || 'Quarantined'}</span>`
     }</td></tr>
     <tr><td>Date Reported</td><td>${generatedStr}</td></tr>
-    <tr><td>Reported By</td><td>${profile?.full_name || 'Unknown'}</td></tr>
+    <tr><td>Reported By</td><td>${profile?.full_name || 'Staff'}</td></tr>
   </table>
 
   <!-- Remarks -->
@@ -164,10 +200,10 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   <div class="remarks-box">${incident.remarks || 'No additional remarks provided.'}</div>
 
   <!-- Photographic Evidence -->
-  ${incident.imageData ? `
+  ${evidenceImg ? `
   <div class="section-title" style="margin-top: 18px;">Photographic Evidence</div>
   <div style="text-align:center; margin-top: 8px;">
-    <img src="${incident.imageData}"
+    <img src="${evidenceImg}"
       alt="Defect evidence"
       style="max-width: 100%; max-height: 280px; object-fit: contain;
              border: 1px solid #ddd; border-radius: 6px; padding: 4px;"
@@ -196,7 +232,9 @@ function _generateIncidentReportHTML(incident, batch, profile) {
  * Returns the PDF file name for archive storage.
  */
 export function getDefectPdfFileName(batchNumber, action) {
-  const date    = new Date().toISOString().split('T')[0];
-  const prefix  = action === 'Disposed' ? 'Disposal_Record' : 'Quarantine_Notice';
-  return `${prefix}_${(batchNumber || 'BATCH').replace(/\s+/g, '_')}_${date}.pdf`;
+  const date       = new Date().toISOString().split('T')[0];
+  const isDispose  = (action || '').toLowerCase().includes('dispos');
+  const prefix     = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
+  const cleanBatch = (batchNumber || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `${prefix}_${cleanBatch}_${date}.pdf`;
 }

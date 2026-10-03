@@ -99,12 +99,25 @@ function generateReportHTML(title, data, modelId, filters, profile) {
     tableRows = `<tr><td colspan="7" style="text-align:center; padding: 20px;">No data found for the selected filters.</td></tr>`;
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  let fileTitle = 'NutriVision_Report';
+  if (modelId === 'distribution') {
+    const brgySuffix = filters?.barangay && filters.barangay !== 'all' ? `_${filters.barangay.replace(/\s+/g, '_')}` : '';
+    fileTitle = `NutriVision_Distribution_Report${brgySuffix}_${todayStr}`;
+  } else if (modelId === 'fefo') {
+    fileTitle = `NutriVision_FEFO_Wastage_Risk_${todayStr}`;
+  } else if (modelId === 'allocation') {
+    fileTitle = `NutriVision_Allocation_Balances_${todayStr}`;
+  } else {
+    fileTitle = `NutriVision_${(title || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_')}_${todayStr}`;
+  }
+
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>${title}</title>
+      <title>${fileTitle}</title>
       <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 20px; font-size: 12px; }
         .header { text-align: center; border-bottom: 2px solid #1B7A3E; padding-bottom: 10px; margin-bottom: 20px; }
@@ -161,6 +174,22 @@ function generateReportHTML(title, data, modelId, filters, profile) {
  * Shows the Print Preview Modal and handles actual printing
  */
 export function showPrintPreview(title, data, modelId, filters, profile, onConfirm) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  let fileTitle = 'NutriVision_Report';
+  if (modelId === 'distribution') {
+    const brgySuffix = filters?.barangay && filters.barangay !== 'all' ? `_${filters.barangay.replace(/\s+/g, '_')}` : '';
+    fileTitle = `NutriVision_Distribution_Report${brgySuffix}_${todayStr}`;
+  } else if (modelId === 'fefo') {
+    fileTitle = `NutriVision_FEFO_Wastage_Risk_${todayStr}`;
+  } else if (modelId === 'allocation') {
+    fileTitle = `NutriVision_Allocation_Balances_${todayStr}`;
+  } else {
+    fileTitle = `NutriVision_${(title || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_')}_${todayStr}`;
+  }
+
+  const originalTitle = document.title;
+  document.title = fileTitle;
+
   // 1. Generate HTML
   const htmlContent = generateReportHTML(title, data, modelId, filters, profile);
 
@@ -253,10 +282,27 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
   doc.close();
 
   // 7. Event Listeners
-  closeBtn.onclick = () => document.body.removeChild(overlay);
+  const cleanup = () => {
+    document.title = originalTitle;
+    if (document.body.contains(overlay)) {
+      document.body.removeChild(overlay);
+    }
+  };
+
+  closeBtn.onclick = cleanup;
   printBtn.onclick = () => {
+    document.title = fileTitle;
+    try {
+      if (iframe.contentDocument) iframe.contentDocument.title = fileTitle;
+    } catch (e) {}
+
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
+
+    const restore = () => { document.title = originalTitle; };
+    window.addEventListener('afterprint', restore, { once: true });
+    setTimeout(restore, 3000);
+
     // Only save to archive after user confirms print — not on modal open
     if (typeof onConfirm === 'function') onConfirm();
   };

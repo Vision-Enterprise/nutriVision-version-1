@@ -52,31 +52,48 @@ function _renderModal(batches, profile, onSuccess) {
       background: var(--color-surface, #fff);
       border-radius: var(--radius-xl, 16px);
       width: 100%; max-width: 560px;
-      max-height: 90vh; overflow-y: auto;
+      max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+      overflow: hidden;
     ">
       <!-- Modal Header -->
       <div style="
-        padding: var(--space-6);
+        padding: var(--space-5) var(--space-6);
         border-bottom: 1px solid var(--color-border);
-        display: flex; align-items: flex-start; gap: var(--space-4);
+        display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
+        flex-shrink: 0;
       ">
-        <div style="
-          width: 44px; height: 44px; border-radius: var(--radius-full); flex-shrink: 0;
-          background: #fde8e8; display: flex; align-items: center; justify-content: center;
-        ">
-          <span class="icon" style="color: #c62828; font-size: 22px;">report</span>
+        <div style="display: flex; align-items: flex-start; gap: var(--space-4);">
+          <div style="
+            width: 44px; height: 44px; border-radius: var(--radius-full); flex-shrink: 0;
+            background: #fde8e8; display: flex; align-items: center; justify-content: center;
+          ">
+            <span class="icon" style="color: #c62828; font-size: 22px;">report</span>
+          </div>
+          <div>
+            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Report Defective Stock</h2>
+            <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 0;">
+              Log damaged or recalled commodities to remove them from active inventory.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">Report Defective Stock</h2>
-          <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px;">
-            Log damaged or recalled commodities to remove them from active inventory.
-          </p>
-        </div>
+        <button id="defect-modal-close" type="button" aria-label="Close" style="
+          background: transparent; border: none; cursor: pointer; color: var(--color-text-muted);
+          padding: 6px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s ease, color 0.15s ease; flex-shrink: 0;
+        " onmouseover="this.style.background='var(--color-surface-alt, #f1f5f9)'; this.style.color='var(--color-text, #111827)'" onmouseout="this.style.background='transparent'; this.style.color='var(--color-text-muted)'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <!-- Modal Body -->
-      <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5);">
+      <div style="
+        padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5);
+        flex: 1; overflow-y: auto; overscroll-behavior: contain;
+      ">
 
         <!-- Batch Search -->
         <div class="form-group">
@@ -209,6 +226,8 @@ function _renderModal(batches, profile, onSuccess) {
         padding: var(--space-4) var(--space-6);
         border-top: 1px solid var(--color-border);
         display: flex; justify-content: flex-end; gap: var(--space-3);
+        flex-shrink: 0;
+        background: var(--color-surface, #fff);
       ">
         <button id="defect-modal-cancel" class="btn btn-ghost">Cancel</button>
         <button id="defect-modal-generate" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
@@ -348,10 +367,28 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
     }
   });
 
-  // ── Cancel ─────────────────────────────────────────────────────────────────
-  overlay.querySelector('#defect-modal-cancel').addEventListener('click', () => {
-    document.body.removeChild(overlay);
+  // ── Modal Dismissal ────────────────────────────────────────────────────────
+  const closeModal = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', handleKeyDown);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') closeModal();
+  };
+
+  document.addEventListener('keydown', handleKeyDown);
+
+  // Close on outside backdrop click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
   });
+
+  // Close on X button
+  overlay.querySelector('#defect-modal-close')?.addEventListener('click', closeModal);
+
+  // Close on Cancel button
+  overlay.querySelector('#defect-modal-cancel')?.addEventListener('click', closeModal);
 
   // ── Generate PDF ───────────────────────────────────────────────────────────
   overlay.querySelector('#defect-modal-generate').addEventListener('click', () => {
@@ -378,7 +415,7 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
         return;
       }
       // Close modal and refresh page
-      document.body.removeChild(overlay);
+      closeModal();
       if (typeof onSuccess === 'function') onSuccess(data, selectedBatch, incidentData);
     });
   });
@@ -444,15 +481,30 @@ export function openRestoreModal(incident, profile, onSuccess) {
       background: var(--color-surface, #fff);
       border-radius: var(--radius-xl, 16px);
       width: 100%; max-width: 480px;
+      max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+      overflow: hidden;
     ">
       <div style="
         padding: var(--space-5) var(--space-6);
         border-bottom: 1px solid var(--color-border);
-        display: flex; align-items: center; gap: var(--space-3);
+        display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+        flex-shrink: 0;
       ">
-        <span class="icon" style="color: var(--color-primary); font-size: 24px;">settings_backup_restore</span>
-        <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin:0;">Restore from Quarantine</h2>
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+          <span class="icon" style="color: var(--color-primary); font-size: 24px;">settings_backup_restore</span>
+          <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin:0;">Restore from Quarantine</h2>
+        </div>
+        <button id="btn-restore-close" type="button" aria-label="Close" style="
+          background: transparent; border: none; cursor: pointer; color: var(--color-text-muted);
+          padding: 6px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s ease, color 0.15s ease;
+        " onmouseover="this.style.background='var(--color-surface-alt, #f1f5f9)'; this.style.color='var(--color-text, #111827)'" onmouseout="this.style.background='transparent'; this.style.color='var(--color-text-muted)'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5);">
@@ -497,6 +549,8 @@ export function openRestoreModal(incident, profile, onSuccess) {
         padding: var(--space-4) var(--space-6);
         border-top: 1px solid var(--color-border);
         display: flex; justify-content: flex-end; gap: var(--space-3);
+        flex-shrink: 0;
+        background: var(--color-surface, #fff);
       ">
         <button id="btn-restore-cancel" class="btn btn-ghost">Cancel</button>
         <button id="btn-restore-confirm" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
@@ -512,9 +566,23 @@ export function openRestoreModal(incident, profile, onSuccess) {
   const errorEl = overlay.querySelector('#restore-error');
   const qtyInput = overlay.querySelector('#restore-qty');
 
-  overlay.querySelector('#btn-restore-cancel').addEventListener('click', () => {
-    document.body.removeChild(overlay);
+  const closeRestoreModal = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', handleRestoreKeyDown);
+  };
+
+  const handleRestoreKeyDown = (e) => {
+    if (e.key === 'Escape') closeRestoreModal();
+  };
+
+  document.addEventListener('keydown', handleRestoreKeyDown);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeRestoreModal();
   });
+
+  overlay.querySelector('#btn-restore-close')?.addEventListener('click', closeRestoreModal);
+  overlay.querySelector('#btn-restore-cancel')?.addEventListener('click', closeRestoreModal);
 
   overlay.querySelector('#btn-restore-confirm').addEventListener('click', async () => {
     const qty = parseInt(qtyInput.value, 10);
@@ -546,7 +614,7 @@ export function openRestoreModal(incident, profile, onSuccess) {
       return;
     }
 
-    document.body.removeChild(overlay);
+    closeRestoreModal();
     if (typeof onSuccess === 'function') onSuccess();
   });
 }

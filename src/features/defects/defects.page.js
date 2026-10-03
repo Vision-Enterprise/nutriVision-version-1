@@ -5,7 +5,8 @@
 import { fetchDefectIncidents } from './defects.service.js';
 import { renderDefectsLayout, renderIncidentRows, renderPdfArchiveRows, renderPdfArchiveEmptyState } from './defects.render.js';
 import { openLogIncidentModal, openRestoreModal } from './defects.modal.js';
-import { getDefectPdfFileName } from './defects.pdf.js';
+import { getDefectPdfFileName, showDefectPrintPreview } from './defects.pdf.js';
+import { supabase } from '../../core/supabase.js';
 
 const MODULE     = '[Defects]';
 const ARCHIVE_KEY = 'nutrivision_defect_pdf_archive';
@@ -102,17 +103,100 @@ function _refreshPdfArchive() {
 
   const archive = _getArchive();
   tbody.innerHTML = renderPdfArchiveRows(archive);
+
+  // Attach click listeners to download buttons
+  tbody.querySelectorAll('.btn-replay-defect-pdf').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const item = archive.find(a => a.id === id);
+      if (item) {
+        _handleReplayDefectPdf(item);
+      }
+    });
+  });
+}
+
+async function _handleReplayDefectPdf(item) {
+  // 1. Check if complete snapshot exists
+  if (item.incidentData && item.batch) {
+    showDefectPrintPreview(item.incidentData, item.batch, _profile, null);
+    return;
+  }
+
+  // 2. Find from loaded memory
+  let incident = _incidentsData.find(i => 
+    i.id === item.incidentId ||
+    i.batches?.batch_number === item.batchNumber
+  );
+
+  let batch = incident?.batches;
+
+  // 3. Fallback: fetch batch info if missing
+  if (!batch && item.batchNumber && item.batchNumber !== '—') {
+    try {
+      const { data: bData } = await supabase
+        .from('batches')
+        .select('id, batch_number, quantity, commodities(id, name, unit)')
+        .eq('batch_number', item.batchNumber)
+        .maybeSingle();
+      if (bData) batch = bData;
+    } catch (err) {
+      console.warn('[DefectsPage] Could not fetch batch for PDF replay:', err);
+    }
+  }
+
+  const isDispose = (item.actionTaken || item.fileName || '').toLowerCase().includes('dispos');
+  const actionLabel = isDispose ? 'Disposed' : 'Quarantined';
+  const effectiveBatch = batch || {
+    batch_number: item.batchNumber || 'UNKNOWN',
+    quantity: incident?.quantity_affected || 0,
+    commodities: { name: 'Health Commodity', unit: 'Units' }
+  };
+  const effectiveIncident = {
+    classification: incident?.classification || 'Quality Issue / Inspection',
+    quantityAffected: incident?.quantity_affected || 1,
+    actionTaken: incident?.action_taken || actionLabel,
+    remarks: incident?.remarks || '',
+    evidenceUrl: incident?.evidence_url || null,
+    imageData: null
+  };
+
+  showDefectPrintPreview(effectiveIncident, effectiveBatch, _profile, null);
 }
 
 function _saveToArchive(incident, batch, incidentData) {
   const archive = _getArchive();
+  const isDispose = (incidentData?.actionTaken || incident?.action_taken || '').toLowerCase().includes('dispos');
+  const actionTaken = isDispose ? 'Disposed' : 'Quarantined';
+  const fileName = getDefectPdfFileName(batch?.batch_number, actionTaken);
+
   const entry = {
     id:          `${Date.now()}`,
+    incidentId:  incident?.id,
     generatedOn: new Date().toISOString(),
-    fileName:    getDefectPdfFileName(batch?.batch_number, incidentData?.actionTaken),
+    fileName,
     batchNumber: batch?.batch_number || '—',
-    actionTaken: incidentData?.actionTaken || '—',
+    actionTaken,
+    incidentData: {
+      classification:   incidentData?.classification || incident?.classification,
+      quantityAffected: incidentData?.quantityAffected || incident?.quantity_affected,
+      actionTaken:      incidentData?.actionTaken || actionTaken,
+      remarks:          incidentData?.remarks || incident?.remarks || '',
+      imageData:        incidentData?.imageData || null,
+      evidenceUrl:      incident?.evidence_url || null,
+    },
+    batch: {
+      id:           batch?.id,
+      batch_number: batch?.batch_number,
+      quantity:     batch?.quantity,
+      commodities: {
+        id:   batch?.commodities?.id,
+        name: batch?.commodities?.name,
+        unit: batch?.commodities?.unit
+      }
+    }
   };
+
   archive.unshift(entry);
   // Keep only last 20
   const trimmed = archive.slice(0, 20);
@@ -121,7 +205,17 @@ function _saveToArchive(incident, batch, incidentData) {
 
 function _getArchive() {
   try {
-    return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    return raw.map(item => {
+      const isDispose = (item.actionTaken || item.fileName || '').toLowerCase().includes('dispos');
+      if (isDispose) {
+        if (!item.actionTaken || item.actionTaken === 'Dispose') item.actionTaken = 'Disposed';
+        if (item.fileName && item.fileName.startsWith('Quarantine_Notice')) {
+          item.fileName = item.fileName.replace('Quarantine_Notice', 'Disposal_Record');
+        }
+      }
+      return item;
+    });
   } catch {
     return [];
   }

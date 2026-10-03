@@ -46,19 +46,19 @@ export function renderDefectsLayout() {
         ">Disposed Only</button>
       </div>
 
-      <div class="table-container">
-        <table class="table">
+      <div class="table-wrapper" style="border: none; box-shadow: none; border-radius: 0; overflow-x: hidden; width: 100%;">
+        <table class="table table-compact" style="width: 100%; table-layout: auto;">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Batch ID</th>
-              <th>Commodity</th>
-              <th>Defect Classification</th>
-              <th>Scope</th>
-              <th>Qty Affected</th>
-              <th>Action Taken</th>
-              <th>Reported By</th>
-              <th style="text-align: right;">Actions</th>
+              <th style="padding: 10px 6px 10px 14px; white-space: nowrap;">Date</th>
+              <th style="padding: 10px 6px; white-space: nowrap;">Batch ID</th>
+              <th style="padding: 10px 6px;">Commodity</th>
+              <th style="padding: 10px 6px;">Defect Classification</th>
+              <th style="padding: 10px 6px; white-space: nowrap; text-align: center;">Scope</th>
+              <th style="padding: 10px 6px; white-space: nowrap;">Qty Affected</th>
+              <th style="padding: 10px 6px; white-space: nowrap; text-align: center;">Action Taken</th>
+              <th style="padding: 10px 6px; white-space: nowrap;">Reported By</th>
+              <th style="padding: 10px 14px 10px 6px; text-align: right; white-space: nowrap;">Actions</th>
             </tr>
           </thead>
           <tbody id="defect-incidents-tbody">
@@ -78,15 +78,15 @@ export function renderDefectsLayout() {
         </div>
       </div>
 
-      <div class="table-container">
-        <table class="table">
+      <div class="table-wrapper" style="border: none; box-shadow: none; border-radius: 0; overflow-x: hidden; width: 100%;">
+        <table class="table table-compact" style="width: 100%; table-layout: auto;">
           <thead>
             <tr>
-              <th>Date Generated</th>
-              <th>Report File Name</th>
-              <th>Reference Batch</th>
-              <th>Action Type</th>
-              <th style="text-align: right;">Action</th>
+              <th style="padding: 10px 6px 10px 14px; white-space: nowrap;">Date Generated</th>
+              <th style="padding: 10px 6px;">Report File Name</th>
+              <th style="padding: 10px 6px; white-space: nowrap;">Reference Batch</th>
+              <th style="padding: 10px 6px; white-space: nowrap;">Action Type</th>
+              <th style="padding: 10px 14px 10px 6px; text-align: right; white-space: nowrap;">Action</th>
             </tr>
           </thead>
           <tbody id="defect-pdf-archive-tbody">
@@ -117,12 +117,12 @@ export function renderIncidentRows(incidents = []) {
   return incidents.map(inc => {
     const date  = new Date(inc.reported_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
     const badge = inc.action_taken === 'Disposed'
-      ? '<span class="badge badge-expired" style="font-size:11px;">Disposed</span>'
-      : '<span class="badge badge-near-expiry" style="font-size:11px;">Quarantine</span>';
+      ? '<span class="badge badge-expired" style="font-size:11px; padding: 2px 7px; white-space:nowrap;">Disposed</span>'
+      : '<span class="badge badge-near-expiry" style="font-size:11px; padding: 2px 7px; white-space:nowrap;">Quarantine</span>';
 
     const scopeBadge = inc.scope === 'entire_batch'
-      ? '<span style="font-size: 11px; background: #e0e0e0; padding: 2px 6px; border-radius: 4px;">Entire Batch</span>'
-      : '<span style="font-size: 11px; background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">Partial</span>';
+      ? '<span style="font-size: 10px; background: #e0e0e0; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">Entire Batch</span>'
+      : '<span style="font-size: 10px; background: #f0f0f0; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">Partial</span>';
 
     let qtyStr = `${inc.quantity_affected} ${inc.batches?.commodities?.unit || ''}`;
     let actionHtml = '—';
@@ -135,21 +135,21 @@ export function renderIncidentRows(incidents = []) {
       qtyStr = `${remaining} ${inc.batches?.commodities?.unit || ''}`;
       
       if (remaining > 0) {
-        actionHtml = `<button class="btn btn-sm btn-restore-incident" data-id="${inc.id}" style="font-size: 11px; padding: 4px 8px;">Restore</button>`;
+        actionHtml = `<button class="btn btn-sm btn-restore-incident" data-id="${inc.id}" style="font-size: 11px; padding: 3px 8px; white-space: nowrap;">Restore</button>`;
       }
     }
 
     return `
       <tr>
-        <td style="font-size: var(--font-size-sm); color: var(--color-text-muted);">${date}</td>
-        <td style="font-weight: var(--font-weight-medium); font-family: monospace;">${inc.batches?.batch_number || '—'}</td>
-        <td>${inc.batches?.commodities?.name || '—'}</td>
-        <td style="font-size: var(--font-size-sm);">${inc.classification}</td>
-        <td>${scopeBadge}</td>
-        <td>${qtyStr}</td>
-        <td>${badge}</td>
-        <td style="font-size: var(--font-size-sm);">${inc.reporter_name || '—'}</td>
-        <td style="text-align: right;">${actionHtml}</td>
+        <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
+        <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-family: monospace; font-size: 11px; white-space: nowrap;">${inc.batches?.batch_number || '—'}</td>
+        <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px;">${inc.batches?.commodities?.name || '—'}</td>
+        <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted);">${inc.classification}</td>
+        <td style="padding: 8px 6px; text-align: center; white-space: nowrap;">${scopeBadge}</td>
+        <td style="padding: 8px 6px; white-space: nowrap; font-weight: var(--font-weight-medium); font-size: 12px;">${qtyStr}</td>
+        <td style="padding: 8px 6px; text-align: center; white-space: nowrap;">${badge}</td>
+        <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${inc.reporter_name || '—'}</td>
+        <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">${actionHtml}</td>
       </tr>
     `;
   }).join('');
@@ -171,16 +171,22 @@ export function renderPdfArchiveRows(archiveArr = []) {
 
   return archiveArr.map(item => {
     const date   = new Date(item.generatedOn).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-    const type   = item.actionTaken === 'Disposed' ? 'Disposal Record' : 'Quarantine Notice';
+    const isDispose = (item.actionTaken || item.fileName || '').toLowerCase().includes('dispos');
+    const type   = isDispose ? 'Disposal Record' : 'Quarantine Notice';
+    let displayFileName = item.fileName || 'Report.pdf';
+    if (isDispose && displayFileName.startsWith('Quarantine_Notice')) {
+      displayFileName = displayFileName.replace('Quarantine_Notice', 'Disposal_Record');
+    }
+
     return `
       <tr>
-        <td style="font-size: var(--font-size-sm); color: var(--color-text-muted);">${date}</td>
-        <td style="font-weight: var(--font-weight-medium);">${item.fileName}</td>
-        <td style="font-family: monospace; color: var(--color-text-muted);">${item.batchNumber}</td>
-        <td style="font-size: var(--font-size-sm);">${type}</td>
-        <td style="text-align: right;">
-          <button class="btn btn-icon btn-replay-defect-pdf" data-id="${item.id}" title="Re-generate PDF">
-            <span class="icon">download</span>
+        <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
+        <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px; word-break: break-all;">${displayFileName}</td>
+        <td style="padding: 8px 6px; font-family: monospace; font-size: 11px; color: var(--color-text-muted); white-space: nowrap;">${item.batchNumber}</td>
+        <td style="padding: 8px 6px; font-size: 12px; white-space: nowrap;">${type}</td>
+        <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">
+          <button class="btn btn-icon btn-replay-defect-pdf" data-id="${item.id}" title="View / Save PDF" style="width: 28px; height: 28px;">
+            <span class="icon" style="font-size: 18px;">download</span>
           </button>
         </td>
       </tr>
