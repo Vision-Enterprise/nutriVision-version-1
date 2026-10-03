@@ -484,7 +484,7 @@ export function renderAdvChart(channel, chartData, _expSummary) {
 
     tickerTotal = `${totalStock.toLocaleString()} units in stock`;
     tickerTop = horizons.critical.qty > 0
-      ? `⚠ ${horizons.critical.qty.toLocaleString()} critical`
+      ? `${horizons.critical.qty.toLocaleString()} critical`
       : horizons.near.qty > 0
         ? `${horizons.near.qty.toLocaleString()} near expiry`
         : 'All safe';

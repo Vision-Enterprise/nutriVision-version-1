@@ -473,9 +473,9 @@ function updateRowLiveCode(tr, row) {
       tr.style.backgroundColor = '#fef2f2';
       tr.style.borderLeft = '4px solid #dc2626';
       if (dupNotice) {
-        dupNotice.textContent = `⚠️ ${errText}`;
+        dupNotice.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>${escapeHtml(errText)}</span>`;
         dupNotice.style.color = '#dc2626';
-        dupNotice.style.display = 'block';
+        dupNotice.style.display = 'flex';
       }
     } else if (result.isNewCommodity) {
       batchInput.style.color = '#0284c7';
@@ -484,9 +484,9 @@ function updateRowLiveCode(tr, row) {
       tr.style.backgroundColor = '#f0f9ff';
       tr.style.borderLeft = '4px solid #0284c7';
       if (dupNotice) {
-        dupNotice.textContent = '✨ New commodity (auto-registers on save)';
+        dupNotice.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>New commodity (auto-registers on save)</span>`;
         dupNotice.style.color = '#0284c7';
-        dupNotice.style.display = 'block';
+        dupNotice.style.display = 'flex';
       }
     } else {
       batchInput.style.color = 'var(--text-main)';
@@ -563,9 +563,9 @@ function renderBulkTable() {
 
     // Batch notice message
     const batchNoticeHtml = hasError
-      ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>`
+      ? `<div class="ws-batch-dup-notice" style="display:flex; align-items:center; gap:3px; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>${escapeHtml(errMessage)}</span></div>`
       : isNewComm
-        ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#0284c7; font-weight:700; margin-top:2px; line-height:1.2;">✨ New commodity (auto-registers on save)</div>`
+        ? `<div class="ws-batch-dup-notice" style="display:flex; align-items:center; gap:3px; font-size:10px; color:#0284c7; font-weight:700; margin-top:2px; line-height:1.2;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>New commodity (auto-registers on save)</span></div>`
         : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`;
 
     return `
