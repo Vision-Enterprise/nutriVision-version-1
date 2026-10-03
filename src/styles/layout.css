@@ -221,14 +221,13 @@ body.sidebar--compressed .sidebar__nav-label {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  border-radius: 9999px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: #374151;
   text-decoration: none;
-  transition: background-color var(--transition-fast),
-              color var(--transition-fast);
+  transition: all var(--transition-fast);
   cursor: pointer;
   border: none;
   background: none;
@@ -236,48 +235,75 @@ body.sidebar--compressed .sidebar__nav-label {
   text-align: left;
 }
 
+.sidebar__nav-item .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: #4b5563;
+  transition: all var(--transition-fast);
+}
+
 body.sidebar--compressed .sidebar__nav-item {
   justify-content: center;
   padding: 0;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   margin: 0 auto;
 }
+
 body.sidebar--compressed .sidebar__nav-text,
 body.sidebar--compressed .sidebar__logo-text {
   display: none;
 }
 
 .sidebar__nav-item:hover {
-  background-color: #d1fae5;
+  background-color: #ecfdf5;
   color: #065f46;
+}
+
+.sidebar__nav-item:hover .icon {
+  color: #059669;
 }
 
 .sidebar__nav-item--active {
   background-color: #d1fae5;
   color: #065f46;
-  border-left: 4px solid #ea6b1a;
-  padding-left: calc(var(--space-3) - 4px);
+  border-radius: 9999px;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.sidebar__nav-item--active .icon {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.35);
 }
 
 body.sidebar--compressed .sidebar__nav-item--active {
-  border-left: none;
   background-color: #d1fae5;
   color: #065f46;
-  padding-left: 0;
+}
+
+body.sidebar--compressed .sidebar__nav-item--active .icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.35);
 }
 
 .sidebar__nav-item--active:hover {
-  background-color: #d1fae5;
+  background-color: #a7f3d0;
   color: #065f46;
-  border-left: 4px solid #ea6b1a;
-  padding-left: calc(var(--space-3) - 4px);
 }
 
 body.sidebar--compressed .sidebar__nav-item--active:hover {
-  border-left: none;
-  padding-left: 0;
+  background-color: #a7f3d0;
 }
 
 .sidebar__nav-item svg {
