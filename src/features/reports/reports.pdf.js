@@ -128,7 +128,7 @@ function generateReportHTML(title, data, modelId, filters, profile) {
           font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
           color: #111;
           margin: 0;
-          padding: 10px 15px;
+          padding: 24px 32px;
           font-size: 11px;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;

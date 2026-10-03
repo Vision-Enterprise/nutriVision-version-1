@@ -66,8 +66,10 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
           </button>
         </div>
       </div>
-      <!-- iframe -->
-      <iframe id="defect-preview-iframe" style="flex: 1; border: none; background: #f5f5f5;"></iframe>
+      <!-- iframe container with A4 sheet canvas -->
+      <div style="flex: 1; background: #cbd5e1; padding: 24px; display: flex; justify-content: center; overflow: auto;">
+        <iframe id="defect-preview-iframe" style="width: 100%; max-width: 210mm; height: 100%; min-height: 297mm; background: #fff; border: none; box-shadow: 0 4px 16px rgba(0,0,0,0.15);"></iframe>
+      </div>
     </div>
   `;
 
@@ -134,16 +136,20 @@ function _generateIncidentReportHTML(incident, batch, profile) {
 <style>
     @page {
       size: A4 portrait;
-      margin: 12mm 16mm;
+      margin: 15mm 20mm;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       font-size: 11px;
       color: #1a1a1a;
-      padding: 0;
+      padding: 32px 36px;
+      background: #fff;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+    }
+    @media print {
+      body { padding: 0; }
     }
     .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 16px; }
     .header .agency-line { font-size: 10.5px; color: #444; margin: 1px 0; }
@@ -167,9 +173,6 @@ function _generateIncidentReportHTML(incident, batch, profile) {
     .sig-line  { border-top: 1px solid #222; padding-top: 4px; font-size: 10px; text-transform: uppercase; }
     .sig-title { font-size: 9.5px; color: #555; text-transform: none; }
     .footer { text-align: center; margin-top: 30px; font-size: 9.5px; color: #666; border-top: 1px solid #ccc; padding-top: 8px; }
-    @media print {
-      body { padding: 0; }
-    }
   </style>
 </head>
 <body>
