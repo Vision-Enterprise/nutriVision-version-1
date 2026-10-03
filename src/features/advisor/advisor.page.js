@@ -10,7 +10,7 @@
 import { fetchAdvisorData } from './advisor.service.js';
 import { fetchChartData, fetchDashboardStats } from '../dashboard/dashboard.service.js';
 import { renderAdvisorLayout } from './advisor.render.js';
-import { initAdvCharts, renderAdvReleasesChart } from './advisor.charts.js';
+import { initAdvCharts, renderAdvChart } from './advisor.charts.js';
 import './advisor.css';
 
 let _advChartData = null;
@@ -61,42 +61,11 @@ export async function renderAdvisorPage(profile) {
   contentContainer.innerHTML = renderAdvisorLayout(data);
   contentContainer.style.display = 'block';
 
-  // Carousel Navigation
-  _initCarousel();
-
   // Charts Initialization
   if (statsRes && _advChartData) {
     initAdvCharts(_advChartData, statsRes.expirationSummary);
 
-    document.getElementById('adv-chart-releases-toggle')?.addEventListener('change', e => {
-      renderAdvReleasesChart(_advChartData, e.target.value);
-    });
+    // Initial View
+    renderAdvChart('barangay', _advChartData, statsRes.expirationSummary);
   }
-}
-
-function _initCarousel() {
-  let currentSlide = 0;
-  const track = document.getElementById('adv-carousel-track');
-  const prevBtn = document.getElementById('adv-carousel-prev');
-  const nextBtn = document.getElementById('adv-carousel-next');
-
-  if (!track || !prevBtn || !nextBtn) return;
-
-  const updateCarousel = () => {
-    track.style.transform = `translateX(-${currentSlide * 100}%)`;
-  };
-
-  prevBtn.addEventListener('click', () => {
-    if (currentSlide > 0) {
-      currentSlide--;
-      updateCarousel();
-    }
-  });
-
-  nextBtn.addEventListener('click', () => {
-    if (currentSlide < 3) {
-      currentSlide++;
-      updateCarousel();
-    }
-  });
 }

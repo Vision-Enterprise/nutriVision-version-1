@@ -139,3 +139,112 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* TV Analytics Console Styles */
+.tv-console-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border-light);
+}
+
+.tv-channel-btn {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.tv-channel-btn.btn-primary {
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.tv-channel-btn.btn-outline:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Top Header Slot for ApexCharts Download Button */
+#tv-chart-toolbar-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#tv-chart-toolbar-slot .apexcharts-toolbar {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 50 !important;
+}
+
+#tv-chart-toolbar-slot .apexcharts-download-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: var(--radius-md, 6px) !important;
+  background: #ffffff !important;
+  border: 1px solid var(--color-border, #cbd5e1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+#tv-chart-toolbar-slot .apexcharts-download-icon:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+#tv-chart-toolbar-slot .apexcharts-download-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--color-primary, #059669);
+  transition: stroke 0.15s ease;
+}
+
+#tv-chart-toolbar-slot .apexcharts-download-icon:hover svg {
+  stroke: #047857;
+}
+
+#tv-chart-toolbar-slot .apexcharts-menu {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  right: 0 !important;
+  left: auto !important;
+  min-width: 150px !important;
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08) !important;
+  padding: 6px 0 !important;
+  z-index: 1000 !important;
+  font-family: inherit !important;
+}
+
+#tv-chart-toolbar-slot .apexcharts-menu-item {
+  padding: 9px 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease;
+}
+
+#tv-chart-toolbar-slot .apexcharts-menu-item:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Ensure no floating toolbar stays in chart canvas */
+#tv-console-chart .apexcharts-toolbar {
+  display: none !important;
+}
+
+
