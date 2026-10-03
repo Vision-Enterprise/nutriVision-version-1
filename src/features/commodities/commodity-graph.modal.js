@@ -140,7 +140,7 @@ export async function openCommodityGraphModal(commodityId) {
         ${totalQuarantined > 0 ? `
           <span class="cgraph-kpi-pill cgraph-kpi-pill--defect">
             <span class="icon icon--sm" style="font-size:14px;">warning</span>
-            <strong>${totalQuarantined.toLocaleString()}</strong> Quarantined
+            <strong>${totalQuarantined.toLocaleString()}</strong> Quarantined/Disposed
           </span>
         ` : ''}
       </div>
@@ -333,9 +333,9 @@ export async function openCommodityGraphModal(commodityId) {
     <footer class="cgraph-footer">
       <div class="cgraph-legend-group">
         <span style="font-weight:600; color:var(--color-text-dark);">Legend:</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--good"></span> Good (&gt;180d)</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--moderate"></span> Moderate (90-180d)</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--near"></span> Near Expiry (&lt;90d)</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--good"></span> Good (&gt;6 Months)</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--moderate"></span> Moderate (3-6 Months)</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--near"></span> Near Expiry (0-3 Months)</span>
         <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--expired"></span> Expired</span>
         <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--dist"></span> Barangay Distribution</span>
       </div>
