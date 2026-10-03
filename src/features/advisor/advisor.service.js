@@ -28,19 +28,22 @@ export async function fetchAdvisorData() {
 
     const commodities = (rawCommodities || []).filter(c => !c.deleted_at);
 
-    // 2. Fetch upcoming events (next 30 days)
+    // 2. Fetch upcoming events (next 30 days, active only)
     const today = new Date();
     const nextMonth = new Date();
     nextMonth.setDate(today.getDate() + 30);
     
-    const { data: events, error: eventError } = await supabase
+    const { data: rawEvents, error: eventError } = await supabase
       .from('calendar_events')
       .select('*')
+      .is('deleted_at', null)
       .gte('start_date', today.toISOString().split('T')[0])
       .lte('start_date', nextMonth.toISOString().split('T')[0])
       .order('start_date');
 
     if (eventError) throw eventError;
+
+    const events = (rawEvents || []).filter(e => !e.deleted_at);
 
     // Aggregation
     let totalActiveItems = commodities.length;

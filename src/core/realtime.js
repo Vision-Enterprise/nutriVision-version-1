@@ -33,6 +33,16 @@ export function initRealtimeSync() {
         { event: '*', schema: 'public', table: 'releases' },
         (payload) => _handleRealtimeChange('releases', payload)
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'calendar_events' },
+        (payload) => _handleRealtimeChange('calendar_events', payload)
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'defect_incidents' },
+        (payload) => _handleRealtimeChange('defect_incidents', payload)
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('[RealtimeSync] Connected to Supabase real-time channel.');
@@ -59,9 +69,26 @@ export function destroyRealtimeSync() {
 }
 
 function _handleRealtimeChange(table, payload) {
-  // Do not refresh if an interactive modal is currently open so user work isn't interrupted
-  const activeModal = document.querySelector('.modal-overlay');
+  // Do not refresh if an interactive modal is currently open and visible
+  const activeModal = Array.from(
+    document.querySelectorAll('.modal-overlay, .cgraph-modal-overlay')
+  ).find((el) => {
+    return el.style.display !== 'none' && window.getComputedStyle(el).display !== 'none';
+  });
   if (activeModal) {
+    return;
+  }
+
+  // Do not disrupt user if actively typing in an input or form field
+  const isInputFocused = document.activeElement && 
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+  if (isInputFocused) {
+    return;
+  }
+
+  const currentPath = router.getCurrentPath();
+  // If user is on calendar view and calendar_events changed, FullCalendar handles its own refetch
+  if (currentPath === 'calendar' && table === 'calendar_events') {
     return;
   }
 
