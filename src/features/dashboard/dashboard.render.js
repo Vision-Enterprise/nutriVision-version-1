@@ -155,42 +155,54 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
       
       <!-- Releases Over Time -->
       <div class="card" style="padding: var(--space-4);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-          <h2 class="card-title" style="margin:0;">Releases Over Time</h2>
-          <select id="chart-releases-toggle" class="form-input" style="width: auto; padding: 4px 8px; min-height: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+          <div>
+            <h2 class="card-title" style="margin:0;">Releases Over Time</h2>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 2px 0 0 0;">
+              Distribution volume trends across barangays
+            </p>
+          </div>
+          <select id="chart-releases-toggle" class="form-input" style="width: auto; padding: 4px 8px; min-height: auto;" aria-label="Select releases timeframe">
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly" selected>Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
         </div>
-        <div style="position: relative; height: 300px; width: 100%;">
-          <canvas id="chart-releases"></canvas>
-        </div>
+        <div id="chart-releases" style="min-height: 310px; width: 100%;"></div>
       </div>
 
-      <!-- Current Stock per Commodity -->
+      <!-- Stock Utilization (In-Stock vs. Released) -->
       <div class="card" style="padding: var(--space-4);">
-        <h2 class="card-title" style="margin-bottom: var(--space-4);">Stock per Commodity</h2>
-        <div style="position: relative; height: 300px; width: 100%;">
-          <canvas id="chart-stock"></canvas>
+        <div style="margin-bottom: var(--space-3);">
+          <h2 class="card-title" style="margin:0;">Stock Utilization</h2>
+          <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 2px 0 0 0;">
+            Available inventory vs. total released per top commodity
+          </p>
         </div>
+        <div id="chart-stock" style="min-height: 310px; width: 100%;"></div>
       </div>
 
-      <!-- Distribution by Barangay -->
+      <!-- Top Barangays Distribution Reach -->
       <div class="card" style="padding: var(--space-4);">
-        <h2 class="card-title" style="margin-bottom: var(--space-4);">Distribution by Barangay</h2>
-        <div style="position: relative; height: 300px; width: 100%;">
-          <canvas id="chart-barangay"></canvas>
+        <div style="margin-bottom: var(--space-3);">
+          <h2 class="card-title" style="margin:0;">Top Barangays Distribution Reach</h2>
+          <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 2px 0 0 0;">
+            Ranked municipal distribution volume with share percentage
+          </p>
         </div>
+        <div id="chart-barangay" style="min-height: 310px; width: 100%;"></div>
       </div>
 
-      <!-- Expiry Status -->
+      <!-- Expiration Risk Horizon -->
       <div class="card" style="padding: var(--space-4);">
-        <h2 class="card-title" style="margin-bottom: var(--space-4);">Expiration Status</h2>
-        <div style="position: relative; height: 300px; width: 100%; display: flex; justify-content: center;">
-          <canvas id="chart-expiry"></canvas>
+        <div style="margin-bottom: var(--space-3);">
+          <h2 class="card-title" style="margin:0;">Expiration Risk Horizon</h2>
+          <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 2px 0 0 0;">
+            Stock volume by urgency horizon (FEFO operational action)
+          </p>
         </div>
+        <div id="chart-expiry" style="min-height: 310px; width: 100%;"></div>
       </div>
 
     </div>

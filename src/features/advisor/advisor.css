@@ -1,13 +1,9 @@
 /* Prevent horizontal overflow in advisor module */
 #advisor-content {
-  overflow-x: hidden;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-}
-
-#advisor-content * {
-  box-sizing: border-box;
-  max-width: 100%;
 }
 
 /* Advisor Module Styles */
@@ -20,6 +16,7 @@
   margin-bottom: var(--space-4);
   font-size: var(--font-size-sm);
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .advisor-stat-row {
@@ -29,11 +26,12 @@
   padding: 6px 0;
   border-bottom: 1px solid var(--color-border-light);
   font-size: var(--font-size-sm);
+  gap: var(--space-2);
 }
 
 .advisor-stat-row:last-child { border-bottom: none; }
-.advisor-stat-label { color: var(--color-text-muted); font-size: var(--font-size-sm); }
-.advisor-stat-value { font-weight: 600; font-size: var(--font-size-sm); }
+.advisor-stat-label { color: var(--color-text-muted); font-size: var(--font-size-sm); min-width: 0; }
+.advisor-stat-value { font-weight: 600; font-size: var(--font-size-sm); flex-shrink: 0; }
 
 .advisor-action-card {
   border: 1px solid var(--color-border);
@@ -44,18 +42,31 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.advisor-action-content {
+  min-width: 0;
+  flex: 1;
 }
 
 .advisor-action-content h4 {
   margin: 0 0 2px 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .advisor-action-content p {
   margin: 0;
   font-size: 11px;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .advisor-action-type-warning { border-left: 4px solid var(--color-warning); }

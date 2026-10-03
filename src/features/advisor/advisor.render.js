@@ -61,12 +61,12 @@ export function renderAdvisorLayout(data) {
       ${summaryText}
     </div>
 
-    <div class="grid grid-2" style="gap: var(--space-3); margin-top: var(--space-3); align-items: start; max-width: 100%;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--space-4); margin-top: var(--space-4); align-items: start; width: 100%; min-width: 0;">
       <!-- Left Column -->
-      <div style="display: flex; flex-direction: column; gap: var(--space-3); min-width: 0;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0;">
         
         <!-- Inventory Health -->
-        <div class="card">
+        <div class="card" style="min-width: 0; overflow: hidden;">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="card-title" style="display: flex; align-items: center; gap: var(--space-2); margin: 0;">
                Inventory by Commodity
@@ -81,7 +81,7 @@ export function renderAdvisorLayout(data) {
         </div>
 
         <!-- Expiring Soon -->
-        <div class="card">
+        <div class="card" style="min-width: 0; overflow: hidden;">
           <div class="card-header"><h3 class="card-title">Expiring Soon (90 Days)</h3></div>
           <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
             ${expiringList}
@@ -91,10 +91,10 @@ export function renderAdvisorLayout(data) {
       </div>
 
       <!-- Right Column -->
-      <div style="display: flex; flex-direction: column; gap: var(--space-3); min-width: 0;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0;">
         
         <!-- Current Status -->
-        <div class="card">
+        <div class="card" style="min-width: 0; overflow: hidden;">
           <div class="card-header"><h3 class="card-title">Current Status</h3></div>
           <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
             <div class="advisor-stat-row">
@@ -121,7 +121,7 @@ export function renderAdvisorLayout(data) {
         </div>
 
         <!-- Suggested Actions -->
-        <div class="card">
+        <div class="card" style="min-width: 0; overflow: hidden;">
           <div class="card-header"><h3 class="card-title">Suggested Actions</h3></div>
           <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
             ${actionsList}
@@ -132,59 +132,51 @@ export function renderAdvisorLayout(data) {
     </div>
     
     <!-- Analytics Carousel -->
-    <div class="card" style="margin-top: var(--space-4);">
+    <div class="card" style="margin-top: var(--space-4); width: 100%; min-width: 0; overflow: hidden;">
       <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: none;">
         <h3 class="card-title" style="margin: 0;">Analytics & Trends</h3>
         <div style="display: flex; gap: var(--space-2);">
-          <button id="adv-carousel-prev" class="btn btn-outline" style="padding: 4px 8px; min-height: auto;">
+          <button id="adv-carousel-prev" class="btn btn-outline" style="padding: 4px 8px; min-height: auto;" aria-label="Previous slide">
             <span class="icon">chevron_left</span>
           </button>
-          <button id="adv-carousel-next" class="btn btn-outline" style="padding: 4px 8px; min-height: auto;">
+          <button id="adv-carousel-next" class="btn btn-outline" style="padding: 4px 8px; min-height: auto;" aria-label="Next slide">
             <span class="icon">chevron_right</span>
           </button>
         </div>
       </div>
-      <div class="card-body" style="overflow: hidden; padding: 0; max-width: 100%;">
-        <div id="adv-carousel-track" style="display: flex; transition: transform 0.4s ease;">
+      <div class="card-body" style="overflow: hidden; padding: 0; width: 100%; min-width: 0;">
+        <div id="adv-carousel-track" style="display: flex; width: 100%; min-width: 0; transition: transform 0.4s ease;">
           
           <!-- Slide 1 -->
-          <div style="min-width: 100%; padding: var(--space-4);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+          <div style="flex: 0 0 100%; width: 100%; min-width: 100%; max-width: 100%; padding: var(--space-4); box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
               <h4 style="margin: 0; font-size: 1.1rem; color: var(--color-text);">Releases Over Time</h4>
-              <select id="adv-chart-releases-toggle" class="form-input" style="width: auto; padding: 4px 8px; min-height: auto;">
+              <select id="adv-chart-releases-toggle" class="form-input" style="width: auto; padding: 4px 8px; min-height: auto;" aria-label="Select advisor releases timeframe">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly" selected>Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
             </div>
-            <div style="position: relative; height: 220px; width: 100%;">
-              <canvas id="adv-chart-releases"></canvas>
-            </div>
+            <div id="adv-chart-releases" style="min-height: 220px; width: 100%;"></div>
           </div>
           
           <!-- Slide 2 -->
-          <div style="min-width: 100%; padding: var(--space-4);">
-            <h4 style="margin-bottom: var(--space-4); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Stock per Commodity</h4>
-            <div style="position: relative; height: 220px; width: 100%;">
-              <canvas id="adv-chart-stock"></canvas>
-            </div>
+          <div style="flex: 0 0 100%; width: 100%; min-width: 100%; max-width: 100%; padding: var(--space-4); box-sizing: border-box;">
+            <h4 style="margin-bottom: var(--space-3); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Stock Utilization</h4>
+            <div id="adv-chart-stock" style="min-height: 220px; width: 100%;"></div>
           </div>
           
           <!-- Slide 3 -->
-          <div style="min-width: 100%; padding: var(--space-4);">
-            <h4 style="margin-bottom: var(--space-4); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Distribution by Barangay</h4>
-            <div style="position: relative; height: 220px; width: 100%;">
-              <canvas id="adv-chart-barangay"></canvas>
-            </div>
+          <div style="flex: 0 0 100%; width: 100%; min-width: 100%; max-width: 100%; padding: var(--space-4); box-sizing: border-box;">
+            <h4 style="margin-bottom: var(--space-3); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Top Barangays Distribution Reach</h4>
+            <div id="adv-chart-barangay" style="min-height: 220px; width: 100%;"></div>
           </div>
           
           <!-- Slide 4 -->
-          <div style="min-width: 100%; padding: var(--space-4);">
-            <h4 style="margin-bottom: var(--space-4); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Expiration Status</h4>
-            <div style="position: relative; height: 220px; width: 100%; display: flex; justify-content: center;">
-              <canvas id="adv-chart-expiry"></canvas>
-            </div>
+          <div style="flex: 0 0 100%; width: 100%; min-width: 100%; max-width: 100%; padding: var(--space-4); box-sizing: border-box;">
+            <h4 style="margin-bottom: var(--space-3); margin-top: 0; font-size: 1.1rem; color: var(--color-text);">Expiration Risk Horizon</h4>
+            <div id="adv-chart-expiry" style="min-height: 220px; width: 100%;"></div>
           </div>
           
         </div>

@@ -146,19 +146,33 @@ export async function fetchChartData() {
     // 1. Fetch releases for distribution trends and barangay distribution
     const { data: releases, error: releasesError } = await supabase
       .from('releases')
-      .select('quantity, barangay, released_at');
+      .select(`
+        quantity,
+        barangay,
+        released_at,
+        batch_id,
+        batches (
+          commodity_id,
+          commodities (
+            name,
+            unit
+          )
+        )
+      `);
       
     if (releasesError) throw releasesError;
 
-    // 2. Fetch active batches with commodity names for stock per commodity
+    // 2. Fetch active batches with commodity names for stock per commodity & expiry risk
     const { data: rawBatches, error: batchesError } = await supabase
       .from('batches')
       .select(`
+        id,
+        batch_number,
         quantity,
         expiration_date,
         record_status,
         deleted_at,
-        commodities ( name, deleted_at )
+        commodities ( id, name, unit, deleted_at )
       `)
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)

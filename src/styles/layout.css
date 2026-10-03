@@ -203,6 +203,8 @@ body.sidebar--compressed .sidebar__nav-item--active:hover {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
+  overflow-x: hidden;
   transition: margin-left var(--transition-base);
 }
 
@@ -248,6 +250,8 @@ body.sidebar--compressed .main-wrapper {
   padding: var(--content-padding);
   width: 100%;
   max-width: var(--content-max-width);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* â”€â”€ Page Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
