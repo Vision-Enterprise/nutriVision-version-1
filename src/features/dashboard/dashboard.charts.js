@@ -17,10 +17,10 @@ export function initDashboardCharts(chartData, expirationSummary) {
   destroyDashboardCharts();
 
   const colors = {
-    primary: '#047857',
-    secondary: '#1d4ed8',
-    warning: '#b45309',
-    danger: '#b91c1c',
+    primary: '#059669',
+    secondary: '#eab308',
+    warning: '#ea580c',
+    danger: '#dc2626',
     muted: '#9ca3af',
     grid: '#374151'
   };

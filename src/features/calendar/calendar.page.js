@@ -26,10 +26,16 @@ let _onlineHandler = null;
 function getExpColor(dateStr) {
   if (!dateStr) return null;
   const diff = (new Date(dateStr) - new Date()) / 86400000;
-  if (diff <= 0)                                return { bg: 'var(--color-exp-expired)',  border: '#991b1b' };
-  if (diff <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS) return { bg: 'var(--color-exp-near)',     border: '#92400e' };
-  if (diff <= EXPIRATION_THRESHOLDS.GOOD_DAYS)        return { bg: 'var(--color-exp-moderate)', border: '#1e40af' };
-  return                                              { bg: 'var(--color-exp-good)',     border: '#065f46' };
+  if (diff <= 0) {
+    return { bg: '#dc2626', border: '#b91c1c', textColor: '#ffffff' };
+  }
+  if (diff <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS) {
+    return { bg: '#ea580c', border: '#c2410c', textColor: '#ffffff' };
+  }
+  if (diff <= EXPIRATION_THRESHOLDS.GOOD_DAYS) {
+    return { bg: '#eab308', border: '#ca8a04', textColor: '#713f12' };
+  }
+  return { bg: '#059669', border: '#047857', textColor: '#ffffff' };
 }
 
 function loadFullCalendar() {
@@ -89,7 +95,7 @@ async function loadAllEvents(info, successCb, failCb) {
           allDay:          true,
           backgroundColor: col.bg,
           borderColor:     col.border,
-          textColor:       '#fff',
+          textColor:       col.textColor || '#fff',
           extendedProps:   { type: 'expiration', batch: b },
         });
       }

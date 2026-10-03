@@ -108,7 +108,7 @@ export function initAdvCharts(chartData, expirationSummary) {
             expirationSummary[EXPIRATION_STATUS.EXPIRED] || 0
           ] : [1],
           backgroundColor: hasBatches 
-            ? ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'] 
+            ? ['#059669', '#eab308', '#ea580c', '#dc2626'] 
             : ['#e5e7eb'],
           borderWidth: 0,
         }]
