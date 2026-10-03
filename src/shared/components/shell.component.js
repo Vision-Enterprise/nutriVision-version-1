@@ -27,6 +27,7 @@
 
 import { router }           from '../../core/router.js';
 import logoUrl              from '../../assets/logo.png';
+import logoIconUrl          from '../../assets/logo-icon.png';
 import { logout }           from '../../features/auth/auth.service.js';
 import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 
@@ -74,13 +75,14 @@ export function renderShell(profile, onLogout) {
       >
 
         <!-- Brand logo & Toggle -->
-        <div class="sidebar__logo" style="display: flex; align-items: flex-start; justify-content: space-between; padding: var(--space-4); width: 100%;">
-          <div class="sidebar__logo-content" style="display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
-            <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" style="height: 32px; width: auto; display: block;" />
-            <div class="sidebar__logo-sub" style="margin-left: 2px;">MNAO - Manolo Fortich</div>
+        <div class="sidebar__logo">
+          <div class="sidebar__logo-content">
+            <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" />
+            <div class="sidebar__logo-sub">MNAO - Manolo Fortich</div>
           </div>
-          <button id="sidebar-toggle-btn" class="btn btn-ghost" style="padding: 8px; border-radius: 50%; min-width: unset; height: auto;" aria-label="Toggle Sidebar">
-            <span class="icon">menu</span>
+          <button id="sidebar-toggle-btn" class="sidebar__toggle-btn btn btn-ghost" aria-label="Toggle Sidebar" title="${isCompressed ? 'Expand Sidebar' : 'Collapse Sidebar'}">
+            <span class="sidebar__toggle-icon icon">menu</span>
+            <img src="${logoIconUrl}" alt="NutriVision Icon" class="sidebar__toggle-logo" />
           </button>
         </div>
         
@@ -296,6 +298,8 @@ export function renderShell(profile, onLogout) {
       document.body.classList.toggle('sidebar--compressed');
       const isNowCompressed = document.body.classList.contains('sidebar--compressed');
       localStorage.setItem('sidebar_compressed', isNowCompressed);
+      toggleBtn.setAttribute('title', isNowCompressed ? 'Expand Sidebar' : 'Collapse Sidebar');
+      toggleBtn.setAttribute('aria-label', isNowCompressed ? 'Expand Sidebar' : 'Collapse Sidebar');
     });
   }
 
