@@ -119,33 +119,51 @@ function generateReportHTML(title, data, modelId, filters, profile) {
       <meta charset="UTF-8">
       <title>${fileTitle}</title>
       <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 20px; font-size: 12px; }
-        .header { text-align: center; border-bottom: 2px solid #1B7A3E; padding-bottom: 10px; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 20px; color: #1B7A3E; }
-        .header h2 { margin: 5px 0 0 0; font-size: 14px; color: #555; }
-        .meta { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 11px; color: #666; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
-        th { background-color: #f5f5f5; color: #333; font-weight: bold; }
-        .footer { text-align: center; margin-top: 40px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
-        .signature { margin-top: 50px; display: flex; justify-content: space-between; }
-        .sig-line { width: 200px; border-top: 1px solid #333; text-align: center; padding-top: 5px; }
+        @page {
+          size: A4 landscape;
+          margin: 10mm 15mm;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+          color: #111;
+          margin: 0;
+          padding: 10px 15px;
+          font-size: 11px;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 16px; }
+        .header .agency-line { margin: 1px 0; font-size: 10.5px; color: #444; }
+        .header h1 { margin: 4px 0 6px; font-size: 14px; font-weight: bold; color: #111; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header h2 { margin: 6px 0 0; font-size: 13px; font-weight: bold; color: #111; text-transform: uppercase; letter-spacing: 0.5px; }
+        .meta { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 10px; color: #333; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        th, td { border: 1px solid #444; padding: 7px 10px; text-align: left; font-size: 10.5px; }
+        th { background-color: #f0f0f0 !important; color: #000; font-weight: bold; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.3px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .signature { margin-top: 36px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+        .sig-block { text-align: center; width: 220px; }
+        .sig-role { text-align: left; font-size: 10px; color: #333; margin-bottom: 30px; }
+        .sig-line { border-top: 1px solid #222; padding-top: 4px; font-size: 10px; text-transform: uppercase; }
+        .sig-title { font-size: 9.5px; color: #555; text-transform: none; }
+        .footer { text-align: center; margin-top: 30px; font-size: 9.5px; color: #666; border-top: 1px solid #ccc; padding-top: 8px; }
         @media print {
           body { padding: 0; }
-          @page { margin: 1cm; size: landscape; }
         }
       </style>
     </head>
     <body>
       <div class="header">
+        <p class="agency-line">Republic of the Philippines</p>
+        <p class="agency-line">Province of Bukidnon</p>
+        <p class="agency-line">Municipality of Manolo Fortich</p>
         <h1>Municipal Nutrition Action Office</h1>
-        <h2>Manolo Fortich, Bukidnon</h2>
-        <h3>${title}</h3>
+        <h2>${title}</h2>
       </div>
       
       <div class="meta">
-        <div><strong>Parameters:</strong> ${filterText}</div>
-        <div><strong>Generated:</strong> ${generatedDate}</div>
+        <div><strong>PARAMETERS:</strong> ${filterText}</div>
+        <div><strong>DATE GENERATED:</strong> ${generatedDate}</div>
       </div>
 
       <table>
@@ -154,16 +172,24 @@ function generateReportHTML(title, data, modelId, filters, profile) {
       </table>
 
       <div class="signature">
-        <div class="sig-line">
-          Prepared By:<br><strong>${userName}</strong>
+        <div class="sig-block">
+          <div class="sig-role">Prepared by:</div>
+          <div class="sig-line">
+            <strong>${userName.toUpperCase()}</strong><br>
+            <span class="sig-title">Nutrition Logistics Personnel</span>
+          </div>
         </div>
-        <div class="sig-line">
-          Noted By:<br><strong>MNAO Officer</strong>
+        <div class="sig-block">
+          <div class="sig-role">Noted by:</div>
+          <div class="sig-line">
+            <strong>MNAO OFFICER</strong><br>
+            <span class="sig-title">Municipal Nutrition Action Office</span>
+          </div>
         </div>
       </div>
 
       <div class="footer">
-        Generated by NutriVision System | Official LGU Operational Data
+        Official Document &bull; Municipal Nutrition Action Office, Manolo Fortich, Bukidnon
       </div>
     </body>
     </html>

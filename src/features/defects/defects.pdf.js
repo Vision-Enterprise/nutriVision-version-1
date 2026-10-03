@@ -131,40 +131,59 @@ function _generateIncidentReportHTML(incident, batch, profile) {
 <head>
   <meta charset="UTF-8">
   <title>${pdfTitle}</title>
-  <style>
+<style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 16mm;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a1a; padding: 32px 40px; }
-    .header { text-align: center; border-bottom: 2px solid #1b7a3e; padding-bottom: 12px; margin-bottom: 20px; }
-    .header h1 { font-size: 15px; font-weight: bold; color: #1b7a3e; }
-    .header p  { font-size: 11px; color: #555; margin-top: 2px; }
-    .report-title { font-size: 13px; font-weight: bold; text-align: center; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .meta { display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 16px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; padding: 14px; margin-bottom: 16px; }
-    .info-cell label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; display: block; margin-bottom: 3px; }
-    .info-cell span  { font-size: 13px; font-weight: bold; }
-    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #333; margin: 14px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    .detail-table { width: 100%; border-collapse: collapse; }
-    .detail-table td { padding: 7px 10px; font-size: 11px; border-bottom: 1px solid #eee; }
-    .detail-table td:first-child { font-weight: 600; color: #555; width: 40%; }
-    .badge-disposed  { background: #fde8e8; color: #c62828; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
-    .badge-quarantine { background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
-    .remarks-box { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; font-size: 11px; color: #333; min-height: 60px; margin-top: 6px; white-space: pre-wrap; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
-    .sig-block { text-align: center; width: 200px; }
-    .sig-line  { border-top: 1px solid #333; padding-top: 6px; font-size: 10px; }
-    @media print { body { padding: 20px 28px; } }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 16px; }
+    .header .agency-line { font-size: 10.5px; color: #444; margin: 1px 0; }
+    .header h1 { font-size: 14px; font-weight: bold; color: #111; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.5px; }
+    .report-title { font-size: 13px; font-weight: bold; text-align: center; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .meta { display: flex; justify-content: space-between; font-size: 10px; color: #444; margin-bottom: 16px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #333; margin-bottom: 16px; }
+    .info-cell { padding: 8px 12px; border-right: 1px solid #333; background: #fafafa; }
+    .info-cell:last-child { border-right: none; }
+    .info-cell label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #555; display: block; margin-bottom: 2px; font-weight: bold; }
+    .info-cell span  { font-size: 12px; font-weight: bold; color: #111; }
+    .section-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #111; margin: 14px 0 6px; border-bottom: 1px solid #222; padding-bottom: 3px; }
+    .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    .detail-table td { padding: 6px 10px; font-size: 11px; border: 1px solid #ccc; }
+    .detail-table td:first-child { font-weight: bold; color: #333; width: 35%; background: #f7f7f7; }
+    .action-text { font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .remarks-box { border: 1px solid #333; padding: 10px 12px; font-size: 11px; color: #111; min-height: 50px; margin-top: 6px; white-space: pre-wrap; background: #fafafa; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 36px; page-break-inside: avoid; }
+    .sig-block { text-align: center; width: 220px; }
+    .sig-role  { text-align: left; font-size: 10px; color: #333; margin-bottom: 30px; }
+    .sig-line  { border-top: 1px solid #222; padding-top: 4px; font-size: 10px; text-transform: uppercase; }
+    .sig-title { font-size: 9.5px; color: #555; text-transform: none; }
+    .footer { text-align: center; margin-top: 30px; font-size: 9.5px; color: #666; border-top: 1px solid #ccc; padding-top: 8px; }
+    @media print {
+      body { padding: 0; }
+    }
   </style>
 </head>
 <body>
   <div class="header">
+    <p class="agency-line">Republic of the Philippines</p>
+    <p class="agency-line">Province of Bukidnon</p>
+    <p class="agency-line">Municipality of Manolo Fortich</p>
     <h1>${ORG_NAME}</h1>
-    <p>${ORG_ADDRESS}</p>
   </div>
 
   <div class="report-title">${actionLabel}</div>
   <div class="meta">
-    <span>Reference: ${batch.batch_number}</span>
-    <span>Generated: ${generatedStr}</span>
+    <span><strong>REFERENCE:</strong> ${batch.batch_number}</span>
+    <span><strong>DATE GENERATED:</strong> ${generatedStr}</span>
   </div>
 
   <!-- Batch Summary -->
@@ -187,12 +206,9 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   <div class="section-title">Incident Details</div>
   <table class="detail-table">
     <tr><td>Defect Classification</td><td>${incident.classification || 'Inspection / Damage'}</td></tr>
-    <tr><td>Action Taken</td><td>${isDispose
-      ? `<span class="badge-disposed">${incident.actionTaken || incident.action_taken || 'Disposed'}</span>`
-      : `<span class="badge-quarantine">${incident.actionTaken || incident.action_taken || 'Quarantined'}</span>`
-    }</td></tr>
+    <tr><td>Action Taken</td><td><span class="action-text">${(incident.actionTaken || incident.action_taken || (isDispose ? 'Disposed' : 'Quarantined')).toUpperCase()}</span></td></tr>
     <tr><td>Date Reported</td><td>${generatedStr}</td></tr>
-    <tr><td>Reported By</td><td>${profile?.full_name || 'Staff'}</td></tr>
+    <tr><td>Reported By</td><td>${profile?.full_name || 'Authorized Staff'}</td></tr>
   </table>
 
   <!-- Remarks -->
@@ -206,9 +222,9 @@ function _generateIncidentReportHTML(incident, batch, profile) {
     <img src="${evidenceImg}"
       alt="Defect evidence"
       style="max-width: 100%; max-height: 280px; object-fit: contain;
-             border: 1px solid #ddd; border-radius: 6px; padding: 4px;"
+             border: 1px solid #333; padding: 4px;"
     >
-    <p style="font-size: 9px; color: #888; margin-top: 4px;">Evidence photo attached by reporter.</p>
+    <p style="font-size: 9.5px; color: #555; margin-top: 4px;">Attached photographic inspection evidence.</p>
   </div>
   ` : `
   <div class="section-title" style="margin-top: 18px;">Photographic Evidence</div>
@@ -218,11 +234,23 @@ function _generateIncidentReportHTML(incident, batch, profile) {
   <!-- Signatures -->
   <div class="signatures">
     <div class="sig-block">
-      <div class="sig-line">Prepared By:<br><strong>${profile?.full_name || 'Staff'}</strong><br>Nutrition Personnel</div>
+      <div class="sig-role">Prepared by:</div>
+      <div class="sig-line">
+        <strong>${(profile?.full_name || 'Staff').toUpperCase()}</strong><br>
+        <span class="sig-title">Nutrition Personnel</span>
+      </div>
     </div>
     <div class="sig-block">
-      <div class="sig-line">Noted By:<br><strong>MNAO Officer</strong><br>Manolo Fortich</div>
+      <div class="sig-role">Noted by:</div>
+      <div class="sig-line">
+        <strong>MNAO OFFICER</strong><br>
+        <span class="sig-title">Municipal Nutrition Action Office</span>
+      </div>
     </div>
+  </div>
+
+  <div class="footer">
+    Official Document &bull; Municipal Nutrition Action Office, Manolo Fortich, Bukidnon
   </div>
 </body>
 </html>`;
