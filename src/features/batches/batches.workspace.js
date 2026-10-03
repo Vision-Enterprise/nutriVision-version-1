@@ -189,6 +189,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
                     <th style="min-width:130px;">Del. Date</th>
                     <th style="min-width:135px;">Exp. Date</th>
                     <th style="min-width:150px;">Supplier</th>
+                    <th style="min-width:180px;">Notes <span style="font-weight:400; color:var(--text-muted); font-size:11px;">(optional)</span></th>
                     <th style="min-width:76px; text-align:center;">Actions</th>
                  </tr>
               </thead>
@@ -434,7 +435,7 @@ function renderBulkTable() {
   if (!tbody) return;
 
   if (bulkRows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
     document.getElementById('summary-commodities').textContent = '0';
     document.getElementById('summary-units').textContent = '0';
     validateTableRows();
@@ -511,6 +512,9 @@ function renderBulkTable() {
          <td>
             <input type="text" class="headless-input ws-input-sup" id="ws-sup-${rowKey}" name="supplier_${rowKey}" aria-label="Supplier" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
          </td>
+         <td>
+            <input type="text" class="headless-input ws-input-notes" id="ws-notes-${rowKey}" name="notes_${rowKey}" aria-label="Notes (optional)" value="${escapeHtml(row.notes || '')}" placeholder="Notes..." />
+         </td>
          <td style="text-align:center;">
             <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
                <button class="action-icon-btn split-btn bulk-split-btn" title="Split batch for dual expiration dates" style="color:var(--text-muted);">
@@ -554,6 +558,7 @@ function bindRowEvents() {
     const qtyInput = tr.querySelector('.ws-input-qty');
     const delInput = tr.querySelector('.ws-input-del');
     const supInput = tr.querySelector('.ws-input-sup');
+    const notesInput = tr.querySelector('.ws-input-notes');
     const splitBtn = tr.querySelector('.bulk-split-btn');
     const deleteBtn = tr.querySelector('.bulk-delete-btn');
 
@@ -602,6 +607,7 @@ function bindRowEvents() {
     // 5. Delivery Date & Supplier
     delInput?.addEventListener('input', () => { row.deliveryDate = delInput.value; validateTableRows(); });
     supInput?.addEventListener('input', () => { row.supplier = supInput.value; });
+    notesInput?.addEventListener('input', () => { row.notes = notesInput.value; });
 
     // 6. Split Batch Action
     splitBtn?.addEventListener('click', () => {
@@ -664,6 +670,7 @@ function syncBulkState() {
     const delInput = tr.querySelector('.ws-input-del');
     const expInput = tr.querySelector('.ws-input-exp');
     const supInput = tr.querySelector('.ws-input-sup');
+    const notesInput = tr.querySelector('.ws-input-notes');
 
     if (commSelect && commSelect.value) {
       bulkRows[i].commodityId = commSelect.value;
@@ -675,6 +682,7 @@ function syncBulkState() {
     if (delInput) bulkRows[i].deliveryDate = delInput.value;
     if (expInput) bulkRows[i].expDate = expInput.value;
     if (supInput) bulkRows[i].supplier = supInput.value;
+    if (notesInput) bulkRows[i].notes = notesInput.value;
   });
 }
 
