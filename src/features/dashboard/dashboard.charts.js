@@ -1,11 +1,12 @@
 /**
  * Dashboard - Charts (ApexCharts)
  *
- * Professional, executive-grade SVG charts with native data labels and export capabilities:
- *   1. Releases Over Time (Smooth gradient area chart with live timeframe selector)
+ * Professional, executive-grade SVG charts with native data labels, export tools,
+ * and comprehensive horizontal and vertical axis titles:
+ *   1. Releases Over Time (Area chart with timeframe selector)
  *   2. Stock Utilization (In-Stock vs. Total Released grouped columns)
  *   3. Top Barangays Distribution Reach (Ranked horizontal bars with percentage labels)
- *   4. Expiration Risk Horizon (Urgency horizons: Critical <30d, Near Expiry, Moderate, Good)
+ *   4. Expiration Risk Horizon (Urgency horizons: Critical, Near Expiry, Moderate, Good)
  */
 
 import ApexCharts from 'apexcharts';
@@ -21,8 +22,13 @@ export function initDashboardCharts(chartData, expirationSummary) {
     foreColor: '#64748b',
   };
 
+  const axisTitleStyle = {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#475569',
+  };
+
   // ── 1. Stock Utilization (In-Stock vs. Total Distributed) ───────────────
-  // Aggregate both current active stock and total released for each commodity
   const stockByCommodity = {};
   const releasedByCommodity = {};
 
@@ -36,12 +42,10 @@ export function initDashboardCharts(chartData, expirationSummary) {
     releasedByCommodity[name] = (releasedByCommodity[name] || 0) + (r.quantity || 0);
   });
 
-  // Get all unique commodity names
   const allCommodityNames = Array.from(
     new Set([...Object.keys(stockByCommodity), ...Object.keys(releasedByCommodity)])
   ).filter(n => n !== 'Unknown');
 
-  // Sort by combined volume (descending), top 7
   allCommodityNames.sort((a, b) => {
     const volA = (stockByCommodity[a] || 0) + (releasedByCommodity[a] || 0);
     const volB = (stockByCommodity[b] || 0) + (releasedByCommodity[b] || 0);
@@ -61,7 +65,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
       ],
       chart: {
         type: 'bar',
-        height: 310,
+        height: 330,
         toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
         fontFamily: chartFont.fontFamily,
       },
@@ -89,6 +93,11 @@ export function initDashboardCharts(chartData, expirationSummary) {
         colors: ['transparent'],
       },
       xaxis: {
+        title: {
+          text: 'Commodity',
+          style: axisTitleStyle,
+          offsetY: -5,
+        },
         categories: topCommodities.length > 0 ? topCommodities : ['No Data'],
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor },
@@ -99,6 +108,10 @@ export function initDashboardCharts(chartData, expirationSummary) {
         },
       },
       yaxis: {
+        title: {
+          text: 'Quantity (Units)',
+          style: axisTitleStyle,
+        },
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor },
           formatter: (val) => Math.round(val).toLocaleString(),
@@ -152,7 +165,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
       series: [{ name: 'Distributed Units', data: brgyValues }],
       chart: {
         type: 'bar',
-        height: 310,
+        height: 330,
         toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
         fontFamily: chartFont.fontFamily,
       },
@@ -167,7 +180,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
       colors: ['#0d9488'],
       dataLabels: {
         enabled: true,
-        offsetX: 28,
+        offsetX: 32,
         formatter: (val) => {
           const pct = totalDistributedAll > 0 ? ((val / totalDistributedAll) * 100).toFixed(1) : 0;
           return `${val.toLocaleString()} (${pct}%)`;
@@ -179,6 +192,11 @@ export function initDashboardCharts(chartData, expirationSummary) {
         },
       },
       xaxis: {
+        title: {
+          text: 'Total Distributed Units',
+          style: axisTitleStyle,
+          offsetY: -5,
+        },
         categories: brgyCategories.length > 0 ? brgyCategories : ['No Data'],
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor },
@@ -186,6 +204,10 @@ export function initDashboardCharts(chartData, expirationSummary) {
         },
       },
       yaxis: {
+        title: {
+          text: 'Barangay Destination',
+          style: axisTitleStyle,
+        },
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor, fontWeight: 500 },
         },
@@ -209,12 +231,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
     _chartInstances['barangay'].render();
   }
 
-  // ── 3. Expiration Risk Horizon (Replacing the Old Static Pie Chart) ─────
-  // Computes active stock quantity & batches across 4 operational urgency horizons:
-  //   - Critical (< 30 days)  -> Red #dc2626
-  //   - Near Expiry (30-90d)  -> Orange #ea580c
-  //   - Moderate (3-6 Months) -> Yellow #eab308
-  //   - Good (> 6 Months)     -> Green #059669
+  // ── 3. Expiration Risk Horizon ──────────────────────────────────────────
   const now = new Date();
   const horizons = {
     critical: { label: 'Critical (< 30d)', qty: 0, batches: 0, color: '#dc2626' },
@@ -268,7 +285,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
       series: [{ name: 'In-Stock Quantity', data: horizonValues }],
       chart: {
         type: 'bar',
-        height: 310,
+        height: 330,
         toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
         fontFamily: chartFont.fontFamily,
       },
@@ -285,7 +302,7 @@ export function initDashboardCharts(chartData, expirationSummary) {
         formatter: (val, opt) => {
           const bCount = horizonBatches[opt.dataPointIndex];
           if (val === 0) return '0';
-          return `${val.toLocaleString()}\n(${bCount} batch${bCount !== 1 ? 'es' : ''})`;
+          return `${val.toLocaleString()} (${bCount} batch${bCount !== 1 ? 'es' : ''})`;
         },
         style: {
           fontSize: '11px',
@@ -295,12 +312,21 @@ export function initDashboardCharts(chartData, expirationSummary) {
         dropShadow: { enabled: true, top: 1, left: 1, blur: 1, opacity: 0.5 },
       },
       xaxis: {
+        title: {
+          text: 'Urgency Horizon (FEFO Distribution Priority)',
+          style: axisTitleStyle,
+          offsetY: -5,
+        },
         categories: horizonCategories,
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor, fontWeight: 500 },
         },
       },
       yaxis: {
+        title: {
+          text: 'In-Stock Quantity (Units)',
+          style: axisTitleStyle,
+        },
         labels: {
           style: { fontSize: '11px', colors: chartFont.foreColor },
           formatter: (v) => Math.round(v).toLocaleString(),
@@ -378,7 +404,7 @@ export function renderDashboardReleasesChart(chartData, timeframe) {
     series: [{ name: 'Quantity Released', data: sortedValues }],
     chart: {
       type: 'area',
-      height: 310,
+      height: 330,
       toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
       fontFamily: "'Inter', sans-serif",
     },
@@ -420,12 +446,21 @@ export function renderDashboardReleasesChart(chartData, timeframe) {
       },
     },
     xaxis: {
+      title: {
+        text: `Time Period (${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)})`,
+        style: { fontSize: '12px', fontWeight: 600, color: '#475569' },
+        offsetY: -5,
+      },
       categories: sortedKeys.length > 0 ? sortedKeys : ['No Activity'],
       labels: {
         style: { fontSize: '11px', colors: '#64748b' },
       },
     },
     yaxis: {
+      title: {
+        text: 'Units Distributed',
+        style: { fontSize: '12px', fontWeight: 600, color: '#475569' },
+      },
       labels: {
         style: { fontSize: '11px', colors: '#64748b' },
         formatter: (v) => Math.round(v).toLocaleString(),

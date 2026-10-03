@@ -64,5 +64,41 @@ export async function renderDashboardPage(profile) {
     document.getElementById('chart-releases-toggle')?.addEventListener('change', e => {
       renderDashboardReleasesChart(_chartData, e.target.value);
     });
+
+    _initDashboardCarousel();
   }
+}
+
+function _initDashboardCarousel() {
+  let currentSlide = 0;
+  const totalSlides = 4;
+  const track = document.getElementById('dash-carousel-track');
+  const prevBtn = document.getElementById('dash-carousel-prev');
+  const nextBtn = document.getElementById('dash-carousel-next');
+  const indicator = document.getElementById('dash-carousel-indicator');
+
+  if (!track || !prevBtn || !nextBtn) return;
+
+  const updateCarousel = () => {
+    track.style.transform = `translateX(-${currentSlide * 100}%)`;
+    if (indicator) indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
+    // Dispatch resize event so ApexCharts in the newly active slide adjusts layout
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 150);
+  };
+
+  prevBtn.addEventListener('click', () => {
+    if (currentSlide > 0) {
+      currentSlide--;
+      updateCarousel();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (currentSlide < totalSlides - 1) {
+      currentSlide++;
+      updateCarousel();
+    }
+  });
 }

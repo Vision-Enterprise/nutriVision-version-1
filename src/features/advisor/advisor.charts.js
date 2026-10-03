@@ -1,7 +1,8 @@
 /**
  * Inventory Advisor - Charts (ApexCharts)
  *
- * Carousel chart management with native data labels and clean presentation:
+ * Carousel chart management with native data labels, export tools,
+ * and horizontal and vertical axis titles:
  *   1. Releases Over Time
  *   2. Stock Utilization (In-Stock vs. Distributed)
  *   3. Top Barangays Distribution Reach
@@ -18,6 +19,12 @@ export function initAdvCharts(chartData, expirationSummary) {
   const chartFont = {
     fontFamily: "'Inter', sans-serif",
     foreColor: '#64748b',
+  };
+
+  const axisTitleStyle = {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#475569',
   };
 
   // 1. Stock Utilization (In-Stock vs. Released)
@@ -75,6 +82,10 @@ export function initAdvCharts(chartData, expirationSummary) {
         style: { fontSize: '9px', fontWeight: 600, colors: ['#ffffff'] },
       },
       xaxis: {
+        title: {
+          text: 'Commodity',
+          style: axisTitleStyle,
+        },
         categories: topItems.length > 0 ? topItems : ['No Data'],
         labels: {
           style: { fontSize: '10px', colors: chartFont.foreColor },
@@ -84,6 +95,10 @@ export function initAdvCharts(chartData, expirationSummary) {
         },
       },
       yaxis: {
+        title: {
+          text: 'Quantity (Units)',
+          style: axisTitleStyle,
+        },
         labels: {
           style: { fontSize: '10px', colors: chartFont.foreColor },
           formatter: (v) => Math.round(v).toLocaleString(),
@@ -147,6 +162,10 @@ export function initAdvCharts(chartData, expirationSummary) {
         offsetX: 20,
       },
       xaxis: {
+        title: {
+          text: 'Total Distributed Units',
+          style: axisTitleStyle,
+        },
         categories: sortedBrgy.length > 0 ? sortedBrgy.map(i => i[0]) : ['No Data'],
         labels: {
           style: { fontSize: '10px', colors: chartFont.foreColor },
@@ -154,6 +173,10 @@ export function initAdvCharts(chartData, expirationSummary) {
         },
       },
       yaxis: {
+        title: {
+          text: 'Barangay',
+          style: axisTitleStyle,
+        },
         labels: { style: { fontSize: '10px', colors: chartFont.foreColor } },
       },
       grid: {
@@ -211,10 +234,18 @@ export function initAdvCharts(chartData, expirationSummary) {
         style: { fontSize: '10px', fontWeight: 600, colors: ['#ffffff'] },
       },
       xaxis: {
+        title: {
+          text: 'Urgency Horizon',
+          style: axisTitleStyle,
+        },
         categories: [horizons.critical.label, horizons.near.label, horizons.moderate.label, horizons.good.label],
         labels: { style: { fontSize: '10px', colors: chartFont.foreColor } },
       },
       yaxis: {
+        title: {
+          text: 'In-Stock Quantity (Units)',
+          style: axisTitleStyle,
+        },
         labels: {
           style: { fontSize: '10px', colors: chartFont.foreColor },
           formatter: (v) => Math.round(v).toLocaleString(),
@@ -290,10 +321,18 @@ export function renderAdvReleasesChart(chartData, timeframe) {
       style: { fontSize: '9px', fontWeight: 600, colors: ['#1d4ed8'] },
     },
     xaxis: {
+      title: {
+        text: 'Time Period',
+        style: { fontSize: '11px', fontWeight: 600, color: '#475569' },
+      },
       categories: sortedKeys.length > 0 ? sortedKeys : ['No Activity'],
       labels: { style: { fontSize: '10px', colors: '#64748b' } },
     },
     yaxis: {
+      title: {
+        text: 'Units Distributed',
+        style: { fontSize: '11px', fontWeight: 600, color: '#475569' },
+      },
       labels: {
         style: { fontSize: '10px', colors: '#64748b' },
         formatter: (v) => Math.round(v).toLocaleString(),
