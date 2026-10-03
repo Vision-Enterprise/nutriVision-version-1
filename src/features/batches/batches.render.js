@@ -71,7 +71,7 @@ export function renderBatchesLayout({ batches, commodities, filtered, filterComm
     </div>
 
     <!-- Filters -->
-    <div style="display:flex; gap:var(--space-3); margin-bottom:var(--space-4); flex-wrap:wrap;">
+    <div style="display:flex; gap:var(--space-3); margin-bottom:var(--space-4); flex-wrap:wrap; align-items:center;">
       <select id="filter-commodity" class="form-input" style="max-width:260px;"
               aria-label="Filter by commodity">
         <option value="all">All Commodities</option>
@@ -90,6 +90,18 @@ export function renderBatchesLayout({ batches, commodities, filtered, filterComm
         <option value="${EXPIRATION_STATUS.NEAR_EXPIRY}"${filterStatus === EXPIRATION_STATUS.NEAR_EXPIRY? 'selected' : ''}>Near Expiry</option>
         <option value="${EXPIRATION_STATUS.EXPIRED}"    ${filterStatus === EXPIRATION_STATUS.EXPIRED    ? 'selected' : ''}>Expired</option>
       </select>
+
+      <div style="position:relative; flex:1; min-width:200px; max-width:340px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--color-text-muted); pointer-events:none;">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="batch-search" type="search" class="form-input"
+               placeholder="Search batch # or commodity..."
+               style="padding-left:34px; width:100%;"
+               aria-label="Search batches" />
+      </div>
     </div>
 
     ${filterComm !== 'all' || filterStatus !== 'all' ? `
@@ -129,7 +141,7 @@ export function renderTable(batches) {
               : `in ${days}d`;
 
             return `
-              <tr class="batch-row" data-batch-id="${b.id}" style="cursor: pointer;" title="Click to view notes">
+              <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view notes">
                 <td>
                   <code style="font-size:var(--font-size-xs);
                                background:var(--color-surface-alt);

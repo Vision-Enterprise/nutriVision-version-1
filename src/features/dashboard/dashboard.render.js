@@ -16,27 +16,33 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
   const alertsHtml = advisorData ? advisorData.expiringSoon.slice(0, 2).map(item => {
     if (item.status === EXPIRATION_STATUS.EXPIRED || new Date(item.date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
       return `
-        <div style="background-color: #fff5f5; border: 1px solid #ffcccc; border-radius: var(--radius-md); padding: var(--space-3);">
-          <div style="display: flex; align-items: center; gap: var(--space-2); color: #c62828; font-weight: bold; margin-bottom: var(--space-2);">
-            <span class="icon icon--sm">error</span>
-            <span>CRITICAL: Imminent Expiration</span>
+        <a href="#/batches?highlight=${encodeURIComponent(item.batch)}" style="text-decoration:none; display:block;">
+          <div style="background-color: #fff5f5; border: 1px solid #ffcccc; border-radius: var(--radius-md); padding: var(--space-3); transition: box-shadow 0.15s ease; cursor:pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(198,40,40,0.15)'" onmouseout="this.style.boxShadow=''">
+            <div style="display: flex; align-items: center; gap: var(--space-2); color: #c62828; font-weight: bold; margin-bottom: var(--space-2);">
+              <span class="icon icon--sm">error</span>
+              <span>CRITICAL: Imminent Expiration</span>
+              <span style="margin-left:auto; font-size:11px; font-weight:400; color:#c62828; opacity:0.8;">Click to view →</span>
+            </div>
+            <div style="color: var(--color-text-dark);">
+              Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
+            </div>
           </div>
-          <div style="color: var(--color-text-dark);">
-            Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
-          </div>
-        </div>
+        </a>
       `;
     } else {
       return `
-        <div style="background-color: #fffde7; border: 1px solid #ffe082; border-radius: var(--radius-md); padding: var(--space-3);">
-          <div style="display: flex; align-items: center; gap: var(--space-2); color: #f57f17; font-weight: bold; margin-bottom: var(--space-2);">
-            <span class="icon icon--sm">warning</span>
-            <span>NOTICE: Approaching Expiration</span>
+        <a href="#/batches?highlight=${encodeURIComponent(item.batch)}" style="text-decoration:none; display:block;">
+          <div style="background-color: #fffde7; border: 1px solid #ffe082; border-radius: var(--radius-md); padding: var(--space-3); transition: box-shadow 0.15s ease; cursor:pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(245,127,23,0.15)'" onmouseout="this.style.boxShadow=''">
+            <div style="display: flex; align-items: center; gap: var(--space-2); color: #f57f17; font-weight: bold; margin-bottom: var(--space-2);">
+              <span class="icon icon--sm">warning</span>
+              <span>NOTICE: Approaching Expiration</span>
+              <span style="margin-left:auto; font-size:11px; font-weight:400; color:#f57f17; opacity:0.8;">Click to view →</span>
+            </div>
+            <div style="color: var(--color-text-dark);">
+              Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
+            </div>
           </div>
-          <div style="color: var(--color-text-dark);">
-            Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
-          </div>
-        </div>
+        </a>
       `;
     }
   }).join('') : '';

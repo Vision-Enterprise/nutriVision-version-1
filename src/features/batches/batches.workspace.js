@@ -25,6 +25,10 @@ let bulkRows = [];
 let availableCommodities = [];
 let existingBatches = [];
 
+function getToday() {
+  return new Date().toISOString().split('T')[0];
+}
+
 function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
   if (!batchCode || batchCode === '[ INCOMPLETE ]') return false;
   const upperCode = batchCode.trim().toUpperCase();
@@ -504,10 +508,10 @@ function renderBulkTable() {
             <input type="number" class="headless-input ws-input-qty" id="ws-qty-${rowKey}" name="qty_${rowKey}" aria-label="Quantity" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-del" id="ws-del-${rowKey}" name="delivery_date_${rowKey}" aria-label="Delivery Date" value="${escapeHtml(row.deliveryDate)}" />
+            <input type="date" class="headless-input ws-input-del" id="ws-del-${rowKey}" name="delivery_date_${rowKey}" aria-label="Delivery Date" value="${escapeHtml(row.deliveryDate)}" min="${getToday()}" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" />
+            <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" min="${getToday()}" />
          </td>
          <td>
             <input type="text" class="headless-input ws-input-sup" id="ws-sup-${rowKey}" name="supplier_${rowKey}" aria-label="Supplier" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />

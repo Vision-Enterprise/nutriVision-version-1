@@ -21,12 +21,14 @@ let _commodities  = [];
 let _profile      = null;
 let _filterComm   = 'all';
 let _filterStatus = 'all';
+let _filterSearch = '';
 
 // ── Entry Point ─────────────────────────────────────────────────────────────
 export async function renderBatchesPage(profile) {
   _profile      = profile;
   _filterComm   = 'all';
   _filterStatus = 'all';
+  _filterSearch = '';
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -62,13 +64,18 @@ export async function renderBatchesPage(profile) {
 
   // Auto-open workspace if action=add is in the hash
   if (window.location.hash.includes('action=add')) {
-    // Clean up the hash to prevent re-opening on refresh
     window.history.replaceState(null, '', '#/batches');
-    
-    // Give the DOM a tiny bit of time to render the button
     setTimeout(() => {
       document.getElementById('add-batch-btn')?.click();
     }, 50);
+  }
+
+  // Highlight a specific batch if ?highlight=BATCH_NUMBER in hash
+  const highlightMatch = window.location.hash.match(/[?&]highlight=([^&]+)/);
+  if (highlightMatch) {
+    const targetCode = decodeURIComponent(highlightMatch[1]);
+    window.history.replaceState(null, '', '#/batches');
+    setTimeout(() => _highlightBatchRow(targetCode), 120);
   }
 }
 
@@ -88,11 +95,15 @@ function _renderMainView(content) {
 }
 
 function _applyFilters() {
+  const q = _filterSearch.trim().toLowerCase();
   return _batches.filter(b => {
     const matchComm   = _filterComm === 'all' || b.commodity_id === _filterComm;
     const matchStatus = _filterStatus === 'all'
       || getExpirationStatus(b.expiration_date) === _filterStatus;
-    return matchComm && matchStatus;
+    const matchSearch = !q
+      || (b.batch_number ?? '').toLowerCase().includes(q)
+      || (b.commodities?.name ?? '').toLowerCase().includes(q);
+    return matchComm && matchStatus && matchSearch;
   });
 }
 
@@ -101,7 +112,7 @@ function _refreshTable() {
   if (!region) return;
   const filtered = _applyFilters();
   region.innerHTML = filtered.length === 0 
-    ? renderEmpty(Boolean(_filterComm !== 'all' || _filterStatus !== 'all')) 
+    ? renderEmpty(Boolean(_filterComm !== 'all' || _filterStatus !== 'all' || _filterSearch.trim() !== '')) 
     : renderTable(filtered);
 }
 
@@ -154,6 +165,11 @@ function _attachPageListeners() {
 
   document.getElementById('filter-status')?.addEventListener('change', e => {
     _filterStatus = e.target.value;
+    _refreshTable();
+  });
+
+  document.getElementById('batch-search')?.addEventListener('input', e => {
+    _filterSearch = e.target.value;
     _refreshTable();
   });
 
@@ -229,3 +245,58 @@ function _attachPageListeners() {
     }
   });
 }
+
+function _flashRow(row) {
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const originalTransition = row.style.transition;
+  const originalBg = row.style.backgroundColor;
+  row.style.transition = 'background-color 0.4s ease, outline 0.4s ease';
+  row.style.backgroundColor = 'var(--color-primary-subtle, rgba(46, 125, 50, 0.18))';
+  row.style.outline = '2px solid var(--color-primary, #2e7d32)';
+  setTimeout(() => {
+    row.style.backgroundColor = originalBg;
+    row.style.outline = 'none';
+    setTimeout(() => {
+      row.style.transition = originalTransition;
+    }, 400);
+  }, 2500);
+}
+
+function _highlightBatchRow(targetCode) {
+  if (!targetCode) return;
+  const cleanCode = targetCode.trim();
+  const rows = Array.from(document.querySelectorAll('.batch-row'));
+  const targetRow = rows.find(r => 
+    (r.dataset.batchNumber && r.dataset.batchNumber.toLowerCase() === cleanCode.toLowerCase()) || 
+    r.dataset.batchId === cleanCode
+  );
+
+  if (targetRow) {
+    _flashRow(targetRow);
+    return;
+  }
+
+  // If not currently visible due to filters, clear filters and search directly for it
+  _filterComm = 'all';
+  _filterStatus = 'all';
+  _filterSearch = cleanCode;
+
+  const commSelect = document.getElementById('filter-commodity');
+  const statusSelect = document.getElementById('filter-status');
+  const searchInput = document.getElementById('batch-search');
+  if (commSelect) commSelect.value = 'all';
+  if (statusSelect) statusSelect.value = 'all';
+  if (searchInput) searchInput.value = cleanCode;
+
+  _refreshTable();
+
+  setTimeout(() => {
+    const retryRows = Array.from(document.querySelectorAll('.batch-row'));
+    const found = retryRows.find(r => 
+      (r.dataset.batchNumber && r.dataset.batchNumber.toLowerCase() === cleanCode.toLowerCase()) || 
+      r.dataset.batchId === cleanCode
+    );
+    if (found) _flashRow(found);
+  }, 80);
+}
+
