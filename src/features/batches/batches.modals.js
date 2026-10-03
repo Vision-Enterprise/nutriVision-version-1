@@ -11,6 +11,7 @@ import { escapeHtml } from './batches.render.js';
 import { updateBatch, voidBatch, releaseBatch } from './batches.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
 
 let _activeBatchModalEscHandler = null;
 
@@ -342,11 +343,8 @@ export function openReleaseBatchModal({ batch, profile, onSuccess }) {
 
             <div class="form-group">
               <label for="release-barangay" class="form-label form-label--required">Destination Barangay</label>
-              <input list="barangay-options" id="release-barangay" name="barangay" class="form-input" 
-                     placeholder="Select barangay" required autocomplete="off" />
-              <datalist id="barangay-options">
-                ${BARANGAYS ? BARANGAYS.map(b => `<option value="${b}"></option>`).join('') : ''}
-              </datalist>
+              <input type="text" id="release-barangay" name="barangay" class="form-input" 
+                     placeholder="Select or type barangay" required autocomplete="off" />
               <span class="form-error" id="error-release-barangay" role="alert"></span>
             </div>
 
@@ -379,9 +377,15 @@ export function openReleaseBatchModal({ batch, profile, onSuccess }) {
 
   document.body.insertAdjacentHTML('beforeend', modalHtml);
   const overlay = document.getElementById('release-modal-overlay');
-  
-  const close = () => { overlay.remove(); };
-  
+
+  const brgyCombo = setupCreatableCombobox({
+    inputEl: document.getElementById('release-barangay'),
+    options: BARANGAYS ? [...BARANGAYS] : [],
+    itemTypeLabel: 'barangay',
+  });
+
+  const close = () => { brgyCombo?.destroy(); overlay.remove(); };
+
   document.getElementById('release-modal-close-btn').addEventListener('click', close);
   document.getElementById('release-cancel-btn').addEventListener('click', close);
   

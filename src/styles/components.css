@@ -1417,3 +1417,111 @@
   transform: translateY(0);
 }
 
+/* ── Creatable Combobox ────────────────────────────────────────── */
+.creatable-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.creatable-combobox .form-input {
+  padding-right: 36px;
+  cursor: text;
+}
+
+.creatable-combobox__toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: color 0.15s ease, transform 0.2s ease;
+}
+
+.creatable-combobox__toggle:hover {
+  color: var(--color-text-dark, #0f172a);
+}
+
+.creatable-combobox.is-open .creatable-combobox__toggle svg {
+  transform: rotate(180deg);
+}
+
+.creatable-combobox__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  z-index: 1050;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.creatable-combobox.is-open .creatable-combobox__menu {
+  display: block;
+}
+
+.creatable-combobox__option {
+  padding: 8px 12px;
+  font-size: var(--font-size-sm, 13px);
+  color: var(--color-text, #1e293b);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.creatable-combobox__option:hover,
+.creatable-combobox__option.is-highlighted {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 500;
+}
+
+.creatable-combobox__option.is-selected {
+  background-color: #d1fae5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.creatable-combobox__option--add {
+  border-top: 1px dashed var(--color-border, #cbd5e1);
+  margin-top: 4px;
+  padding-top: 8px;
+  color: var(--color-primary, #059669);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.creatable-combobox__option--add:hover,
+.creatable-combobox__option--add.is-highlighted {
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.creatable-combobox__empty {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-text-muted, #94a3b8);
+  font-style: italic;
+  text-align: center;
+}
+
+

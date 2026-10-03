@@ -9,8 +9,10 @@
 import { escapeHtml, getDynamicCategories, getDynamicUnits } from './commodities.render.js';
 import { createCommodity, updateCommodity } from './commodities.service.js';
 import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
+import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
 
 let _activeModalEscHandler = null;
+let _activeComboboxes = [];
 
 const KNOWN_UNITS = [
   { regex: /\b(?:tablets?|tabs?)\b/i, unit: 'Tablet' },
@@ -105,6 +107,8 @@ export function closeModal() {
     document.removeEventListener('keydown', _activeModalEscHandler);
     _activeModalEscHandler = null;
   }
+  _activeComboboxes.forEach(cb => cb?.destroy?.());
+  _activeComboboxes = [];
   overlay.remove();
 }
 
@@ -195,18 +199,12 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
             <div class="form-group">
               <label for="field-category" class="form-label form-label--required">Category</label>
-              <input list="category-options" id="field-category" name="category" class="form-input" placeholder="Select or type category" value="${escapeHtml(commodity?.category ?? '')}" required autocomplete="off" />
-                <datalist id="category-options">
-                  ${categories.map(cat => `<option value="${cat}"></option>`).join('')}
-                </datalist>
+              <input type="text" id="field-category" name="category" class="form-input" placeholder="Select or type category" value="${escapeHtml(commodity?.category ?? '')}" required autocomplete="off" />
               <span class="form-error" id="error-category" role="alert"></span>
             </div>
             <div class="form-group">
               <label for="field-unit" class="form-label form-label--required">Unit</label>
-              <input list="unit-options" id="field-unit" name="unit" class="form-input" placeholder="Select or type unit" value="${escapeHtml(commodity?.unit ?? '')}" required autocomplete="off" />
-                <datalist id="unit-options">
-                  ${units.map(u => `<option value="${u}"></option>`).join('')}
-                </datalist>
+              <input type="text" id="field-unit" name="unit" class="form-input" placeholder="Select or type unit" value="${escapeHtml(commodity?.unit ?? '')}" required autocomplete="off" />
               <span class="form-error" id="error-unit" role="alert"></span>
             </div>
           </div>
@@ -268,6 +266,23 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-cancel-btn')?.addEventListener('click', closeModal);
 
+  // Setup Clean Creatable Comboboxes
+  const categoryCombo = setupCreatableCombobox({
+    inputEl: categoryInput,
+    options: categories,
+    itemTypeLabel: 'category',
+    onSelect: () => handleNameUpdate()
+  });
+
+  const unitCombo = setupCreatableCombobox({
+    inputEl: unitInput,
+    options: units,
+    itemTypeLabel: 'unit',
+    onSelect: () => handleNameUpdate()
+  });
+
+  _activeComboboxes = [categoryCombo, unitCombo].filter(Boolean);
+
   // Instantly generate Code, and auto-infer Unit & Category when Product Name is placed
   function handleNameUpdate(force = false) {
     const rawName = nameInput?.value?.trim() || '';
@@ -281,6 +296,7 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
       const detectedUnit = extractUnitFromName(rawName);
       if (detectedUnit) {
         unitInput.value = detectedUnit;
+        unitCombo?.addOption(detectedUnit);
         unitInput.classList.remove('form-input--error');
         const errUnit = document.getElementById('error-unit');
         if (errUnit) errUnit.textContent = '';
@@ -292,6 +308,7 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
       const detectedCategory = extractCategoryFromName(rawName);
       if (detectedCategory) {
         categoryInput.value = detectedCategory;
+        categoryCombo?.addOption(detectedCategory);
         categoryInput.classList.remove('form-input--error');
         const errCat = document.getElementById('error-category');
         if (errCat) errCat.textContent = '';
