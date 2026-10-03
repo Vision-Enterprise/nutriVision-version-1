@@ -8,6 +8,7 @@
 import { fetchCommodities, deleteCommodity } from './commodities.service.js';
 import { renderCommoditiesLayout, renderTable, renderEmpty, renderErrorAlert } from './commodities.render.js';
 import { openCommodityModal } from './commodities.modals.js';
+import { openCommodityGraphModal } from './commodity-graph.modal.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 // ── State ───────────────────────────────────────────────────────────────────
@@ -124,8 +125,15 @@ function _attachPageListeners(content) {
   });
 
   document.getElementById('commodity-table-region')?.addEventListener('click', async e => {
+    const graphBtn  = e.target.closest('.graph-commodity-btn');
     const editBtn   = e.target.closest('.edit-commodity-btn');
     const deleteBtn = e.target.closest('.delete-commodity-btn');
+
+    if (graphBtn) {
+      e.stopPropagation();
+      openCommodityGraphModal(graphBtn.dataset.id);
+      return;
+    }
 
     if (editBtn) {
       const commodity = _commodities.find(c => c.id === editBtn.dataset.id);

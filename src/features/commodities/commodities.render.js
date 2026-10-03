@@ -135,6 +135,17 @@ export function renderTable(commodities) {
               </td>
               <td style="text-align: right; white-space: nowrap;">
                 <button
+                  class="btn btn-ghost btn-sm graph-commodity-btn"
+                  data-id="${c.id}"
+                  aria-label="View lineage graph for ${escapeHtml(c.name)}"
+                  type="button"
+                  title="View Batch Lineage & Traceability Graph"
+                  style="color: var(--color-primary); display: inline-flex; align-items: center; gap: 4px;"
+                >
+                  <span class="icon icon--sm" style="font-size: 16px;">account_tree</span>
+                  Graph
+                </button>
+                <button
                   class="btn btn-ghost btn-sm edit-commodity-btn"
                   data-id="${c.id}"
                   aria-label="Edit ${escapeHtml(c.name)}"
@@ -151,10 +162,18 @@ export function renderTable(commodities) {
             </tr>
             <tr class="commodity-desc-row" id="desc-${c.id}" style="display: none; background: var(--color-surface-alt);">
               <td colspan="6" style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
-                <div style="display: flex; gap: var(--space-2); align-items: flex-start;">
-                  <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
-                  <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
-                    ${c.description ? escapeHtml(c.description) : '<em>No description provided.</em>'}
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap;">
+                  <div style="display: flex; gap: var(--space-2); align-items: flex-start; flex: 1;">
+                    <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
+                      ${c.description ? escapeHtml(c.description) : '<em>No description provided.</em>'}
+                    </div>
+                  </div>
+                  <div>
+                    <button class="btn btn-secondary btn-sm graph-commodity-btn" data-id="${c.id}" type="button" style="display: inline-flex; align-items: center; gap: 4px;">
+                      <span class="icon icon--sm" style="font-size: 16px;">account_tree</span>
+                      Open Traceability Graph
+                    </button>
                   </div>
                 </div>
               </td>

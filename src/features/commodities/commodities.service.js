@@ -30,6 +30,70 @@ export async function fetchCommodities() {
   }
 }
 
+/**
+ * Fetch a commodity with all its active batches, distributions (releases),
+ * and defect/quarantine incidents for visual lineage graph rendering.
+ * @param {string} commodityId
+ * @returns {Promise<{ commodity: Object|null, batches: Array, error: string|null }>}
+ */
+export async function fetchCommodityLineage(commodityId) {
+  try {
+    const { data: commodity, error: commErr } = await supabase
+      .from('commodities')
+      .select('id, commodity_code, name, description, category, unit, created_at')
+      .eq('id', commodityId)
+      .single();
+
+    if (commErr) throw commErr;
+
+    const { data: batches, error: batchErr } = await supabase
+      .from('batches')
+      .select('id, batch_number, quantity, delivery_date, expiration_date, supplier, notes, created_at, record_status')
+      .eq('commodity_id', commodityId)
+      .is('deleted_at', null)
+      .order('expiration_date', { ascending: true });
+
+    if (batchErr) throw batchErr;
+
+    const batchIds = (batches || []).map(b => b.id);
+    let releases = [];
+    let defects = [];
+
+    if (batchIds.length > 0) {
+      const { data: relData, error: relErr } = await supabase
+        .from('releases')
+        .select('id, batch_id, quantity, barangay, recipient_name, released_at, notes')
+        .in('batch_id', batchIds)
+        .order('released_at', { ascending: false });
+
+      if (!relErr && relData) releases = relData;
+
+      const { data: defData, error: defErr } = await supabase
+        .from('defect_incidents')
+        .select('id, batch_id, classification, quantity_affected, action_taken, scope, remaining_quarantined, reported_at, remarks')
+        .in('batch_id', batchIds)
+        .order('reported_at', { ascending: false });
+
+      if (!defErr && defData) defects = defData;
+    }
+
+    const batchesWithLineage = (batches || []).map(b => ({
+      ...b,
+      releases: releases.filter(r => r.batch_id === b.id),
+      defects: defects.filter(d => d.batch_id === b.id),
+    }));
+
+    return {
+      commodity,
+      batches: batchesWithLineage,
+      error: null,
+    };
+  } catch (err) {
+    console.error('[CommoditiesService] fetchCommodityLineage:', err);
+    return { commodity: null, batches: [], error: 'Failed to load commodity lineage.' };
+  }
+}
+
 // ── Create ──────────────────────────────────────────────────────────────────
 
 /**
