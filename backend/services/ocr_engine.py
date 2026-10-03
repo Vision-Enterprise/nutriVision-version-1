@@ -24,7 +24,20 @@ class InventoryExtractor:
             'Follo': 'Folic',
             'follo': 'Folic',
             'Acld': 'Acid',
-            'Poridge': 'Porridge'
+            'Poridge': 'Porridge',
+            'Tabiets': 'Tablets',
+            'Tbiets': 'Tablets',
+            'Tabiet': 'Tablet',
+            'Tblets': 'Tablets',
+            'Capsuies': 'Capsules',
+            'Capsuie': 'Capsule',
+            'Botties': 'Bottles',
+            'Bottie': 'Bottle',
+            'Vltamln': 'Vitamin',
+            'Calcilum': 'Calcium',
+            'Calclum': 'Calcium',
+            'Sodlum': 'Sodium',
+            'Mlcro': 'Micro',
         }
         for old, new in replacements.items():
             text = text.replace(old, new)
@@ -39,8 +52,6 @@ class InventoryExtractor:
             img = cv2.imread(image_path)
             if img is None:
                 raise ValueError(f"Failed to decode image at {image_path} with cv2")
-            
-
             
             print(f"DEBUG Image Shape: {img.shape}")
 
@@ -60,6 +71,10 @@ class InventoryExtractor:
 
             rows = []
             for poly, text, conf in zip(res.boxes, res.txts, res.scores):
+                # Filter out low-confidence artifacts/noise
+                if float(conf) < 0.40:
+                    continue
+
                 x_coords = [pt[0] for pt in poly]
                 y_coords = [pt[1] for pt in poly]
                 min_x, max_x = min(x_coords), max(x_coords)

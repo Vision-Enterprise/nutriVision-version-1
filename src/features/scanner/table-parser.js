@@ -60,6 +60,44 @@ function getBestCategory(wordRaw) {
   return null;
 }
 
+export function normalizeUnit(rawUnit) {
+  if (!rawUnit) return '';
+  const clean = String(rawUnit).toLowerCase().replace(/[^a-z]/g, '');
+  if (!clean) return '';
+
+  for (const u of (COMMODITY_UNITS || [])) {
+    if (u.toLowerCase() === clean) return u;
+  }
+
+  const UNIT_MAP = {
+    'tb': 'Tablet', 'tab': 'Tablet', 'tabs': 'Tablet', 'tablet': 'Tablet', 'tablets': 'Tablet',
+    'tbiet': 'Tablet', 'tbiets': 'Tablet', 'tabiet': 'Tablet', 'tabiets': 'Tablet', 'tbl': 'Tablet', 'tbls': 'Tablet',
+    'cap': 'Capsule', 'caps': 'Capsule', 'capsule': 'Capsule', 'capsules': 'Capsule',
+    'capsuie': 'Capsule', 'capsuies': 'Capsule',
+    'sach': 'Sachet', 'sachets': 'Sachet', 'sachet': 'Sachet',
+    'btl': 'Bottle', 'btls': 'Bottle', 'bot': 'Bottle', 'bott': 'Bottle', 'bottle': 'Bottle', 'bottles': 'Bottle',
+    'bottie': 'Bottle', 'botties': 'Bottle',
+    'bx': 'Box', 'box': 'Box', 'boxes': 'Box',
+    'pk': 'Pack', 'pck': 'Pack', 'pack': 'Pack', 'packs': 'Pack', 'pkt': 'Pack',
+    'pc': 'Piece', 'pcs': 'Piece', 'piece': 'Piece', 'pieces': 'Piece',
+    'kg': 'Kilogram', 'kgs': 'Kilogram', 'kilo': 'Kilogram', 'kilogram': 'Kilogram',
+    'g': 'Gram', 'gm': 'Gram', 'gms': 'Gram', 'gram': 'Gram', 'grams': 'Gram',
+    'l': 'Liter', 'ltr': 'Liter', 'liter': 'Liter', 'liters': 'Liter',
+    'ml': 'Milliliter', 'mls': 'Milliliter', 'milliliter': 'Milliliter'
+  };
+
+  if (UNIT_MAP[clean]) return UNIT_MAP[clean];
+
+  for (const u of (COMMODITY_UNITS || [])) {
+    const uc = u.toLowerCase();
+    if (clean.length >= 3 && levenshtein(clean, uc) <= (clean.length > 5 ? 2 : 1)) {
+      return u;
+    }
+  }
+
+  return rawUnit.trim();
+}
+
 // Group flat EasyOCR words into horizontal lines
 function extractLines(data) {
   if (!data || !data.words || data.words.length === 0) return [];
@@ -235,6 +273,7 @@ function parseDataLine(line, columns) {
   return {
     productName: record.productName,
     qty: record.qty,
+    unit: normalizeUnit(record.unit) || record.unit || '',
     expDate: finalExpDate,
     deliveryDate: finalDelDate,
     supplier: record.supplier || ''
@@ -265,12 +304,12 @@ export function parseTableData(data) {
     let qty = '';
     let expDate = '';
     
-    const qtyMatch = fullText.match(/(?:qty|quantity|amount|pieces|pcs)\s*[:.-]*\s*(\d+)/i);
+    const qtyMatch = fullText.match(/(?:qty|quantity|amount|pieces|pcs)\s*[:.-]*\s*([\d,]+)/i);
     if (qtyMatch) {
-      qty = qtyMatch[1];
+      qty = qtyMatch[1].replace(/,/g, '');
     } else {
-      const pureNumMatch = fullText.match(/\b(\d{1,4})\b/);
-      if (pureNumMatch) qty = pureNumMatch[1];
+      const pureNumMatch = fullText.match(/\b(\d{1,3}(?:,\d{3})+|\d{1,5})\b/);
+      if (pureNumMatch) qty = pureNumMatch[1].replace(/,/g, '');
     }
     
     const expMatch = fullText.match(/(?:exp(?:iry|iration)?\s*(?:date)?[\s:.-]*|best\s*before[\s:.-]*|bb[\s:.-]*)(20\d{2}[-./]\d{2}[-./]\d{2}|\d{2}[-./]\d{2}[-./]20\d{2}|\d{2}[-./]20\d{2})/i);
@@ -412,7 +451,7 @@ export function parseHtmlTableData(htmlString) {
       rows.push({
         productName: record.productName,
         qty: record.qty,
-        unit: record.unit || '',
+        unit: normalizeUnit(record.unit) || record.unit || '',
         expDate: finalExpDate,
         deliveryDate: finalDelDate,
         supplier: record.supplier || ''
@@ -516,19 +555,17 @@ export function parseSpatialCells(rawCells) {
         continue;
       }
 
-      const unitClean = t.toLowerCase().replace(/[^a-z]/g, '');
-      const isKnownUnit = COMMODITY_UNITS && COMMODITY_UNITS.some(u => {
-        const uc = u.toLowerCase().replace(/[^a-z]/g, '');
-        return uc === unitClean || (unitClean.length >= 3 && uc.startsWith(unitClean));
-      });
+      const normU = normalizeUnit(t);
+      const isKnownUnit = COMMODITY_UNITS && COMMODITY_UNITS.includes(normU);
 
       if (isKnownUnit && !unit && item.x1 > maxX * 0.35 && item.x1 < maxX * 0.75) {
-        unit = t;
+        unit = normU;
         continue;
       }
 
-      if (/^\d{1,6}$/.test(t) && !qty && item.x1 > maxX * 0.3 && item.x1 < maxX * 0.65) {
-        qty = t;
+      const cleanNum = t.replace(/,/g, '');
+      if (/^\d{1,6}$/.test(cleanNum) && !qty && item.x1 > maxX * 0.3 && item.x1 < maxX * 0.65) {
+        qty = cleanNum;
         continue;
       }
 

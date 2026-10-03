@@ -1524,4 +1524,35 @@
   text-align: center;
 }
 
+/* Headless grid specific combobox rules */
+.headless-grid tr.has-open-combobox,
+.headless-grid tr:has(.creatable-combobox.is-open) {
+  z-index: 50;
+  position: relative;
+}
+
+.creatable-combobox.is-open {
+  z-index: 100;
+}
+
+.headless-grid .creatable-combobox {
+  width: 100%;
+  height: 100%;
+}
+
+.headless-grid .creatable-combobox .headless-input {
+  padding-right: 32px;
+}
+
+.headless-grid .creatable-combobox__toggle {
+  right: 6px;
+}
+
+.headless-grid .creatable-combobox__menu {
+  min-width: 220px;
+  max-width: 360px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+
 

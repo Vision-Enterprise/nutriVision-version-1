@@ -14,6 +14,9 @@ import { createBatch, fetchBatches } from './batches.service.js';
 import { escapeHtml } from './batches.render.js';
 import { ScannerComponent } from '../scanner/scanner.component.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { createCommodity } from '../commodities/commodities.service.js';
+import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
+import { getDynamicUnits } from '../commodities/commodities.render.js';
 import { 
   generateCommoditySKU, 
   generateBatchCode, 
@@ -116,12 +119,34 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
         background: #fef2f2 !important;
         border-radius: 4px;
       }
-      .ws-select-commodity {
-        cursor: pointer;
+      .cell-active-excel {
+        outline: 2px solid var(--color-primary, #059669) !important;
+        outline-offset: -1px;
+        background: #ffffff !important;
+        position: relative;
+        z-index: 5;
       }
-      .ws-select-commodity option {
-        background: #ffffff;
-        color: var(--text-main);
+      .fx-bar-label {
+        min-width: 88px;
+        text-align: center;
+        background: #f1f5f9;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--color-primary, #059669);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        user-select: none;
+      }
+      .ws-input-commodity {
+        cursor: text;
+      }
+      .row-new-comm {
+        background-color: #f0f9ff !important;
+        border-left: 4px solid #0284c7 !important;
       }
       .action-icon-btn {
         background: none;
@@ -178,9 +203,10 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       <!-- Right Panel: Data Grid -->
       <div class="workspace-panel-right">
          <div class="fx-bar-wrapper">
-           <span class="fx-bar-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-           <input class="fx-bar-input" id="fx-bar-input" name="fx_bar_input" aria-label="Formula bar cell editor" placeholder="Click a cell to edit its value here..." readonly />
+           <span class="fx-bar-label" id="fx-cell-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> fx</span>
+           <input class="fx-bar-input" id="fx-bar-input" name="fx_bar_input" aria-label="Formula bar cell editor" placeholder="Click any cell or start typing here..." />
          </div>
+
          <div class="headless-grid-container" style="border-radius:0 0 8px 8px;">
            <div class="headless-grid-scroll" style="overflow-x:auto; flex:1;">
            <table class="headless-grid">
@@ -277,32 +303,95 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     leftPanel.classList.remove('is-collapsed');
   });
 
-  // FX Bar editing
+  // FX Bar editing & Excel-like Two-Way Sync
   const fxBar = document.getElementById('fx-bar-input');
+  const fxBadge = document.getElementById('fx-cell-badge');
   let fxTarget = null;
+  let isSyncingFx = false;
+
+  function setActiveCell(cellInput) {
+    if (!cellInput) return;
+    document.querySelectorAll('.cell-active-excel').forEach(el => el.classList.remove('cell-active-excel'));
+    fxTarget = cellInput;
+    fxTarget.classList.add('cell-active-excel');
+
+    const tr = fxTarget.closest('tr');
+    const rowIndex = tr ? (parseInt(tr.getAttribute('data-index'), 10) + 1) : '';
+    const colName = fxTarget.getAttribute('aria-label') || fxTarget.placeholder || 'Cell';
+
+    if (fxBadge) {
+      fxBadge.textContent = rowIndex ? `R${rowIndex}:${colName}` : 'fx';
+      fxBadge.title = `Row ${rowIndex}, ${colName}`;
+    }
+
+    if (!isSyncingFx && fxBar) {
+      fxBar.value = fxTarget.value || '';
+      if (fxTarget.disabled || fxTarget.readOnly) {
+        fxBar.setAttribute('readonly', 'true');
+        fxBar.style.opacity = '0.7';
+      } else {
+        fxBar.removeAttribute('readonly');
+        fxBar.style.opacity = '1';
+      }
+    }
+  }
+
   document.getElementById('bulk-table-body')?.addEventListener('focusin', (e) => {
-    const inp = e.target.closest('input:not([disabled]), select');
+    const inp = e.target.closest('input, select');
     if (!inp) return;
-    fxTarget = inp;
-    fxBar.value = inp.value;
-    fxBar.removeAttribute('readonly');
+    setActiveCell(inp);
   });
-  fxBar?.addEventListener('input', () => { 
-    if (fxTarget) {
-      fxTarget.value = fxBar.value;
-      fxTarget.dispatchEvent(new Event('input', { bubbles: true }));
+
+  document.getElementById('bulk-table-body')?.addEventListener('input', (e) => {
+    if (fxTarget && e.target === fxTarget && fxBar && !isSyncingFx) {
+      isSyncingFx = true;
+      fxBar.value = fxTarget.value;
+      isSyncingFx = false;
     }
   });
+
+  fxBar?.addEventListener('focus', () => {
+    if (!fxTarget || !document.body.contains(fxTarget)) {
+      const firstCell = document.querySelector('#bulk-table-body input:not([disabled]):not([readonly])');
+      if (firstCell) setActiveCell(firstCell);
+    }
+  });
+
+  fxBar?.addEventListener('input', () => {
+    if (isSyncingFx) return;
+    if (!fxTarget || !document.body.contains(fxTarget)) {
+      const firstCell = document.querySelector('#bulk-table-body input:not([disabled]):not([readonly])');
+      if (firstCell) setActiveCell(firstCell);
+    }
+    if (fxTarget && !fxTarget.disabled && !fxTarget.readOnly) {
+      isSyncingFx = true;
+      fxTarget.value = fxBar.value;
+      fxTarget.dispatchEvent(new Event('input', { bubbles: true }));
+      fxTarget.dispatchEvent(new Event('change', { bubbles: true }));
+      isSyncingFx = false;
+    }
+  });
+
   fxBar?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
+    if (e.key === 'Enter') {
       e.preventDefault();
       if (fxTarget) {
         fxTarget.dispatchEvent(new Event('change', { bubbles: true }));
-        fxTarget.blur();
-        fxTarget = null;
+        const tr = fxTarget.closest('tr');
+        const nextTr = tr ? tr.nextElementSibling : null;
+        if (nextTr) {
+          const targetClass = Array.from(fxTarget.classList).find(c => c.startsWith('ws-input-'));
+          const nextCell = targetClass ? nextTr.querySelector('.' + targetClass) : null;
+          if (nextCell) {
+            nextCell.focus();
+            setActiveCell(nextCell);
+            return;
+          }
+        }
+        fxTarget.focus();
       }
-      fxBar.setAttribute('readonly', true);
-      fxBar.value = '';
+    } else if (e.key === 'Escape') {
+      if (fxTarget) fxTarget.focus();
     }
   });
 
@@ -334,23 +423,23 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
 
 /**
  * Computes deterministic Batch Code or returns incomplete/blocked state.
- *
- * REGISTRY GUARD: Code generation is BLOCKED if commodityId is empty.
- * Unregistered commodities (fuzzy-miss or manual free-text) must never
- * produce a usable batch code — they must be resolved in the dropdown first.
  */
 function computeRowCode(commodityId, commodityName, unit, expDate) {
   try {
-    // Block code gen entirely if commodity not confirmed in registry
-    if (!commodityId) {
-      return { code: '[ NOT REGISTERED ]', isComplete: false, notRegistered: true };
+    if (!commodityName) {
+      return { code: '[ INCOMPLETE ]', isComplete: false };
     }
-    if (!commodityName || !unit || !expDate) {
+    if (!unit || !expDate) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
     }
     const sku = generateCommoditySKU(commodityName, unit);
     const code = generateBatchCode(sku, expDate);
-    return { sku, code, isComplete: true };
+    return { 
+      sku, 
+      code, 
+      isComplete: true, 
+      isNewCommodity: !commodityId 
+    };
   } catch (err) {
     return { code: '[ INCOMPLETE ]', isComplete: false, error: err.message };
   }
@@ -365,24 +454,6 @@ function updateRowLiveCode(tr, row) {
   if (!batchInput) return;
 
   const result = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
-
-  if (result.notRegistered) {
-    // Commodity not in registry — hard block
-    batchInput.value = '[ NOT REGISTERED ]';
-    batchInput.style.color = '#b45309';
-    batchInput.style.fontWeight = '700';
-    batchInput.style.fontFamily = 'monospace';
-    tr.style.backgroundColor = '#fffbeb';
-    tr.style.borderLeft = '4px solid #f59e0b';
-    row.sku = '';
-    row.batchCode = '';
-    if (dupNotice) {
-      dupNotice.textContent = '⚠️ Select a registered commodity';
-      dupNotice.style.color = '#b45309';
-      dupNotice.style.display = 'block';
-    }
-    return;
-  }
 
   if (result.isComplete) {
     row.sku = result.sku;
@@ -404,6 +475,17 @@ function updateRowLiveCode(tr, row) {
       if (dupNotice) {
         dupNotice.textContent = `⚠️ ${errText}`;
         dupNotice.style.color = '#dc2626';
+        dupNotice.style.display = 'block';
+      }
+    } else if (result.isNewCommodity) {
+      batchInput.style.color = '#0284c7';
+      batchInput.style.fontWeight = '600';
+      batchInput.style.fontFamily = 'monospace';
+      tr.style.backgroundColor = '#f0f9ff';
+      tr.style.borderLeft = '4px solid #0284c7';
+      if (dupNotice) {
+        dupNotice.textContent = '✨ New commodity (auto-registers on save)';
+        dupNotice.style.color = '#0284c7';
         dupNotice.style.display = 'block';
       }
     } else {
@@ -450,55 +532,59 @@ function renderBulkTable() {
     const codeResult = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
 
     // Determine display code and row state
-    const isNotRegistered = Boolean(codeResult.notRegistered);
+    const isNewComm = Boolean(codeResult.isNewCommodity);
     const displayBatchCode = codeResult.isComplete
       ? codeResult.code
-      : isNotRegistered ? '[ NOT REGISTERED ]' : '[ INCOMPLETE ]';
+      : '[ INCOMPLETE ]';
 
     const isDbDup = codeResult.isComplete && checkBatchExistsInDb(row.commodityId, row.commodityName, codeResult.code);
     const hasError = Boolean(row.submitError) || isDbDup;
     const errMessage = row.submitError || (isDbDup ? 'Already in Database' : '');
 
-    // Row background: amber for unregistered, red for dup/error, normal otherwise
-    const rowStyle = isNotRegistered
-      ? 'background-color:#fffbeb; border-left:4px solid #f59e0b;'
-      : hasError
-        ? 'background-color:#fef2f2; border-left:4px solid #dc2626;'
+    // Row background: soft sky-blue for new commodity, red for dup/error, normal otherwise
+    const rowStyle = hasError
+      ? 'background-color:#fef2f2; border-left:4px solid #dc2626;'
+      : isNewComm
+        ? 'background-color:#f0f9ff; border-left:4px solid #0284c7;'
         : '';
 
-    const batchStyle = isNotRegistered
-      ? 'color:#b45309; font-weight:700; font-family:monospace;'
-      : (codeResult.isComplete && !hasError)
-        ? 'color:var(--text-main); font-weight:600; font-family:monospace;'
-        : 'color:#dc2626; font-weight:700; font-family:monospace;';
+    const batchStyle = hasError
+      ? 'color:#dc2626; font-weight:700; font-family:monospace;'
+      : isNewComm
+        ? 'color:#0284c7; font-weight:600; font-family:monospace;'
+        : (codeResult.isComplete)
+          ? 'color:var(--text-main); font-weight:600; font-family:monospace;'
+          : 'color:#dc2626; font-weight:700; font-family:monospace;';
 
     const rowKey = row.id ? String(row.id).replace('.', '_') : index;
 
-    // Commodity select border color
-    const commSelectStyle = isNotRegistered
-      ? 'style="border-color:#f59e0b; background:#fffbeb;"'
-      : hasError ? 'style="border-color:#fca5a5;"' : '';
+    // Commodity input border color
+    const commInputStyle = hasError ? 'border-color:#fca5a5;' : isNewComm ? 'border-color:#bae6fd;' : '';
 
     // Batch notice message
-    const batchNoticeHtml = isNotRegistered
-      ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#b45309; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ Select a registered commodity</div>`
-      : hasError
-        ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>`
+    const batchNoticeHtml = hasError
+      ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;">⚠️ ${escapeHtml(errMessage)}</div>`
+      : isNewComm
+        ? `<div class="ws-batch-dup-notice" style="font-size:10px; color:#0284c7; font-weight:700; margin-top:2px; line-height:1.2;">✨ New commodity (auto-registers on save)</div>`
         : `<div class="ws-batch-dup-notice" style="display:none; font-size:10px; color:#dc2626; font-weight:700; margin-top:2px; line-height:1.2;"></div>`;
 
     return `
-      <tr class="bulk-row ${isNotRegistered ? 'row-unregistered' : hasError ? 'row-error' : ''}" data-index="${index}" style="${rowStyle}">
+      <tr class="bulk-row ${hasError ? 'row-error' : isNewComm ? 'row-new-comm' : ''}" data-index="${index}" style="${rowStyle}">
          <td>
-            <select class="headless-input ws-select-commodity" id="ws-comm-${rowKey}" name="commodity_${rowKey}" aria-label="Commodity" ${commSelectStyle}>
-               <option value="" disabled ${!row.commodityId ? 'selected' : ''}>-- Select Commodity --</option>
-               ${availableCommodities.map(c => {
-                 const isSelected = row.commodityId === c.id;
-                 return `<option value="${c.id}" data-unit="${escapeHtml(c.unit || '')}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (${escapeHtml(c.unit || 'No Unit')})</option>`;
-               }).join('')}
-            </select>
+            <input 
+              type="text" 
+              class="headless-input form-input ws-input-commodity" 
+              id="ws-comm-${rowKey}" 
+              name="commodity_${rowKey}" 
+              aria-label="Commodity" 
+              placeholder="Type or select commodity..." 
+              value="${escapeHtml(row.commodityName || '')}" 
+              autocomplete="off" 
+              style="${commInputStyle}"
+            />
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-unit" id="ws-unit-${rowKey}" name="unit_${rowKey}" aria-label="Unit of measure" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
+            <input type="text" class="headless-input form-input ws-input-unit" id="ws-unit-${rowKey}" name="unit_${rowKey}" aria-label="Unit" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
          </td>
          <td>
             <input type="text" class="headless-input ws-input-batch" id="ws-batch-${rowKey}" name="batch_code_${rowKey}" aria-label="Batch Code" value="${displayBatchCode}" disabled style="${batchStyle}" />
@@ -556,7 +642,8 @@ function bindRowEvents() {
     const row = bulkRows[index];
     if (!row) return;
 
-    const commSelect = tr.querySelector('.ws-select-commodity');
+    const commInput = tr.querySelector('.ws-input-commodity');
+    const newCommBtn = tr.querySelector('.ws-new-comm-btn');
     const unitInput = tr.querySelector('.ws-input-unit');
     const expInput = tr.querySelector('.ws-input-exp');
     const qtyInput = tr.querySelector('.ws-input-qty');
@@ -566,24 +653,57 @@ function bindRowEvents() {
     const splitBtn = tr.querySelector('.bulk-split-btn');
     const deleteBtn = tr.querySelector('.bulk-delete-btn');
 
-    // 1. Commodity Dropdown Change
-    commSelect?.addEventListener('change', () => {
-      const selectedId = commSelect.value;
-      const matched = availableCommodities.find(c => c.id === selectedId);
+    // 1. Commodity Combobox — styled creatable dropdown (same as commodity modal)
+    const commodityNames = availableCommodities.map(c => c.name);
+    const commCombo = setupCreatableCombobox({
+      inputEl: commInput,
+      options: commodityNames,
+      itemTypeLabel: 'commodity',
+      onSelect: (val) => handleCommInput(val),
+    });
+
+    function handleCommInput(val) {
+      const typed = (val ?? commInput?.value ?? '').trim();
+      row.commodityName = typed;
+      const matched = availableCommodities.find(c => c.name.toLowerCase() === typed.toLowerCase());
       if (matched) {
         row.commodityId = matched.id;
         row.commodityName = matched.name;
-        // Auto-assign unit if empty or changed
-        row.unit = matched.unit || '';
-        if (unitInput) unitInput.value = row.unit;
+        if (!row.unit || row.unit === '') {
+          row.unit = matched.unit || '';
+          if (unitInput) {
+            unitInput.value = row.unit;
+            // Also push the auto-filled unit into the unit combobox options
+            unitCombo?.addOption(row.unit);
+          }
+        }
+      } else {
+        row.commodityId = '';
       }
       updateRowLiveCode(tr, row);
       updateFooters();
       validateTableRows();
+    }
+
+    // Sync typed value on native input event (for fx-bar and direct typing)
+    commInput?.addEventListener('input', () => handleCommInput());
+    commInput?.addEventListener('change', () => handleCommInput());
+
+    // 1a. Unit Combobox
+    const unitNames = getDynamicUnits(availableCommodities);
+    const unitCombo = setupCreatableCombobox({
+      inputEl: unitInput,
+      options: unitNames,
+      itemTypeLabel: 'unit',
     });
 
-    // 2. Unit Field Input/Change
+    // 2. Unit Field Input/Change (combobox already wired above; also catch direct typing)
     unitInput?.addEventListener('input', () => {
+      row.unit = unitInput.value;
+      updateRowLiveCode(tr, row);
+      validateTableRows();
+    });
+    unitInput?.addEventListener('change', () => {
       row.unit = unitInput.value;
       updateRowLiveCode(tr, row);
       validateTableRows();
@@ -668,7 +788,7 @@ function syncBulkState() {
   const rows = document.querySelectorAll('.bulk-row');
   rows.forEach((tr, i) => {
     if (!bulkRows[i]) return;
-    const commSelect = tr.querySelector('.ws-select-commodity');
+    const commInput = tr.querySelector('.ws-input-commodity');
     const unitInput = tr.querySelector('.ws-input-unit');
     const qtyInput = tr.querySelector('.ws-input-qty');
     const delInput = tr.querySelector('.ws-input-del');
@@ -676,10 +796,16 @@ function syncBulkState() {
     const supInput = tr.querySelector('.ws-input-sup');
     const notesInput = tr.querySelector('.ws-input-notes');
 
-    if (commSelect && commSelect.value) {
-      bulkRows[i].commodityId = commSelect.value;
-      const matched = availableCommodities.find(c => c.id === commSelect.value);
-      if (matched) bulkRows[i].commodityName = matched.name;
+    if (commInput) {
+      const typed = commInput.value.trim();
+      bulkRows[i].commodityName = typed;
+      const matched = availableCommodities.find(c => c.name.toLowerCase() === typed.toLowerCase());
+      if (matched) {
+        bulkRows[i].commodityId = matched.id;
+        bulkRows[i].commodityName = matched.name;
+      } else {
+        bulkRows[i].commodityId = '';
+      }
     }
     if (unitInput) bulkRows[i].unit = unitInput.value;
     if (qtyInput) bulkRows[i].qty = qtyInput.value;
@@ -728,19 +854,20 @@ export function validateTableRows() {
     const row = bulkRows[i];
     if (!row) return;
 
-    const commSelect = tr.querySelector('.ws-select-commodity');
+    const commInput = tr.querySelector('.ws-input-commodity');
     const unitInput = tr.querySelector('.ws-input-unit');
     const expInput = tr.querySelector('.ws-input-exp');
     const qtyInput = tr.querySelector('.ws-input-qty');
 
     let rowValid = true;
 
-    // 1. Commodity Registry Check — must have a confirmed registry ID, not just a name
-    if (!row.commodityId) {
-      commSelect?.classList.add('cell-invalid');
+    // 1. Commodity Name Check — must have a non-empty name
+    const cleanComm = (row.commodityName || '').trim();
+    if (!cleanComm) {
+      commInput?.classList.add('cell-invalid');
       rowValid = false;
     } else {
-      commSelect?.classList.remove('cell-invalid');
+      commInput?.classList.remove('cell-invalid');
     }
 
     // 2. Strict Unit Check (reject null, empty, UNT, TBD)
@@ -864,6 +991,30 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
   for (let i = 0; i < bulkRows.length; i++) {
     const row = bulkRows[i];
     try {
+      // Auto-register new commodity if typed without prior registry ID
+      if (!row.commodityId && row.commodityName) {
+        const sku = generateCommoditySKU(row.commodityName, row.unit);
+        const newCommRes = await createCommodity({
+          commodity_code: sku,
+          name: row.commodityName,
+          category: 'General',
+          unit: row.unit || 'Piece',
+          description: 'Auto-registered from bulk intake'
+        }, profile);
+
+        if (newCommRes.error) {
+          row.submitError = newCommRes.error;
+          errorDetails.push(`Row ${i + 1} (${row.commodityName}): ${newCommRes.error}`);
+          continue;
+        }
+
+        row.commodityId = newCommRes.commodity.id;
+        if (!availableCommodities.find(c => c.id === newCommRes.commodity.id)) {
+          availableCommodities.push(newCommRes.commodity);
+          availableCommodities.sort((a, b) => a.name.localeCompare(b.name));
+        }
+      }
+
       const sku = generateCommoditySKU(row.commodityName, row.unit);
       const batchCode = generateBatchCode(sku, row.expDate);
 

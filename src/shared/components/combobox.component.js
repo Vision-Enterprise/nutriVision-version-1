@@ -61,10 +61,12 @@ export function setupCreatableCombobox({
   function openMenu() {
     renderMenu();
     wrapper.classList.add('is-open');
+    wrapper.closest('tr')?.classList.add('has-open-combobox');
   }
 
   function closeMenu() {
     wrapper.classList.remove('is-open');
+    wrapper.closest('tr')?.classList.remove('has-open-combobox');
     highlightedIndex = -1;
   }
 
