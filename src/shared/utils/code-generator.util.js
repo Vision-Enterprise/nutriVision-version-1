@@ -9,6 +9,127 @@
 const STOP_WORDS = new Set(['WITH', 'AND', 'FOR', 'THE', 'OF', 'IN', 'TO', 'A', 'AN']);
 const INVALID_UNIT_PLACEHOLDERS = new Set(['UNT', 'TBD', 'N/A', 'NA', 'NONE', '-', 'NULL', 'UNDEFINED']);
 
+export const STANDARDIZED_UNITS = {
+  'SACHET': 'SACHET',
+  'SACHETS': 'SACHET',
+  'SAC': 'SACHET',
+  'SCH': 'SACHET',
+  'PACK': 'PACK',
+  'PACKS': 'PACK',
+  'PAC': 'PACK',
+  'PACKAGE': 'PACK',
+  'PACKAGES': 'PACK',
+  'BOX': 'BOX',
+  'BOXES': 'BOX',
+  'BOTTLE': 'BOTTLE',
+  'BOTTLES': 'BOTTLE',
+  'BOT': 'BOTTLE',
+  'TABLET': 'TABLET',
+  'TABLETS': 'TABLET',
+  'TAB': 'TABLET',
+  'TABS': 'TABLET',
+  'CAPSULE': 'CAPSULE',
+  'CAPSULES': 'CAPSULE',
+  'CAP': 'CAPSULE',
+  'CAPS': 'CAPSULE',
+  'PIECE': 'PIECE',
+  'PIECES': 'PIECE',
+  'PC': 'PIECE',
+  'PCS': 'PIECE',
+  'PIE': 'PIECE',
+  'KILOGRAM': 'KG',
+  'KILOGRAMS': 'KG',
+  'KILO': 'KG',
+  'KG': 'KG',
+  'KGS': 'KG',
+  'CAN': 'CAN',
+  'CANS': 'CAN',
+  'VIAL': 'VIAL',
+  'VIALS': 'VIAL',
+  'TUBE': 'TUBE',
+  'TUBES': 'TUBE',
+  'BLISTER': 'BLISTER',
+  'BLISTER PACK': 'BLISTER',
+  'JAR': 'JAR',
+  'JARS': 'JAR',
+  'BAR': 'BAR',
+  'BARS': 'BAR'
+};
+
+/**
+ * Returns a standardized packaging unit code (e.g. "SACHET", "PACK", "TABLET", "KG").
+ */
+export function formatUnitCode(unit) {
+  if (!unit) return 'UNIT';
+  const clean = String(unit).trim().toUpperCase();
+  if (STANDARDIZED_UNITS[clean]) {
+    return STANDARDIZED_UNITS[clean];
+  }
+  const alpha = clean.replace(/[^A-Z0-9]/g, '');
+  if (alpha.length <= 7) return alpha;
+  return alpha.slice(0, 6);
+}
+
+const KNOWN_SUPPLIERS = {
+  'DEPARTMENT OF HEALTH': 'DOH',
+  'DEPT OF HEALTH': 'DOH',
+  'DOH': 'DOH',
+  'NATIONAL NUTRITION COUNCIL': 'NNC',
+  'NNC': 'NNC',
+  'LOCAL GOVERNMENT UNIT': 'LGU',
+  'LGU': 'LGU',
+  'PROVINCIAL HEALTH OFFICE': 'PHO',
+  'PHO': 'PHO',
+  'MUNICIPAL HEALTH OFFICE': 'MHO',
+  'MHO': 'MHO',
+  'RURAL HEALTH UNIT': 'RHU',
+  'RHU': 'RHU',
+  'BARANGAY HEALTH STATION': 'BHS',
+  'BHS': 'BHS',
+  'WORLD HEALTH ORGANIZATION': 'WHO',
+  'WHO': 'WHO',
+  'WORLD FOOD PROGRAMME': 'WFP',
+  'WORLD FOOD PROGRAM': 'WFP',
+  'WFP': 'WFP',
+  'UNITED NATIONS CHILDREN\'S FUND': 'UNICEF',
+  'UNITED NATIONS CHILDRENS FUND': 'UNICEF',
+  'UNICEF': 'UNICEF',
+  'ZUELLIG PHARMA': 'ZUELLIG',
+  'ZUELLIG': 'ZUELLIG',
+  'UNILAB': 'UNILAB',
+  'MERCURY DRUG': 'MERCURY',
+};
+
+/**
+ * Extracts a concise, readable uppercase supplier code for batch code tagging.
+ */
+export function extractSupplierCode(supplier) {
+  if (!supplier || typeof supplier !== 'string') return '';
+  const clean = supplier.trim().toUpperCase();
+  if (!clean) return '';
+
+  if (KNOWN_SUPPLIERS[clean]) return KNOWN_SUPPLIERS[clean];
+
+  // Strip punctuation
+  const noPunct = clean.replace(/[^A-Z0-9\s]/g, ' ');
+  const words = noPunct.split(/\s+/).filter(Boolean);
+
+  if (words.length === 1) {
+    return words[0].slice(0, 8);
+  }
+
+  // Multi-word: check initials of non-stop words
+  const nonStopWords = words.filter(w => !STOP_WORDS.has(w));
+  const targetWords = nonStopWords.length > 0 ? nonStopWords : words;
+  const initials = targetWords.map(w => w[0]).join('');
+
+  if (initials.length >= 2 && initials.length <= 6) {
+    return initials;
+  }
+
+  return targetWords[0].slice(0, 6);
+}
+
 /**
  * Generates an Acronym Commodity SKU.
  *
@@ -56,41 +177,56 @@ export function generateCommoditySKU(name, unit) {
     throw new Error('Strict Policy: Commodity name is mandatory to generate a commodity SKU.');
   }
 
+const KNOWN_COMMODITY_ACRONYMS = {
+  'MICRONUTRIENT POWDER': 'MNP',
+  'READY TO USE THERAPEUTIC FOOD': 'RUTF',
+  'READY TO USE SUPPLEMENTARY FOOD': 'RUSF',
+  'READY TO USE SUPPLEMENTARY FOODS': 'RUSF',
+  'IRON WITH FOLIC ACID': 'IFA',
+  'IRON FOLIC ACID': 'IFA',
+  'IRON WITH FOLIC ACID TABLET': 'IFA',
+  'FOLIC ACID': 'FA',
+  'VITAMIN A': 'VITA',
+  'DEWORMING TABLET': 'ALB',
+  'ALBENDAZOLE': 'ALB',
+  'MEBENDAZOLE': 'MBZ'
+};
+
   // Strip hyphens, parentheses, and punctuation into spaces
   const sanitizedName = cleanName.replace(/[-_()[\],.;:!?'"\\/]/g, ' ');
+  const normKey = sanitizedName.replace(/\s+/g, ' ').trim().toUpperCase();
 
-  // Split into words and filter out stop words
-  const rawWords = sanitizedName.trim().split(/\s+/).filter(Boolean);
-  const words = rawWords.filter(w => !STOP_WORDS.has(w.toUpperCase()));
+  let acronym = KNOWN_COMMODITY_ACRONYMS[normKey] || '';
 
-  let acronym = '';
+  if (!acronym) {
+    // Split into words and filter out stop words
+    const rawWords = sanitizedName.trim().split(/\s+/).filter(Boolean);
+    const words = rawWords.filter(w => !STOP_WORDS.has(w.toUpperCase()));
 
-  if (words.length > 1) {
-    // Multiple words: Extract first letter of first 3 or 4 words
-    const targetWords = words.slice(0, 4);
-    acronym = targetWords.map(w => w.replace(/[^a-zA-Z0-9]/g, '')[0] || '').join('').toUpperCase();
-  } else if (words.length === 1) {
-    // Single word: Extract first 3 consonants (e.g., "Nutribun" -> "NTR")
-    const word = words[0].toUpperCase();
-    const consonants = word.replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/g, '');
-    if (consonants.length >= 3) {
-      acronym = consonants.slice(0, 3);
+    if (words.length > 1) {
+      // Multiple words: Extract first letter of first 3 or 4 words
+      const targetWords = words.slice(0, 4);
+      acronym = targetWords.map(w => w.replace(/[^a-zA-Z0-9]/g, '')[0] || '').join('').toUpperCase();
+    } else if (words.length === 1) {
+      // Single word: Extract first 3 consonants (e.g., "Nutribun" -> "NTR")
+      const word = words[0].toUpperCase();
+      const consonants = word.replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/g, '');
+      if (consonants.length >= 3) {
+        acronym = consonants.slice(0, 3);
+      } else {
+        // Fallback if word has fewer than 3 consonants: take consonants then remaining letters
+        const alphaOnly = word.replace(/[^A-Z0-9]/g, '');
+        acronym = alphaOnly.slice(0, 3);
+      }
     } else {
-      // Fallback if word has fewer than 3 consonants: take consonants then remaining letters
-      const alphaOnly = word.replace(/[^A-Z0-9]/g, '');
-      acronym = alphaOnly.slice(0, 3);
+      // Fallback if all words were stop words
+      const fallbackWord = (rawWords[0] || 'COMM').toUpperCase();
+      acronym = fallbackWord.slice(0, 3);
     }
-  } else {
-    // Fallback if all words were stop words
-    const fallbackWord = (rawWords[0] || 'COMM').toUpperCase();
-    acronym = fallbackWord.slice(0, 3);
   }
 
-  // Unit Part: first 3 letters
-  const unitLetters = upperUnit.replace(/[^A-Z0-9]/g, '');
-  const unitPart = unitLetters.length <= 3 
-    ? unitLetters 
-    : unitLetters.slice(0, 3);
+  // Unit Part: Standardized packaging unit (e.g., SACHET, PACK, TABLET, KG)
+  const unitPart = formatUnitCode(cleanUnit);
 
   if (!unitPart) {
     throw new Error('Strict Policy: Unit is mandatory to generate a commodity SKU.');
@@ -187,32 +323,46 @@ export function extractExpYYMM(expirationDate) {
 }
 
 /**
- * Generates a standard Batch Code for inventory FEFO tracking.
+ * Generates a comprehensive, human-readable Batch Code for MNAO inventory FEFO tracking.
  *
  * Architecture:
- * - Format: [FULL_SKU]-EX[YYMM]
- * - Retains the full commodity SKU and appends "-EX" followed by the 2-digit year
- *   and 2-digit month of expiration.
- * - Strict Validation: Throws Error if expirationDate or sku is missing/invalid.
+ * - Format: [SKU]-DEL[YYMM]-EXP[YYMM]-[SUPPLIER]
+ *   Example: MNP-SACHET-DEL2603-EXP2802-DOH
  *
- * Examples:
- * - generateBatchCode("NMM-TAB", "10-14-2026") -> "NMM-TAB-EX2610"
- * - generateBatchCode("NMM-TAB", "09-2026")    -> "NMM-TAB-EX2609"
- * - generateBatchCode("IFA-TAB", "12-2026")    -> "IFA-TAB-EX2612"
- *
- * @param {string} sku - Standardized full SKU (e.g., "NMM-TAB", "IFA-TAB")
+ * @param {string} sku - Standardized full SKU (e.g., "MNP-SACHET", "IFA-TABLET")
  * @param {string|Date} expirationDate - Expiration date string or Date object
- * @returns {string} Batch code (e.g., "NMM-TAB-EX2610")
+ * @param {string|Date|null} deliveryDate - Optional delivery date
+ * @param {string|null} supplier - Optional supplier or donor name
+ * @returns {string} Batch code (e.g., "MNP-SACHET-DEL2603-EXP2802-DOH")
  * @throws {Error} If SKU or expiration date fails validation.
  */
-export function generateBatchCode(sku, expirationDate) {
+export function generateBatchCode(sku, expirationDate, deliveryDate = null, supplier = null) {
   if (!sku || typeof sku !== 'string' || !sku.trim()) {
     throw new Error('Strict Policy: SKU is mandatory to generate a batch code.');
   }
 
   const cleanSku = sku.trim().toUpperCase();
-  const yymm = extractExpYYMM(expirationDate);
-  return `${cleanSku}-EX${yymm}`;
+  const expYymm = extractExpYYMM(expirationDate);
+
+  let delSegment = '';
+  if (deliveryDate) {
+    try {
+      const delYymm = extractExpYYMM(deliveryDate);
+      delSegment = `-DEL${delYymm}`;
+    } catch {}
+  }
+
+  const expSegment = `-EXP${expYymm}`;
+
+  let supSegment = '';
+  if (supplier) {
+    const supCode = extractSupplierCode(supplier);
+    if (supCode) {
+      supSegment = `-${supCode}`;
+    }
+  }
+
+  return `${cleanSku}${delSegment}${expSegment}${supSegment}`;
 }
 
 /**

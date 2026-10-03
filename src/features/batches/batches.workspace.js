@@ -27,6 +27,10 @@ import {
 let bulkRows = [];
 let availableCommodities = [];
 let existingBatches = [];
+let fxTarget = null;
+let fxBar = null;
+let fxBadge = null;
+let isSyncingFx = false;
 
 function getToday() {
   return new Date().toISOString().split('T')[0];
@@ -214,7 +218,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
                  <tr>
                     <th style="min-width:200px;">Commodity</th>
                     <th style="min-width:110px;">Unit</th>
-                    <th style="min-width:150px;">Batch Code</th>
+                    <th style="min-width:250px;">Batch Code</th>
                     <th style="min-width:85px;">Qty</th>
                     <th style="min-width:130px;">Del. Date</th>
                     <th style="min-width:135px;">Exp. Date</th>
@@ -304,10 +308,10 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   });
 
   // FX Bar editing & Excel-like Two-Way Sync
-  const fxBar = document.getElementById('fx-bar-input');
-  const fxBadge = document.getElementById('fx-cell-badge');
-  let fxTarget = null;
-  let isSyncingFx = false;
+  fxBar = document.getElementById('fx-bar-input');
+  fxBadge = document.getElementById('fx-cell-badge');
+  fxTarget = null;
+  isSyncingFx = false;
 
   function setActiveCell(cellInput) {
     if (!cellInput) return;
@@ -337,6 +341,12 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   }
 
   document.getElementById('bulk-table-body')?.addEventListener('focusin', (e) => {
+    const inp = e.target.closest('input, select');
+    if (!inp) return;
+    setActiveCell(inp);
+  });
+
+  document.getElementById('bulk-table-body')?.addEventListener('click', (e) => {
     const inp = e.target.closest('input, select');
     if (!inp) return;
     setActiveCell(inp);
@@ -424,7 +434,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
 /**
  * Computes deterministic Batch Code or returns incomplete/blocked state.
  */
-function computeRowCode(commodityId, commodityName, unit, expDate) {
+function computeRowCode(commodityId, commodityName, unit, expDate, deliveryDate = null, supplier = null) {
   try {
     if (!commodityName) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
@@ -433,7 +443,7 @@ function computeRowCode(commodityId, commodityName, unit, expDate) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
     }
     const sku = generateCommoditySKU(commodityName, unit);
-    const code = generateBatchCode(sku, expDate);
+    const code = generateBatchCode(sku, expDate, deliveryDate, supplier);
     return { 
       sku, 
       code, 
@@ -453,7 +463,7 @@ function updateRowLiveCode(tr, row) {
   const dupNotice = tr.querySelector('.ws-batch-dup-notice');
   if (!batchInput) return;
 
-  const result = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
+  const result = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate, row.deliveryDate, row.supplier);
 
   if (result.isComplete) {
     row.sku = result.sku;
@@ -466,6 +476,9 @@ function updateRowLiveCode(tr, row) {
     const errText = row.submitError || (isDbDup ? 'Already in Database' : '');
 
     batchInput.value = result.code;
+    if (fxTarget === batchInput && fxBar) {
+      fxBar.value = result.code;
+    }
     if (hasError) {
       batchInput.style.color = '#dc2626';
       batchInput.style.fontWeight = '700';
@@ -529,7 +542,7 @@ function renderBulkTable() {
   }
 
   tbody.innerHTML = bulkRows.map((row, index) => {
-    const codeResult = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate);
+    const codeResult = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate, row.deliveryDate, row.supplier);
 
     // Determine display code and row state
     const isNewComm = Boolean(codeResult.isNewCommodity);
@@ -587,7 +600,7 @@ function renderBulkTable() {
             <input type="text" class="headless-input form-input ws-input-unit" id="ws-unit-${rowKey}" name="unit_${rowKey}" aria-label="Unit" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
          </td>
          <td>
-            <input type="text" class="headless-input ws-input-batch" id="ws-batch-${rowKey}" name="batch_code_${rowKey}" aria-label="Batch Code" value="${displayBatchCode}" disabled style="${batchStyle}" />
+            <input type="text" class="headless-input ws-input-batch" id="ws-batch-${rowKey}" name="batch_code_${rowKey}" aria-label="Batch Code" value="${displayBatchCode}" readonly tabindex="0" title="Click to view full batch code in formula bar" style="${batchStyle}; cursor:pointer;" />
             ${batchNoticeHtml}
          </td>
          <td>
@@ -729,8 +742,21 @@ function bindRowEvents() {
     });
 
     // 5. Delivery Date & Supplier
-    delInput?.addEventListener('input', () => { row.deliveryDate = delInput.value; validateTableRows(); });
-    supInput?.addEventListener('input', () => { row.supplier = supInput.value; });
+    const handleDelChange = () => {
+      row.deliveryDate = delInput.value;
+      updateRowLiveCode(tr, row);
+      validateTableRows();
+    };
+    delInput?.addEventListener('input', handleDelChange);
+    delInput?.addEventListener('change', handleDelChange);
+
+    const handleSupChange = () => {
+      row.supplier = supInput.value;
+      updateRowLiveCode(tr, row);
+    };
+    supInput?.addEventListener('input', handleSupChange);
+    supInput?.addEventListener('change', handleSupChange);
+
     notesInput?.addEventListener('input', () => { row.notes = notesInput.value; });
 
     // 6. Split Batch Action
@@ -1016,7 +1042,7 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
       }
 
       const sku = generateCommoditySKU(row.commodityName, row.unit);
-      const batchCode = generateBatchCode(sku, row.expDate);
+      const batchCode = generateBatchCode(sku, row.expDate, row.deliveryDate, row.supplier);
 
       // Pre-check against existing database batches to prevent 409 errors
       if (checkBatchExistsInDb(row.commodityId, row.commodityName, batchCode)) {
