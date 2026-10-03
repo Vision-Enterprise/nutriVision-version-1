@@ -71,11 +71,15 @@ export function renderDefectsLayout() {
     <!-- ── PDF Archive Card ────────────────────────────────────────────── -->
     <div class="card" style="padding: 0; overflow: hidden;">
 
-      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: var(--space-2);">
           <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">picture_as_pdf</span>
           <h2 class="card-title">Generated PDF Reports</h2>
         </div>
+        <button id="btn-clear-defect-archive" class="btn btn-ghost" style="display: none; font-size: var(--font-size-xs); color: var(--color-danger); gap: 4px; align-items: center;" title="Clear all PDF report history">
+          <span class="icon" style="font-size: 16px;">delete_sweep</span>
+          Clear All
+        </button>
       </div>
 
       <div class="table-wrapper" style="border: none; box-shadow: none; border-radius: 0; overflow-x: hidden; width: 100%;">
@@ -86,7 +90,7 @@ export function renderDefectsLayout() {
               <th style="padding: 10px 6px;">Report File Name</th>
               <th style="padding: 10px 6px; white-space: nowrap;">Reference Batch</th>
               <th style="padding: 10px 6px; white-space: nowrap;">Action Type</th>
-              <th style="padding: 10px 14px 10px 6px; text-align: right; white-space: nowrap;">Action</th>
+              <th style="padding: 10px 14px 10px 6px; text-align: right; white-space: nowrap; min-width: 80px;">Actions</th>
             </tr>
           </thead>
           <tbody id="defect-pdf-archive-tbody">
@@ -185,9 +189,14 @@ export function renderPdfArchiveRows(archiveArr = []) {
         <td style="padding: 8px 6px; font-family: monospace; font-size: 11px; color: var(--color-text-muted); white-space: nowrap;">${item.batchNumber}</td>
         <td style="padding: 8px 6px; font-size: 12px; white-space: nowrap;">${type}</td>
         <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">
-          <button class="btn btn-icon btn-replay-defect-pdf" data-id="${item.id}" title="View / Save PDF" style="width: 28px; height: 28px;">
-            <span class="icon" style="font-size: 18px;">download</span>
-          </button>
+          <div style="display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end;">
+            <button class="btn btn-icon btn-replay-defect-pdf" data-id="${item.id}" title="View / Print PDF" aria-label="View PDF" style="width: 28px; height: 28px;">
+              <span class="icon" style="font-size: 18px;">visibility</span>
+            </button>
+            <button class="btn btn-icon btn-delete-defect-pdf" data-id="${item.id}" title="Delete from history" aria-label="Delete report" style="width: 28px; height: 28px; color: var(--color-danger);">
+              <span class="icon" style="font-size: 18px;">delete_outline</span>
+            </button>
+          </div>
         </td>
       </tr>
     `;

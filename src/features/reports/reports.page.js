@@ -153,8 +153,8 @@ function _handleModelChange(e) {
 
 // ─── Generate ────────────────────────────────────────────────────────────────
 
-async function _handleGenerate(format) {
-  console.log(`${MODULE} generate triggered, format:`, format);
+async function _handleGenerate(format, isReplay = false) {
+  console.log(`${MODULE} generate triggered, format:`, format, 'isReplay:', isReplay);
 
   const checkedRadio = _el.querySelector('input[name="report_model"]:checked');
   if (!checkedRadio) {
@@ -221,13 +221,15 @@ async function _handleGenerate(format) {
     }
 
     if (format === 'CSV') {
-      // CSV: save immediately — clicking export = action taken
+      // CSV: export immediately
       exportToCSV(dataRes.data, modelId, filters);
-      _saveToArchive(modelId, reportTitle, filters, 'CSV');
-      _refreshArchiveTable();
+      if (!isReplay) {
+        _saveToArchive(modelId, reportTitle, filters, 'CSV');
+        _refreshArchiveTable();
+      }
     } else {
       // PDF/PRINT: only save to archive if user clicks "Print / Save PDF" in the modal
-      // Cancelled previews are NOT saved
+      // Cancelled previews are NOT saved; replaying existing reports does NOT create copies
       showPrintPreview(
         reportTitle,
         dataRes.data,
@@ -236,8 +238,10 @@ async function _handleGenerate(format) {
         _profile,
         () => {
           // onConfirm — called only when user clicks Print button
-          _saveToArchive(modelId, reportTitle, filters, 'PDF');
-          _refreshArchiveTable();
+          if (!isReplay) {
+            _saveToArchive(modelId, reportTitle, filters, 'PDF');
+            _refreshArchiveTable();
+          }
         }
       );
     }
@@ -306,7 +310,18 @@ function _refreshArchiveTable() {
 
   tbody.innerHTML = renderArchiveRows(history);
 
-  // Re-bind replay buttons
+  // Clear All button state & click handler
+  const clearBtn = _el?.querySelector('#btn-clear-archive');
+  if (clearBtn) {
+    clearBtn.style.display = history.length > 0 ? 'inline-flex' : 'none';
+    clearBtn.onclick = () => {
+      if (!confirm(`Clear all ${history.length} archived reports from history?`)) return;
+      localStorage.removeItem(ARCHIVE_KEY);
+      _refreshArchiveTable();
+    };
+  }
+
+  // Re-bind view / download replay buttons
   tbody.querySelectorAll('.btn-replay-report').forEach(btn => {
     btn.addEventListener('click', () => {
       const id   = btn.getAttribute('data-id');
@@ -317,6 +332,21 @@ function _refreshArchiveTable() {
       } else {
         console.warn(`${MODULE} replay: entry not found for id`, id);
       }
+    });
+  });
+
+  // Re-bind delete individual report buttons
+  tbody.querySelectorAll('.btn-delete-report').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      const item = history.find(h => h.id === id);
+      const name = item?.name || 'this report';
+      if (!confirm(`Remove "${name}" from report archive history?`)) return;
+
+      const updated = history.filter(h => h.id !== id);
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(updated));
+      _refreshArchiveTable();
     });
   });
 }
@@ -347,8 +377,8 @@ async function _replayReport(item) {
       if (brgySel   && item.filters.barangay)               brgySel.value   = item.filters.barangay;
     }
 
-    // Trigger generation
-    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT');
+    // Trigger generation with isReplay=true so it never duplicates into the archive
+    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true);
   } catch (err) {
     console.error(`${MODULE} _replayReport error:`, err);
   }

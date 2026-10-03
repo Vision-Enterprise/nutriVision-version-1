@@ -104,7 +104,18 @@ function _refreshPdfArchive() {
   const archive = _getArchive();
   tbody.innerHTML = renderPdfArchiveRows(archive);
 
-  // Attach click listeners to download buttons
+  // Clear All button state & click handler
+  const clearBtn = document.getElementById('btn-clear-defect-archive');
+  if (clearBtn) {
+    clearBtn.style.display = archive.length > 0 ? 'inline-flex' : 'none';
+    clearBtn.onclick = () => {
+      if (!confirm(`Clear all ${archive.length} generated PDF reports from history?`)) return;
+      localStorage.removeItem(ARCHIVE_KEY);
+      _refreshPdfArchive();
+    };
+  }
+
+  // Attach click listeners to view / print buttons
   tbody.querySelectorAll('.btn-replay-defect-pdf').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
@@ -112,6 +123,22 @@ function _refreshPdfArchive() {
       if (item) {
         _handleReplayDefectPdf(item);
       }
+    });
+  });
+
+  // Attach click listeners to delete individual report buttons
+  tbody.querySelectorAll('.btn-delete-defect-pdf').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      const item = archive.find(a => a.id === id);
+      const name = item?.fileName || 'this report';
+      if (!confirm(`Remove "${name}" from PDF archive history?`)) return;
+
+      const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+      const updated = raw.filter(a => a.id !== id);
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(updated));
+      _refreshPdfArchive();
     });
   });
 }
