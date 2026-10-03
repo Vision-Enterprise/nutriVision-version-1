@@ -249,29 +249,46 @@ const KNOWN_COMMODITY_ACRONYMS = {
  * @returns {string} "YYMM" string (e.g., "2610", "2612", "2609")
  * @throws {Error} If expiration date is missing or invalid.
  */
-export function extractExpYYMM(expirationDate) {
-  if (expirationDate === null || expirationDate === undefined) {
-    throw new Error('Strict Policy: Expiration date is mandatory.');
+/**
+ * Safely parses dates to extract 2-digit year (YY) and 2-digit month (MM),
+ * and 2-digit day (DD) when a full date is provided.
+ *
+ * Supported formats:
+ * - Full ISO: "2026-10-03" -> "261003"
+ * - Full US: "10-03-2026" -> "261003"
+ * - Full EU/Intl: "03-10-2026" -> "261003"
+ * - Month-Year: "10-2026" -> "2610"
+ * - Year-Month: "2026-10" -> "2610"
+ *
+ * @param {string|Date} dateStr
+ * @returns {string} "YYMM" or "YYMMDD"
+ * @throws {Error} If date is missing or invalid.
+ */
+export function extractExpDateCode(dateStr) {
+  if (dateStr === null || dateStr === undefined) {
+    throw new Error('Strict Policy: Date is mandatory.');
   }
 
-  const rawStr = String(expirationDate).trim();
+  const rawStr = String(dateStr).trim();
   if (!rawStr) {
-    throw new Error('Strict Policy: Expiration date is mandatory.');
+    throw new Error('Strict Policy: Date is mandatory.');
   }
 
   const upperStr = rawStr.toUpperCase();
   if (upperStr === 'TBD' || upperStr === 'N/A' || upperStr === 'NONE') {
-    throw new Error('Strict Policy: Expiration date is mandatory.');
+    throw new Error('Strict Policy: Date is mandatory.');
   }
 
   let year = '';
   let month = '';
+  let day = '';
 
   // 1. Full ISO format: YYYY-MM-DD or YYYY/MM/DD
   let match = rawStr.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
   if (match) {
     year = match[1];
     month = match[2];
+    day = match[3];
   } else {
     // 2. Full US / EU format: MM-DD-YYYY or DD-MM-YYYY
     match = rawStr.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
@@ -281,10 +298,12 @@ export function extractExpYYMM(expirationDate) {
       const p2 = parseInt(match[2], 10);
       if (p1 > 12 && p2 <= 12) {
         // DD-MM-YYYY format
+        day = match[1];
         month = match[2];
       } else {
         // MM-DD-YYYY format (standard US e.g. 10-14-2026)
         month = match[1];
+        day = match[2];
       }
     } else {
       // 3. Month-Year: MM-YYYY or MM/YYYY (e.g., 12-2026, 09-2026)
@@ -304,8 +323,9 @@ export function extractExpYYMM(expirationDate) {
           if (!isNaN(parsed.getTime())) {
             year = String(parsed.getFullYear());
             month = String(parsed.getMonth() + 1);
+            day = String(parsed.getDate());
           } else {
-            throw new Error(`Strict Policy: Invalid expiration date format "${rawStr}".`);
+            throw new Error(`Strict Policy: Invalid date format "${rawStr}".`);
           }
         }
       }
@@ -314,12 +334,23 @@ export function extractExpYYMM(expirationDate) {
 
   const mNum = parseInt(month, 10);
   if (isNaN(mNum) || mNum < 1 || mNum > 12) {
-    throw new Error(`Strict Policy: Expiration month "${month}" is out of bounds (1-12).`);
+    throw new Error(`Strict Policy: Month "${month}" is out of bounds (1-12).`);
   }
 
   const yy = String(year).slice(-2);
   const mm = String(mNum).padStart(2, '0');
   return `${yy}${mm}`;
+}
+
+export function extractExpYYMM(expirationDate) {
+  return extractExpDateCode(expirationDate);
+}
+
+/**
+ * Extracts strictly 4-digit YYMM (Year and Month) for date tags.
+ */
+export function extractDateYYMMOnly(dateStr) {
+  return extractExpDateCode(dateStr);
 }
 
 /**
@@ -333,7 +364,7 @@ export function extractExpYYMM(expirationDate) {
  * @param {string|Date} expirationDate - Expiration date string or Date object
  * @param {string|Date|null} deliveryDate - Optional delivery date
  * @param {string|null} supplier - Optional supplier or donor name
- * @returns {string} Batch code (e.g., "MNP-SACHET-DEL2603-EXP2802-DOH")
+ * @returns {string} Batch code (e.g., "MNP-SACHET-DEL2603-EXP280228-DOH")
  * @throws {Error} If SKU or expiration date fails validation.
  */
 export function generateBatchCode(sku, expirationDate, deliveryDate = null, supplier = null) {
@@ -342,17 +373,17 @@ export function generateBatchCode(sku, expirationDate, deliveryDate = null, supp
   }
 
   const cleanSku = sku.trim().toUpperCase();
-  const expYymm = extractExpYYMM(expirationDate);
+  const expCode = extractExpDateCode(expirationDate);
 
   let delSegment = '';
   if (deliveryDate) {
     try {
-      const delYymm = extractExpYYMM(deliveryDate);
+      const delYymm = extractDateYYMMOnly(deliveryDate);
       delSegment = `-DEL${delYymm}`;
     } catch {}
   }
 
-  const expSegment = `-EXP${expYymm}`;
+  const expSegment = `-EXP${expCode}`;
 
   let supSegment = '';
   if (supplier) {

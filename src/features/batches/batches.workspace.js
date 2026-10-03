@@ -469,11 +469,12 @@ function updateRowLiveCode(tr, row) {
     row.sku = result.sku;
     row.batchCode = result.code;
     const isDbDup = checkBatchExistsInDb(row.commodityId, row.commodityName, result.code);
-    if (!isDbDup) {
+    const isTableDup = bulkRows.some(other => other !== row && other.batchCode && other.batchCode === result.code);
+    if (!isDbDup && !isTableDup) {
       row.submitError = null;
     }
-    const hasError = isDbDup || Boolean(row.submitError);
-    const errText = row.submitError || (isDbDup ? 'Already in Database' : '');
+    const hasError = isDbDup || isTableDup || Boolean(row.submitError);
+    const errText = row.submitError || (isDbDup ? 'Already in Database' : (isTableDup ? 'Duplicate in Table' : ''));
 
     batchInput.value = result.code;
     if (fxTarget === batchInput && fxBar) {
@@ -551,8 +552,9 @@ function renderBulkTable() {
       : '[ INCOMPLETE ]';
 
     const isDbDup = codeResult.isComplete && checkBatchExistsInDb(row.commodityId, row.commodityName, codeResult.code);
-    const hasError = Boolean(row.submitError) || isDbDup;
-    const errMessage = row.submitError || (isDbDup ? 'Already in Database' : '');
+    const isTableDup = codeResult.isComplete && bulkRows.some((other, oIdx) => oIdx < index && other.batchCode === codeResult.code);
+    const hasError = Boolean(row.submitError) || isDbDup || isTableDup;
+    const errMessage = row.submitError || (isDbDup ? 'Already in Database' : (isTableDup ? 'Duplicate in Table' : ''));
 
     // Row background: soft sky-blue for new commodity, red for dup/error, normal otherwise
     const rowStyle = hasError
