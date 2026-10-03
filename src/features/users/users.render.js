@@ -27,7 +27,11 @@ export function renderUsersLayout({ users, filtered, search, roleFilter, statusF
           ${users.length} registered staff account${users.length !== 1 ? 's' : ''}
         </p>
       </div>
-      <div>
+      <div style="display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;">
+        <button id="user-logs-btn" class="btn btn-secondary" type="button" aria-label="View User Activity Logs">
+          <span class="icon">history</span>
+          Activity Logs
+        </button>
         <button id="add-user-btn" class="btn btn-primary" type="button" aria-label="Add New User">
           <span class="icon">person_add</span>
           Add User

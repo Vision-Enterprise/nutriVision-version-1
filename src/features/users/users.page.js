@@ -7,7 +7,7 @@
 
 import { fetchUsers } from './users.service.js';
 import { renderUsersLayout, renderUsersTable } from './users.render.js';
-import { openAddUserModal, openConfirmToggleStatusModal } from './users.modals.js';
+import { openAddUserModal, openConfirmToggleStatusModal, openUserLogsModal } from './users.modals.js';
 
 // Module-level state
 let _users        = [];
@@ -121,6 +121,10 @@ async function _refreshAllUsers() {
 // ── Event Handlers ──────────────────────────────────────────────────────────
 
 function _attachEventListeners() {
+  document.getElementById('user-logs-btn')?.addEventListener('click', () => {
+    openUserLogsModal();
+  });
+
   document.getElementById('add-user-btn')?.addEventListener('click', () => {
     openAddUserModal({
       profile: _profile,

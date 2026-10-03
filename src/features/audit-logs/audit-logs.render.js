@@ -10,24 +10,21 @@
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 
 export const ACTION_META = {
-  [AUDIT_ACTIONS.LOGIN]:             { label: 'Login',             icon: 'login',           cls: 'badge-active'     },
-  [AUDIT_ACTIONS.LOGOUT]:            { label: 'Logout',            icon: 'logout',          cls: 'badge-personnel'  },
-  [AUDIT_ACTIONS.CREATE_USER]:       { label: 'Create User',       icon: 'person_add',      cls: 'badge-admin'      },
-  [AUDIT_ACTIONS.ACTIVATE_USER]:     { label: 'Activate User',     icon: 'check_circle',    cls: 'badge-active'     },
-  [AUDIT_ACTIONS.DEACTIVATE_USER]:   { label: 'Deactivate User',   icon: 'block',           cls: 'badge-inactive'   },
   [AUDIT_ACTIONS.CREATE_COMMODITY]:  { label: 'Add Commodity',     icon: 'inventory_2',     cls: 'badge-admin'      },
   [AUDIT_ACTIONS.UPDATE_COMMODITY]:  { label: 'Edit Commodity',    icon: 'edit',            cls: 'badge-personnel'  },
   [AUDIT_ACTIONS.DELETE_COMMODITY]:  { label: 'Delete Commodity',  icon: 'delete',          cls: 'badge-inactive'   },
   [AUDIT_ACTIONS.CREATE_BATCH]:      { label: 'Add Batch',         icon: 'package_2',       cls: 'badge-admin'      },
   [AUDIT_ACTIONS.UPDATE_BATCH]:      { label: 'Edit Batch',        icon: 'edit',            cls: 'badge-personnel'  },
   [AUDIT_ACTIONS.DELETE_BATCH]:      { label: 'Delete Batch',      icon: 'delete',          cls: 'badge-inactive'   },
+  [AUDIT_ACTIONS.RELEASE_BATCH]:     { label: 'Distribute Batch',  icon: 'local_shipping',  cls: 'badge-active'     },
+  [AUDIT_ACTIONS.FLAG_DEFECT]:        { label: 'Defect Logged',     icon: 'warning',         cls: 'badge-inactive'   },
+  [AUDIT_ACTIONS.RESTORE_QUARANTINE]: { label: 'Restore Quarantine',icon: 'replay',          cls: 'badge-personnel'  },
 };
 
 export const ACTION_GROUPS = {
-  'session':   [AUDIT_ACTIONS.LOGIN, AUDIT_ACTIONS.LOGOUT],
-  'users':     [AUDIT_ACTIONS.CREATE_USER, AUDIT_ACTIONS.ACTIVATE_USER, AUDIT_ACTIONS.DEACTIVATE_USER],
   'commodity': [AUDIT_ACTIONS.CREATE_COMMODITY, AUDIT_ACTIONS.UPDATE_COMMODITY, AUDIT_ACTIONS.DELETE_COMMODITY],
-  'batch':     [AUDIT_ACTIONS.CREATE_BATCH, AUDIT_ACTIONS.UPDATE_BATCH, AUDIT_ACTIONS.DELETE_BATCH],
+  'batch':     [AUDIT_ACTIONS.CREATE_BATCH, AUDIT_ACTIONS.UPDATE_BATCH, AUDIT_ACTIONS.DELETE_BATCH, AUDIT_ACTIONS.RELEASE_BATCH],
+  'defects':   [AUDIT_ACTIONS.FLAG_DEFECT, AUDIT_ACTIONS.RESTORE_QUARANTINE],
 };
 
 export function escapeHtml(str) {
@@ -53,7 +50,7 @@ export function renderAuditLogsLayout({ totalLogs, tableHtml }) {
       <div>
         <h1 class="page-header__title">Audit Logs</h1>
         <p class="page-header__subtitle" id="audit-subtitle">
-          ${totalLogs} total activity record${totalLogs !== 1 ? 's' : ''}
+          ${totalLogs} total inventory activity record${totalLogs !== 1 ? 's' : ''}
         </p>
       </div>
     </div>
@@ -74,10 +71,9 @@ export function renderAuditLogsLayout({ totalLogs, tableHtml }) {
         <div style="min-width: 180px;">
           <select id="audit-action-filter" class="form-input" aria-label="Filter by category">
             <option value="">All Actions</option>
-            <option value="session">Session (Login / Logout)</option>
-            <option value="users">User Management</option>
             <option value="commodity">Commodities</option>
-            <option value="batch">Batches</option>
+            <option value="batch">Batches &amp; Distributions</option>
+            <option value="defects">Defects &amp; Quarantine</option>
           </select>
         </div>
       </div>

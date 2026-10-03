@@ -29,6 +29,42 @@ export async function fetchUsers() {
   }
 }
 
+/**
+ * Fetch user activity logs (logins, logouts, account creation, activation/deactivation).
+ * @returns {Promise<{ logs: Array, error: string|null }>}
+ */
+export async function fetchUserLogs() {
+  try {
+    const userActions = [
+      AUDIT_ACTIONS.LOGIN,
+      AUDIT_ACTIONS.LOGOUT,
+      AUDIT_ACTIONS.CREATE_USER,
+      AUDIT_ACTIONS.ACTIVATE_USER,
+      AUDIT_ACTIONS.DEACTIVATE_USER,
+    ];
+
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select(`
+        id,
+        action,
+        entity_type,
+        description,
+        created_at,
+        profiles ( full_name )
+      `)
+      .in('action', userActions)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) throw error;
+    return { logs: data || [], error: null };
+  } catch (err) {
+    console.error('[UsersService] fetchUserLogs error:', err);
+    return { logs: [], error: 'Failed to load user activity logs.' };
+  }
+}
+
 // ── Create ────────────────────────────────────────────────────────────────
 
 /**

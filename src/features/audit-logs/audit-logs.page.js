@@ -8,13 +8,22 @@
  */
 
 import { supabase } from '../../core/supabase.js';
-import { PAGINATION } from '../../shared/constants/app.constants.js';
+import { PAGINATION, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import {
   renderAuditLogsLayout,
   renderAuditTable,
   ACTION_GROUPS,
   ACTION_META,
 } from './audit-logs.render.js';
+
+// Actions handled in the User Management module (excluded from main audit logs)
+const USER_ACTIONS = [
+  AUDIT_ACTIONS.LOGIN,
+  AUDIT_ACTIONS.LOGOUT,
+  AUDIT_ACTIONS.CREATE_USER,
+  AUDIT_ACTIONS.ACTIVATE_USER,
+  AUDIT_ACTIONS.DEACTIVATE_USER,
+];
 
 // ── State ─────────────────────────────────────────────────────────────────
 let _logs         = [];
@@ -77,6 +86,7 @@ async function _fetchLogs() {
         created_at,
         profiles ( full_name )
       `)
+      .not('action', 'in', `(${USER_ACTIONS.join(',')})`)
       .order('created_at', { ascending: false })
       .limit(500);
 
@@ -110,6 +120,7 @@ function _getFiltered() {
   const q = _searchQuery.toLowerCase();
 
   return _logs.filter(log => {
+    if (USER_ACTIONS.includes(log.action)) return false;
     if (groupActions && !groupActions.includes(log.action)) return false;
     if (q) {
       const userName = log.profiles?.full_name?.toLowerCase() || '';
