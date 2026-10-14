@@ -16,17 +16,18 @@
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.milk_donations (
   id                        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  donor_code                TEXT        NOT NULL, -- e.g. '25-1-32', '25-185-236'
-  bags_count                INT         NOT NULL CHECK (bags_count > 0),
+  donor_code                TEXT        NOT NULL, -- e.g. '24-672-760', '25-1-32'
+  bags_count                INT         DEFAULT 1, -- fallback if counted later
   volume_ml                 INT,                  -- optional volume in ml
   expression_date_notes     TEXT        DEFAULT '@see donor log',
-  transport_date            TEXT,                 -- e.g. '10/03-11/22/24' or specific date
+  expression_time           TEXT,                 -- expression time
+  transport_date            TEXT,                 -- e.g. '10/03-11/22/24'
   transport_time            TEXT        DEFAULT '12:00 PM',
   condition_at_collection   TEXT        NOT NULL DEFAULT 'ok',
   arrival_date              DATE        NOT NULL DEFAULT CURRENT_DATE,
   arrival_time              TEXT        DEFAULT '12:30 PM',
   condition_at_arrival      TEXT        NOT NULL DEFAULT 'ok',
-  transport_condition       TEXT,
+  transport_condition       TEXT,                 -- conditions of transport
   status                    TEXT        NOT NULL DEFAULT 'stored_raw'
                                         CHECK (status IN ('stored_raw', 'pasteurized', 'discarded')),
   received_by               UUID        REFERENCES public.profiles(id),

@@ -153,17 +153,18 @@ function _bindTabHeaderEvents() {
 function _bindDonationsSheetEvents() {
   // Add new draft row
   document.getElementById('btn-add-donation-row')?.addEventListener('click', () => {
+    const today = new Date().toISOString().split('T')[0];
     _draftDonations.unshift({
       donor_code: '',
-      bags_count: '',
-      volume_ml: '',
       expression_date_notes: '@see donor log',
-      transport_date: new Date().toISOString().split('T')[0],
+      expression_time: '',
+      transport_date: today,
       transport_time: '12:00 PM',
       condition_at_collection: 'ok',
-      arrival_date: new Date().toISOString().split('T')[0],
+      arrival_date: today,
       arrival_time: '12:30 PM',
-      condition_at_arrival: 'ok'
+      condition_at_arrival: 'ok',
+      transport_condition: ''
     });
     _renderActiveSheet();
   });
@@ -180,8 +181,8 @@ function _bindDonationsSheetEvents() {
       const row = btn.closest('tr');
       const data = _collectDonationRowData(row);
 
-      if (!data.donor_code || !data.bags_count) {
-        alert('Please enter both Donor Code and Bags Received.');
+      if (!data.donor_code) {
+        alert('Please enter a Donor Name / Code.');
         return;
       }
 
@@ -224,8 +225,8 @@ function _bindDonationsSheetEvents() {
 
     for (const row of rows) {
       const data = _collectDonationRowData(row);
-      if (!data.donor_code || !data.bags_count) {
-        alert('Each pending row must have a Donor Code and Bags count.');
+      if (!data.donor_code) {
+        alert('Each pending row must have a Donor Name / Code.');
         return;
       }
       validRows.push(data);
@@ -249,14 +250,16 @@ function _bindDonationsSheetEvents() {
 
 function _collectDonationRowData(row) {
   return {
-    donor_code:              row.querySelector('.js-donor-code')?.value || '',
-    bags_count:              row.querySelector('.js-donor-bags')?.value || '',
-    volume_ml:               row.querySelector('.js-donor-volume')?.value || '',
-    expression_date_notes:   row.querySelector('.js-donor-expression')?.value || '@see donor log',
-    transport_date:          row.querySelector('.js-donor-transport-date')?.value || '',
+    donor_code:              row.querySelector('.js-donor-code')?.value?.trim() || '',
+    expression_date_notes:   row.querySelector('.js-donor-exp-date')?.value?.trim() || '@see donor log',
+    expression_time:         row.querySelector('.js-donor-exp-time')?.value?.trim() || '',
+    transport_date:          row.querySelector('.js-donor-trans-date')?.value?.trim() || '',
+    transport_time:          row.querySelector('.js-donor-trans-time')?.value?.trim() || '12:00 PM',
     condition_at_collection: row.querySelector('.js-donor-cond-col')?.value || 'ok',
-    arrival_date:            row.querySelector('.js-donor-arrival-date')?.value || '',
-    condition_at_arrival:    row.querySelector('.js-donor-cond-arr')?.value || 'ok'
+    arrival_date:            row.querySelector('.js-donor-arrival-date')?.value || new Date().toISOString().split('T')[0],
+    arrival_time:            row.querySelector('.js-donor-arrival-time')?.value?.trim() || '12:30 PM',
+    condition_at_arrival:    row.querySelector('.js-donor-cond-arr')?.value || 'ok',
+    transport_condition:     row.querySelector('.js-donor-trans-cond')?.value?.trim() || ''
   };
 }
 

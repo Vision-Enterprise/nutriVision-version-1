@@ -103,9 +103,7 @@ export async function fetchMilkMetrics() {
     thirtyDaysAhead.setDate(now.getDate() + 30);
 
     const availableBags = batches.reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
-    const rawBags = donations
-      .filter(d => d.status === 'stored_raw')
-      .reduce((sum, d) => sum + (d.bags_count || 0), 0);
+    const rawBags = donations.filter(d => d.status === 'stored_raw').length;
 
     const expiringSoonBags = batches
       .filter(b => {
@@ -219,6 +217,7 @@ export async function createMilkDonation({
   bags_count,
   volume_ml,
   expression_date_notes,
+  expression_time,
   transport_date,
   transport_time,
   condition_at_collection,
@@ -234,9 +233,10 @@ export async function createMilkDonation({
       .from('milk_donations')
       .insert({
         donor_code: donor_code.trim(),
-        bags_count: parseInt(bags_count, 10),
+        bags_count: bags_count ? parseInt(bags_count, 10) : 1,
         volume_ml: volume_ml ? parseInt(volume_ml, 10) : null,
         expression_date_notes: expression_date_notes?.trim() || '@see donor log',
+        expression_time: expression_time?.trim() || null,
         transport_date: transport_date?.trim() || null,
         transport_time: transport_time || '12:00 PM',
         condition_at_collection: condition_at_collection || 'ok',
@@ -411,9 +411,10 @@ export async function createMilkDonationsBulk(donationList, profileId, profileNa
   try {
     const formatted = donationList.map(d => ({
       donor_code: d.donor_code.trim(),
-      bags_count: parseInt(d.bags_count, 10),
+      bags_count: d.bags_count ? parseInt(d.bags_count, 10) : 1,
       volume_ml: d.volume_ml ? parseInt(d.volume_ml, 10) : null,
       expression_date_notes: d.expression_date_notes?.trim() || '@see donor log',
+      expression_time: d.expression_time?.trim() || null,
       transport_date: d.transport_date?.trim() || null,
       transport_time: d.transport_time || '12:00 PM',
       condition_at_collection: d.condition_at_collection || 'ok',

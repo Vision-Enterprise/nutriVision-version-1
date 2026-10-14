@@ -208,7 +208,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* ── Spreadsheet Grid & Table ──────────────────────────────────────── */
+/* ── Spreadsheet Grid & Table (Excel-like Clean Lines) ─────────────── */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -220,6 +220,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
+  border: 1px solid #cbd5e1;
 }
 
 .milk-sheet-table th {
@@ -228,46 +229,60 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #475569;
-  padding: 10px 12px;
-  border-bottom: 2px solid var(--color-border);
+  color: #334155;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
   white-space: nowrap;
 }
 
 .milk-sheet-table td {
   padding: 8px 10px;
   vertical-align: middle;
-  border-bottom: 1px solid var(--color-border);
+  border: 1px solid #e2e8f0;
 }
 
-.milk-sheet-table tbody tr:hover:not(.grid-row--draft) {
+.milk-sheet-table tbody tr:hover:not(.grid-row--draft) td {
   background-color: #f8fafc;
 }
 
-/* Draft Input Rows (Direct spreadsheet entry) */
+/* Excel-like Seamless Input Rows */
 .grid-row--draft {
-  background-color: #f0f9ff !important;
-  border-left: 3px solid var(--color-milk-primary);
+  background-color: #ffffff;
+}
+
+.grid-row--draft td {
+  padding: 0;
+  position: relative;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
 }
 
 .grid-cell-input,
 .grid-cell-select {
   width: 100%;
-  padding: 6px 8px;
+  height: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
   font-size: 13px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background-color: #ffffff;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   font-family: inherit;
+  margin: 0;
+  box-sizing: border-box;
 }
 
+/* Active Excel Cell Highlight (like Google Sheets / Excel active cell ring) */
 .grid-cell-input:focus,
 .grid-cell-select:focus {
-  border-color: var(--color-milk-primary);
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+  background: #ffffff;
+  outline: 2px solid #0284c7;
+  outline-offset: -2px;
+  z-index: 3;
+  position: relative;
 }
 
 .grid-cell-input--mono {
@@ -279,7 +294,9 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   white-space: nowrap;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  padding: 4px 6px !important;
 }
 
 .btn-grid-save {
@@ -287,7 +304,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   color: #ffffff;
   border: none;
   border-radius: 4px;
-  padding: 5px 8px;
+  padding: 5px 9px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

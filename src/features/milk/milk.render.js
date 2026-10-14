@@ -1,7 +1,8 @@
 /**
  * Milk Bank UI Renderer
  * Generates the 2-section layout, spreadsheet-like data entry grids,
- * and the Option B Virtual Freezer visualization.
+ * strictly matching Form MH.MNAO.FM.002.00 (Log of Milk Received),
+ * Pasteurized Batches (BM-XXX), and the Option B Virtual Freezer Map.
  */
 
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
@@ -86,9 +87,9 @@ export function renderMetrics(metrics) {
       <div class="stat-card__label">Raw / Unpasteurized</div>
       <div class="stat-card__value">
         ${metrics.rawBags}
-        <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-medium);color:var(--color-text-muted);">Bags</span>
+        <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-medium);color:var(--color-text-muted);">Intakes</span>
       </div>
-      <div class="stat-card__footer">Stored raw in bottom bin</div>
+      <div class="stat-card__footer">Awaiting pasteurization into BM-XXX</div>
     </div>
 
     <div class="stat-card milk-stat-card--blue">
@@ -113,54 +114,67 @@ export function renderMetrics(metrics) {
 
 // ════════════════════════════════════════════════════════════════════════════
 // SHEET 1: Log of Milk Received (Form MH.MNAO.FM.002.00) Spreadsheet
+// Strictly matches the official paper form headers and columns
 // ════════════════════════════════════════════════════════════════════════════
 export function renderDonationsSheet(donations = [], draftRows = []) {
   const pendingCount = draftRows.length;
+  const today = new Date().toISOString().split('T')[0];
 
   const draftHtml = draftRows.map((draft, idx) => `
     <tr class="grid-row--draft" data-draft-idx="${idx}">
-      <td style="color:#0284c7;font-weight:700;">+ Draft</td>
+      <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
         <input type="text" class="grid-cell-input grid-cell-input--mono js-donor-code"
-               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 25-185-236" autofocus>
-      </td>
-      <td style="max-width:90px;">
-        <input type="number" class="grid-cell-input js-donor-bags" min="1"
-               value="${draft.bags_count || ''}" placeholder="Bags">
-      </td>
-      <td style="max-width:90px;">
-        <input type="number" class="grid-cell-input js-donor-volume"
-               value="${draft.volume_ml || ''}" placeholder="mL (opt)">
+               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 24-672-760" autofocus>
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-expression"
+        <input type="text" class="grid-cell-input js-donor-exp-date"
                value="${escapeHtml(draft.expression_date_notes || '@see donor log')}">
       </td>
-      <td style="max-width:140px;">
-        <input type="text" class="grid-cell-input js-donor-transport-date"
-               value="${escapeHtml(draft.transport_date || '')}" placeholder="Date / Range">
+      <td>
+        <input type="text" class="grid-cell-input js-donor-exp-time"
+               value="${escapeHtml(draft.expression_time || '')}" placeholder="Time (opt)">
       </td>
-      <td style="max-width:95px;">
+      <td>
+        <input type="text" class="grid-cell-input js-donor-trans-date"
+               value="${escapeHtml(draft.transport_date || today)}" placeholder="Date / Range">
+      </td>
+      <td>
+        <input type="text" class="grid-cell-input js-donor-trans-time"
+               value="${escapeHtml(draft.transport_time || '12:00 PM')}">
+      </td>
+      <td style="text-align:center;">
         <select class="grid-cell-select js-donor-cond-col">
-          <option value="ok" ${draft.condition_at_collection === 'ok' ? 'selected' : ''}>OK</option>
-          <option value="compromised" ${draft.condition_at_collection === 'compromised' ? 'selected' : ''}>Compromised</option>
+          <option value="ok" ${draft.condition_at_collection === 'ok' ? 'selected' : ''}>ok</option>
+          <option value="compromised" ${draft.condition_at_collection === 'compromised' ? 'selected' : ''}>compromised</option>
         </select>
       </td>
-      <td style="max-width:140px;">
+      <td>
         <input type="date" class="grid-cell-input js-donor-arrival-date"
-               value="${draft.arrival_date || new Date().toISOString().split('T')[0]}">
+               value="${draft.arrival_date || today}">
       </td>
-      <td style="max-width:95px;">
+      <td>
+        <input type="text" class="grid-cell-input js-donor-arrival-time"
+               value="${escapeHtml(draft.arrival_time || '12:30 PM')}">
+      </td>
+      <td style="text-align:center;">
         <select class="grid-cell-select js-donor-cond-arr">
-          <option value="ok" ${draft.condition_at_arrival === 'ok' ? 'selected' : ''}>OK</option>
-          <option value="compromised" ${draft.condition_at_arrival === 'compromised' ? 'selected' : ''}>Compromised</option>
+          <option value="ok" ${draft.condition_at_arrival === 'ok' ? 'selected' : ''}>ok</option>
+          <option value="compromised" ${draft.condition_at_arrival === 'compromised' ? 'selected' : ''}>compromised</option>
         </select>
       </td>
-      <td class="grid-actions-cell">
-        <button class="btn-grid-save js-save-single-donation" data-draft-idx="${idx}" title="Save this row">
+      <td>
+        <input type="text" class="grid-cell-input js-donor-trans-cond"
+               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler (opt)">
+      </td>
+      <td>
+        <span class="text-muted text-xs">Self (on save)</span>
+      </td>
+      <td class="grid-actions-cell" style="text-align:center;">
+        <button class="btn-grid-save js-save-single-donation" data-draft-idx="${idx}" title="Save row">
           <span class="icon" style="font-size:16px;">check</span> Save
         </button>
-        <button class="btn-grid-discard js-discard-single-donation" data-draft-idx="${idx}" title="Discard row">
+        <button class="btn-grid-discard js-discard-single-donation" data-draft-idx="${idx}" title="Discard">
           <span class="icon" style="font-size:16px;">close</span>
         </button>
       </td>
@@ -169,32 +183,25 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
 
   const savedHtml = donations.map((d, index) => `
     <tr>
-      <td class="text-muted text-xs">${index + 1}</td>
+      <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td>
         <span class="milk-donor-code">${escapeHtml(d.donor_code)}</span>
       </td>
-      <td>
-        <strong>${d.bags_count} bags</strong>
-      </td>
-      <td>
-        ${d.volume_ml ? `<span class="text-muted">${d.volume_ml} mL</span>` : '<span class="text-muted">—</span>'}
-      </td>
-      <td class="text-muted text-xs">${escapeHtml(d.expression_date_notes || '@see donor log')}</td>
-      <td>
-        <div class="text-sm">${d.transport_date || '—'}</div>
-        <div class="text-muted text-xs">${d.transport_time || ''}</div>
-      </td>
-      <td>
+      <td class="text-sm">${escapeHtml(d.expression_date_notes || '@see donor log')}</td>
+      <td class="text-muted text-xs">${escapeHtml(d.expression_time || '—')}</td>
+      <td class="text-sm">${escapeHtml(d.transport_date || '—')}</td>
+      <td class="text-muted text-xs">${escapeHtml(d.transport_time || '—')}</td>
+      <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_collection || 'ok')}</span>
       </td>
-      <td>
-        <div class="text-sm">${formatDate(d.arrival_date)}</div>
-        <div class="text-muted text-xs">${d.arrival_time || ''}</div>
-      </td>
-      <td>
+      <td class="text-sm">${formatDate(d.arrival_date)}</td>
+      <td class="text-muted text-xs">${escapeHtml(d.arrival_time || '—')}</td>
+      <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_arrival || 'ok')}</span>
       </td>
-      <td>
+      <td class="text-muted text-xs">${escapeHtml(d.transport_condition || '—')}</td>
+      <td class="text-sm font-weight-medium">${escapeHtml(d.received_by_name || 'Staff')}</td>
+      <td style="text-align:center;">
         <span class="badge ${d.status === 'pasteurized' ? 'badge--info' : 'badge--secondary'}">
           ${d.status === 'pasteurized' ? 'Pasteurized' : 'Stored Raw'}
         </span>
@@ -206,8 +213,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
     <div class="milk-sheet-toolbar">
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">receipt_long</span>
-        Log of Milk Received
-        <span class="milk-sheet-subtitle">Official Form MH.MNAO.FM.002.00</span>
+        LOG OF MILK RECEIVED
+        <span class="milk-sheet-subtitle">Form MH.MNAO.FM.002.00</span>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-pdf" class="btn btn-secondary btn-sm" type="button">
@@ -230,16 +237,24 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <table class="milk-sheet-table">
         <thead>
           <tr>
-            <th style="width:40px;">#</th>
-            <th style="min-width:140px;">Donor Code *</th>
-            <th style="min-width:90px;">Bags *</th>
-            <th style="min-width:90px;">Vol (mL)</th>
-            <th style="min-width:130px;">Expression Log</th>
-            <th style="min-width:130px;">Transport Dt/Tm</th>
-            <th style="min-width:95px;">Cond. @ Donor</th>
-            <th style="min-width:130px;">Arrival at Milk Bank</th>
-            <th style="min-width:95px;">Cond. @ Arrival</th>
-            <th style="min-width:110px;">Status / Action</th>
+            <th rowspan="2" style="width:45px;text-align:center;">#</th>
+            <th rowspan="2" style="min-width:140px;">Donor Name / Code *</th>
+            <th colspan="2" style="text-align:center;border-bottom:1px solid var(--color-border);">Milk Expression</th>
+            <th colspan="2" style="text-align:center;border-bottom:1px solid var(--color-border);">Transport</th>
+            <th rowspan="2" style="min-width:110px;text-align:center;">Condition @ Donor</th>
+            <th colspan="2" style="text-align:center;border-bottom:1px solid var(--color-border);">Arrival at Milk Bank</th>
+            <th rowspan="2" style="min-width:110px;text-align:center;">Condition @ Arrival</th>
+            <th rowspan="2" style="min-width:130px;">Conditions of Transport</th>
+            <th rowspan="2" style="min-width:130px;">Receiving Personnel</th>
+            <th rowspan="2" style="min-width:90px;text-align:center;">Status / Actions</th>
+          </tr>
+          <tr>
+            <th style="min-width:120px;">Date</th>
+            <th style="min-width:85px;">Time</th>
+            <th style="min-width:125px;">Date</th>
+            <th style="min-width:85px;">Time</th>
+            <th style="min-width:120px;">Date</th>
+            <th style="min-width:85px;">Time</th>
           </tr>
         </thead>
         <tbody>
@@ -247,7 +262,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           ${savedHtml}
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
-              <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
+              <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
                 No intake records yet. Click <strong>+ Add Entry Row</strong> above to begin logging.
               </td>
             </tr>
@@ -312,9 +327,10 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     <option value="${s}" ${selected === s ? 'selected' : ''}>${s}</option>
   `).join('');
 
+  // Exactly 9 columns: #, Batch No., Date Past., Expiry, Shelf, Initial, Remaining, Status, Actions
   const draftHtml = draftBatches.map((draft, idx) => `
     <tr class="grid-row--draft" data-draft-idx="${idx}">
-      <td style="color:#0284c7;font-weight:700;">+ New</td>
+      <td style="color:#0284c7;font-weight:700;text-align:center;">+ New</td>
       <td>
         <input type="text" class="grid-cell-input grid-cell-input--mono js-batch-no"
                value="${escapeHtml(draft.batch_number || '')}" placeholder="e.g. BM-096" autofocus>
@@ -332,12 +348,15 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${shelfOptionsHtml(draft.freezer_shelf || shelves[0])}
         </select>
       </td>
-      <td style="max-width:90px;">
+      <td style="max-width:90px;text-align:center;">
         <input type="number" class="grid-cell-input js-batch-bags" min="1"
                value="${draft.total_bags || ''}" placeholder="Bags">
       </td>
-      <td style="color:var(--color-text-muted);">—</td>
-      <td class="grid-actions-cell">
+      <td style="text-align:center;color:var(--color-text-muted);">—</td>
+      <td style="text-align:center;">
+        <span class="badge badge--info">Draft</span>
+      </td>
+      <td class="grid-actions-cell" style="text-align:center;">
         <button class="btn-grid-save js-save-single-batch" data-draft-idx="${idx}" title="Save batch">
           <span class="icon" style="font-size:16px;">check</span> Save
         </button>
@@ -348,7 +367,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     </tr>
   `).join('');
 
-  const savedHtml = batches.map(b => {
+  const savedHtml = batches.map((b, index) => {
     const isFefo = fefoBatch && fefoBatch.id === b.id;
     const statusBadge = getBatchStatusBadge(b);
     const daysLeft = calculateDaysRemaining(b.expiry_date);
@@ -356,6 +375,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
 
     return `
       <tr data-batch-id="${b.id}">
+        <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
         <td>
           <span class="milk-batch-code">${escapeHtml(b.batch_number)}</span>
           ${isFefo ? '<span class="fefo-star-badge" style="margin-left:4px;">⭐ FEFO Next</span>' : ''}
@@ -378,8 +398,8 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
             ${b.remaining_bags}
           </strong>
         </td>
-        <td>${statusBadge}</td>
-        <td class="grid-actions-cell">
+        <td class="text-center">${statusBadge}</td>
+        <td class="grid-actions-cell" style="text-align:center;">
           ${b.remaining_bags > 0 ? `
             <button class="btn btn-secondary btn-sm js-quick-dispense-btn"
                     data-batch-id="${b.id}" data-batch-no="${b.batch_number}"
@@ -398,14 +418,15 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
       <table class="milk-sheet-table">
         <thead>
           <tr>
+            <th style="width:45px;text-align:center;">#</th>
             <th style="min-width:140px;">Batch No.</th>
-            <th style="min-width:120px;">Date Pasteurized</th>
+            <th style="min-width:125px;">Date Pasteurized</th>
             <th style="min-width:140px;">Expiration Date</th>
             <th style="min-width:130px;">Freezer Shelf</th>
-            <th style="min-width:80px;text-align:center;">Initial</th>
+            <th style="min-width:85px;text-align:center;">Initial</th>
             <th style="min-width:90px;text-align:center;">Remaining</th>
-            <th style="min-width:110px;">Status</th>
-            <th style="min-width:110px;">Actions</th>
+            <th style="min-width:110px;text-align:center;">Status</th>
+            <th style="min-width:110px;text-align:center;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -413,7 +434,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${savedHtml}
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
-              <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
+              <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
                 No pasteurized batches recorded yet. Click <strong>+ Add Batch Row</strong> to log a BM batch.
               </td>
             </tr>
@@ -428,7 +449,6 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
  * Option B: Virtual Freezer Map Visualization
  */
 export function renderFreezerMapView(batches = [], shelves = [], fefoBatch = null) {
-  // Group active batches by shelf
   const shelfMap = {};
   shelves.forEach(s => { shelfMap[s] = []; });
 
@@ -532,6 +552,7 @@ export function renderFreezerMapView(batches = [], shelves = [], fefoBatch = nul
 
 // ════════════════════════════════════════════════════════════════════════════
 // SHEET 3: Dispensing Ledger Spreadsheet
+// Exactly 9 columns matching the 9 <th> elements
 // ════════════════════════════════════════════════════════════════════════════
 export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null) {
   const pendingCount = draftRows.length;
@@ -558,7 +579,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
 
   const draftHtml = draftRows.map((draft, idx) => `
     <tr class="grid-row--draft" data-draft-idx="${idx}">
-      <td style="color:#0284c7;font-weight:700;">+ Dispense</td>
+      <td style="color:#0284c7;font-weight:700;text-align:center;">+ Issue</td>
       <td>
         <input type="date" class="grid-cell-input js-dispense-date"
                value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}">
@@ -577,7 +598,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${batchOptionsHtml(draft.batch_id)}
         </select>
       </td>
-      <td style="max-width:90px;">
+      <td style="max-width:90px;text-align:center;">
         <input type="number" class="grid-cell-input js-dispense-bags" min="1"
                value="${draft.bags_dispensed || 1}">
       </td>
@@ -586,7 +607,10 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${indicationOptionsHtml(draft.indication || DISPENSE_INDICATIONS[0])}
         </select>
       </td>
-      <td class="grid-actions-cell">
+      <td>
+        <span class="text-muted text-xs">Self</span>
+      </td>
+      <td class="grid-actions-cell" style="text-align:center;">
         <button class="btn-grid-save js-save-single-dispatch" data-draft-idx="${idx}" title="Issue milk">
           <span class="icon" style="font-size:16px;">check</span> Issue
         </button>
@@ -597,12 +621,13 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
     </tr>
   `).join('');
 
-  const savedHtml = dispatches.map(item => {
+  const savedHtml = dispatches.map((item, index) => {
     const batchNo = item.milk_batches?.batch_number || 'Unknown Batch';
     const shelf = item.milk_batches?.freezer_shelf || 'Freezer';
 
     return `
       <tr>
+        <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
         <td class="text-sm font-weight-medium">${formatDate(item.dispensed_date)}</td>
         <td>
           <strong>${escapeHtml(item.recipient_name)}</strong>
@@ -619,7 +644,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           <span class="badge badge--secondary">${escapeHtml(item.indication)}</span>
         </td>
         <td class="text-sm text-muted">${escapeHtml(item.released_by_name || 'Staff')}</td>
-        <td class="text-muted text-xs">—</td>
+        <td class="text-muted text-xs" style="text-align:center;">Issued</td>
       </tr>
     `;
   }).join('');
@@ -649,14 +674,15 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
       <table class="milk-sheet-table">
         <thead>
           <tr>
-            <th style="min-width:120px;">Date Dispensed</th>
+            <th style="width:45px;text-align:center;">#</th>
+            <th style="min-width:125px;">Date Dispensed</th>
             <th style="min-width:160px;">Recipient Infant / Mother *</th>
             <th style="min-width:140px;">Barangay *</th>
             <th style="min-width:170px;">Batch Issued (FEFO) *</th>
-            <th style="min-width:90px;text-align:center;">Bags *</th>
+            <th style="min-width:85px;text-align:center;">Bags *</th>
             <th style="min-width:150px;">Indication *</th>
             <th style="min-width:120px;">Released By</th>
-            <th style="min-width:90px;">Actions</th>
+            <th style="min-width:90px;text-align:center;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -664,7 +690,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${savedHtml}
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
-              <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
+              <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
                 No milk dispatches logged yet. Click <strong>+ Record Dispense Row</strong> to issue milk.
               </td>
             </tr>
