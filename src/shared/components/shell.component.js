@@ -78,7 +78,6 @@ export function renderShell(profile, onLogout) {
         <div class="sidebar__logo">
           <div class="sidebar__logo-content">
             <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" />
-            <div class="sidebar__logo-sub">MNAO - Manolo Fortich</div>
           </div>
           <button id="sidebar-toggle-btn" class="sidebar__toggle-btn btn btn-ghost" aria-label="Toggle Sidebar" title="${isCompressed ? 'Expand Sidebar' : 'Collapse Sidebar'}">
             <span class="sidebar__toggle-icon icon">menu</span>
