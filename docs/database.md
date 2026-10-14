@@ -199,5 +199,9 @@ RLS is enabled on all 4 tables. No table is publicly accessible.
 |------|---------|-----------|
 | `database/01_schema.sql` | Tables, functions, triggers, indexes | First |
 | `database/02_rls.sql` | RLS enable + policies | Second |
+| `database/03_releases.sql` | Releases ledger and stock dispatches | Third |
+| `database/04_archive_commodities.sql` | Archiving commodities | Fourth |
+| `database/05_defects.sql` | Defect incidents and restoration logs | Fifth |
+| `database/06_milk_bank.sql` | Milk bank (donations, BM-XXX batches, dispatches) | Sixth |
 
 Run in Supabase Dashboard → SQL Editor → New query.

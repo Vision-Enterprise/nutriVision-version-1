@@ -45,6 +45,7 @@ import { renderAuditLogsPage }   from '../../features/audit-logs/audit-logs.page
 import { renderAccountPage }     from '../../features/account/account.page.js';
 import { renderReportsPage }     from '../../features/reports/reports.page.js';
 import { renderDefectsPage }     from '../../features/defects/defects.page.js';
+import { renderMilkPage }        from '../../features/milk/milk.page.js';
 
 /**
  * Render the application shell and start routing.
@@ -146,6 +147,17 @@ export function renderShell(profile, onLogout) {
               <span class="icon" aria-hidden="true">local_shipping</span>
               <span class="sidebar__nav-text">Releases</span>
             </button>
+
+          <button
+            class="sidebar__nav-item"
+            data-route="milk"
+            id="nav-milk"
+            type="button"
+            aria-label="Milk Bank"
+          >
+            <span class="icon" aria-hidden="true">water_drop</span>
+            <span class="sidebar__nav-text">Milk Bank</span>
+          </button>
 
           <button
             class="sidebar__nav-item"
@@ -327,6 +339,7 @@ export function renderShell(profile, onLogout) {
     .register('bulk-release',renderBulkReleasePage)
     .register('reports',     renderReportsPage)
     .register('defects',     renderDefectsPage)
+    .register('milk',        renderMilkPage)
     .register('users',       renderUsersPage,     { adminOnly: true })
     .register('audit-logs',  renderAuditLogsPage, { adminOnly: true })
     .register('account',     renderAccountPage)

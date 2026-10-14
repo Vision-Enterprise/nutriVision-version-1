@@ -20,6 +20,7 @@ import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
 import './styles/auth.css';
+import './styles/milk.css';
 
 import { getSession, onAuthStateChange } from './core/auth.js';
 import { fetchProfile }                  from './features/auth/auth.service.js';
