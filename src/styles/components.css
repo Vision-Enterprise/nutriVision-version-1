@@ -1422,6 +1422,28 @@
   transform: translateY(0);
 }
 
+/* ── Milk Bank trigger button (in Dashboard / Nav) ─────────────── */
+.btn-milk-bank {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.28);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.btn-milk-bank:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+  border-color: #0369a1;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.42);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.btn-milk-bank:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 /* ── Creatable Combobox ────────────────────────────────────────── */
 .creatable-combobox {
   position: relative;

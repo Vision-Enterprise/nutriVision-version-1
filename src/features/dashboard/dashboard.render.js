@@ -57,6 +57,15 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
 
     <!-- Quick Access Buttons -->
     <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-6);">
+      <a href="#/milk" class="btn btn-milk-bank" style="text-decoration: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
+        Milk Bank
+      </a>
+
       <a href="#/bulk-release" class="btn btn-bulk-release" style="text-decoration: none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.5"
