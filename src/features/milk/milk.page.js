@@ -156,22 +156,29 @@ function _bindTabHeaderEvents() {
 // SHEET 1: Log of Milk Received (FM.002.00) Events
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDonationsSheetEvents() {
-  // Add new draft row
+  const today = new Date().toISOString().split('T')[0];
+
+  // Add new draft row with default native date and time values
   document.getElementById('btn-add-donation-row')?.addEventListener('click', () => {
-    const today = new Date().toISOString().split('T')[0];
     _draftDonations.unshift({
       donor_code: '',
-      expression_date_notes: '@see donor log',
-      expression_time: '',
+      expression_date_notes: today,
+      expression_time: '08:00',
       transport_date: today,
-      transport_time: '12:00 PM',
+      transport_time: '12:00',
       condition_at_collection: 'ok',
       arrival_date: today,
-      arrival_time: '12:30 PM',
+      arrival_time: '12:30',
       condition_at_arrival: 'ok',
       transport_condition: ''
     });
     _renderActiveSheet();
+  });
+
+  // Clear invalid outline on input
+  document.querySelectorAll('.milk-sheet-table input, .milk-sheet-table select').forEach(el => {
+    el.addEventListener('input', () => el.classList.remove('cell-invalid'));
+    el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
   // Export PDF preview
@@ -179,15 +186,14 @@ function _bindDonationsSheetEvents() {
     showMilkIntakePrintPreview(_donations);
   });
 
-  // Save single draft row
+  // Save single draft row with validation
   document.querySelectorAll('.js-save-single-donation').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const idx = parseInt(btn.dataset.draftIdx, 10);
       const row = btn.closest('tr');
       const data = _collectDonationRowData(row);
 
-      if (!data.donor_code) {
-        alert('Please enter a Donor Name / Code.');
+      if (!_validateDonationData(data, row)) {
         return;
       }
 
@@ -224,14 +230,12 @@ function _bindDonationsSheetEvents() {
   document.getElementById('btn-save-all-donations')?.addEventListener('click', async () => {
     if (_draftDonations.length === 0) return;
 
-    // Harvest current inputs from DOM
     const rows = document.querySelectorAll('.grid-row--draft');
     const validRows = [];
 
     for (const row of rows) {
       const data = _collectDonationRowData(row);
-      if (!data.donor_code) {
-        alert('Each pending row must have a Donor Name / Code.');
+      if (!_validateDonationData(data, row)) {
         return;
       }
       validRows.push(data);
@@ -254,18 +258,43 @@ function _bindDonationsSheetEvents() {
 }
 
 function _collectDonationRowData(row) {
+  const today = new Date().toISOString().split('T')[0];
   return {
     donor_code:              row.querySelector('.js-donor-code')?.value?.trim() || '',
-    expression_date_notes:   row.querySelector('.js-donor-exp-date')?.value?.trim() || '@see donor log',
-    expression_time:         row.querySelector('.js-donor-exp-time')?.value?.trim() || '',
-    transport_date:          row.querySelector('.js-donor-trans-date')?.value?.trim() || '',
-    transport_time:          row.querySelector('.js-donor-trans-time')?.value?.trim() || '12:00 PM',
+    expression_date_notes:   row.querySelector('.js-donor-exp-date')?.value || today,
+    expression_time:         row.querySelector('.js-donor-exp-time')?.value || '08:00',
+    transport_date:          row.querySelector('.js-donor-trans-date')?.value || today,
+    transport_time:          row.querySelector('.js-donor-trans-time')?.value || '12:00',
     condition_at_collection: row.querySelector('.js-donor-cond-col')?.value || 'ok',
-    arrival_date:            row.querySelector('.js-donor-arrival-date')?.value || new Date().toISOString().split('T')[0],
-    arrival_time:            row.querySelector('.js-donor-arrival-time')?.value?.trim() || '12:30 PM',
+    arrival_date:            row.querySelector('.js-donor-arrival-date')?.value || today,
+    arrival_time:            row.querySelector('.js-donor-arrival-time')?.value || '12:30',
     condition_at_arrival:    row.querySelector('.js-donor-cond-arr')?.value || 'ok',
     transport_condition:     row.querySelector('.js-donor-trans-cond')?.value?.trim() || ''
   };
+}
+
+function _validateDonationData(data, row) {
+  row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
+
+  if (!data.donor_code) {
+    const input = row.querySelector('.js-donor-code');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Please enter a Donor Name or Donor Code (e.g. 24-672-760).');
+    return false;
+  }
+
+  if (data.expression_date_notes && data.arrival_date) {
+    if (data.arrival_date < data.expression_date_notes) {
+      const input = row.querySelector('.js-donor-arrival-date');
+      input?.classList.add('cell-invalid');
+      input?.focus();
+      alert(`Arrival date (${data.arrival_date}) cannot be earlier than milk expression date (${data.expression_date_notes}).`);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -281,6 +310,15 @@ function _bindBatchesSheetEvents() {
   document.getElementById('btn-subview-freezer')?.addEventListener('click', () => {
     _batchesSubView = 'freezer';
     _renderActiveSheet();
+  });
+
+  // Enforce numeric only on all batch bags quantity inputs
+  document.querySelectorAll('.js-batch-bags').forEach(inp => _enforceNumericOnly(inp));
+
+  // Clear invalid outline on input
+  document.querySelectorAll('.milk-sheet-table input, .milk-sheet-table select').forEach(el => {
+    el.addEventListener('input', () => el.classList.remove('cell-invalid'));
+    el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
   // Table View: Add batch row
@@ -300,15 +338,15 @@ function _bindBatchesSheetEvents() {
     _renderActiveSheet();
   });
 
-  // Save single batch row
+  // Save single batch row with strict validation
   document.querySelectorAll('.js-save-single-batch').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.draftIdx, 10);
       const row = btn.closest('tr');
       const data = _collectBatchRowData(row);
 
-      if (!data.batch_number || !data.total_bags || !data.expiry_date) {
-        alert('Please fill in Batch Number, Bags, and Expiration Date.');
+      const otherDrafts = _draftBatches.filter((_, i) => i !== idx);
+      if (!_validateBatchData(data, row, _batches, otherDrafts)) {
         return;
       }
 
@@ -340,17 +378,18 @@ function _bindBatchesSheetEvents() {
     });
   });
 
-  // Bulk save all pending batches
+  // Bulk save all pending batches with strict validation
   document.getElementById('btn-save-all-batches')?.addEventListener('click', async () => {
     if (_draftBatches.length === 0) return;
 
     const rows = document.querySelectorAll('.grid-row--draft');
     const validRows = [];
 
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const data = _collectBatchRowData(row);
-      if (!data.batch_number || !data.total_bags || !data.expiry_date) {
-        alert('Each batch row must have a Batch Number, Total Bags, and Expiry Date.');
+      const otherDrafts = validRows;
+      if (!_validateBatchData(data, row, _batches, otherDrafts)) {
         return;
       }
       validRows.push(data);
@@ -438,11 +477,11 @@ function _bindBatchesSheetEvents() {
 
 function _collectBatchRowData(row) {
   return {
-    batch_number:     row.querySelector('.js-batch-no')?.value || '',
+    batch_number:     row.querySelector('.js-batch-no')?.value?.trim() || '',
     date_pasteurized: row.querySelector('.js-batch-date-past')?.value || '',
     expiry_date:      row.querySelector('.js-batch-expiry')?.value || '',
     freezer_shelf:    row.querySelector('.js-batch-shelf')?.value || 'Shelf 1',
-    total_bags:       row.querySelector('.js-batch-bags')?.value || ''
+    total_bags:       row.querySelector('.js-batch-bags')?.value?.trim() || ''
   };
 }
 
@@ -450,6 +489,15 @@ function _collectBatchRowData(row) {
 // SHEET 3: Dispensing Ledger Events
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDispatchesSheetEvents() {
+  // Enforce numeric only on all dispense bags quantity inputs
+  document.querySelectorAll('.js-dispense-bags').forEach(inp => _enforceNumericOnly(inp));
+
+  // Clear invalid outline on input
+  document.querySelectorAll('.milk-sheet-table input, .milk-sheet-table select').forEach(el => {
+    el.addEventListener('input', () => el.classList.remove('cell-invalid'));
+    el.addEventListener('change', () => el.classList.remove('cell-invalid'));
+  });
+
   document.getElementById('btn-add-dispatch-row')?.addEventListener('click', () => {
     const fefo = getFefoPriorityBatch(_batches);
     _draftDispatches.unshift({
@@ -463,15 +511,15 @@ function _bindDispatchesSheetEvents() {
     _renderActiveSheet();
   });
 
-  // Save single dispatch row
+  // Save single dispatch row with strict validation
   document.querySelectorAll('.js-save-single-dispatch').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.draftIdx, 10);
       const row = btn.closest('tr');
       const data = _collectDispatchRowData(row);
 
-      if (!data.recipient_name || !data.batch_id || !data.bags_dispensed) {
-        alert('Please provide Recipient Name, select a Batch, and enter Bags dispensed.');
+      const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+      if (!_validateDispatchData(data, row, available)) {
         return;
       }
 
@@ -504,17 +552,17 @@ function _bindDispatchesSheetEvents() {
     });
   });
 
-  // Bulk save all pending dispatches
+  // Bulk save all pending dispatches with strict validation
   document.getElementById('btn-save-all-dispatches')?.addEventListener('click', async () => {
     if (_draftDispatches.length === 0) return;
 
     const rows = document.querySelectorAll('.grid-row--draft');
     const validRows = [];
+    const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
 
     for (const row of rows) {
       const data = _collectDispatchRowData(row);
-      if (!data.recipient_name || !data.batch_id || !data.bags_dispensed) {
-        alert('Each dispense row must have Recipient Name, Batch, and Quantity.');
+      if (!_validateDispatchData(data, row, available)) {
         return;
       }
       validRows.push(data);
@@ -545,13 +593,164 @@ function _bindDispatchesSheetEvents() {
 
 function _collectDispatchRowData(row) {
   return {
-    dispensed_date: row.querySelector('.js-dispense-date')?.value || '',
-    recipient_name: row.querySelector('.js-dispense-recipient')?.value || '',
+    dispensed_date: row.querySelector('.js-dispense-date')?.value || new Date().toISOString().split('T')[0],
+    recipient_name: row.querySelector('.js-dispense-recipient')?.value?.trim() || '',
     barangay:       row.querySelector('.js-dispense-brgy')?.value || '',
     batch_id:       row.querySelector('.js-dispense-batch')?.value || '',
-    bags_dispensed: row.querySelector('.js-dispense-bags')?.value || '1',
+    bags_dispensed: row.querySelector('.js-dispense-bags')?.value?.trim() || '1',
     indication:     row.querySelector('.js-dispense-indication')?.value || ''
   };
+}
+
+function _validateBatchData(data, row, existingBatches = [], otherDraftBatches = []) {
+  row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
+
+  // 1. Batch Number
+  if (!data.batch_number || !data.batch_number.trim()) {
+    const input = row.querySelector('.js-batch-no');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Please enter a Batch Number (e.g. BM-096).');
+    return false;
+  }
+
+  const cleanBatchNo = data.batch_number.trim().toUpperCase();
+
+  // Duplicate check in database
+  const dupInDb = existingBatches.find(b => b.batch_number && b.batch_number.toUpperCase() === cleanBatchNo);
+  if (dupInDb) {
+    const input = row.querySelector('.js-batch-no');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert(`Batch Number "${cleanBatchNo}" already exists in the database. Every pasteurized batch must have a unique identifier.`);
+    return false;
+  }
+
+  // Duplicate check in pending draft rows
+  const dupInDraft = otherDraftBatches.find(b => b.batch_number && b.batch_number.toUpperCase() === cleanBatchNo);
+  if (dupInDraft) {
+    const input = row.querySelector('.js-batch-no');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert(`Batch Number "${cleanBatchNo}" is duplicated across pending rows. Please use unique batch numbers.`);
+    return false;
+  }
+
+  // 2. Quantity (Bags) - STRICT NUMBER ONLY (Integer >= 1)
+  const bagsNum = Number(data.total_bags);
+  if (!data.total_bags || isNaN(bagsNum) || !Number.isInteger(bagsNum) || bagsNum <= 0) {
+    const input = row.querySelector('.js-batch-bags');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Quantity (Total Bags) must be a whole positive number (minimum 1 bag).');
+    return false;
+  }
+
+  // 3. Dates
+  if (!data.date_pasteurized) {
+    const input = row.querySelector('.js-batch-date-past');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Please select a Date Pasteurized.');
+    return false;
+  }
+
+  if (!data.expiry_date) {
+    const input = row.querySelector('.js-batch-expiry');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Please select an Expiration Date.');
+    return false;
+  }
+
+  if (data.expiry_date <= data.date_pasteurized) {
+    const input = row.querySelector('.js-batch-expiry');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert(`Expiration date (${data.expiry_date}) must be strictly after the date pasteurized (${data.date_pasteurized}).`);
+    return false;
+  }
+
+  return true;
+}
+
+function _validateDispatchData(data, row, availableBatches = []) {
+  row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
+
+  // 1. Recipient
+  if (!data.recipient_name || !data.recipient_name.trim()) {
+    const input = row.querySelector('.js-dispense-recipient');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Please enter Recipient Infant / Mother name.');
+    return false;
+  }
+
+  // 2. Batch Selected
+  if (!data.batch_id) {
+    const select = row.querySelector('.js-dispense-batch');
+    select?.classList.add('cell-invalid');
+    select?.focus();
+    alert('Please select a pasteurized batch to dispense from.');
+    return false;
+  }
+
+  const selectedBatch = availableBatches.find(b => b.id === data.batch_id);
+  if (!selectedBatch) {
+    alert('Selected batch is not available in stock.');
+    return false;
+  }
+
+  // 3. Quantity (Bags Dispensed) - STRICT NUMBER ONLY (Integer >= 1)
+  const bagsNum = Number(data.bags_dispensed);
+  if (!data.bags_dispensed || isNaN(bagsNum) || !Number.isInteger(bagsNum) || bagsNum <= 0) {
+    const input = row.querySelector('.js-dispense-bags');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert('Quantity to dispense must be a whole positive number (minimum 1 bag).');
+    return false;
+  }
+
+  // 4. Stock Availability Check
+  const maxAvail = selectedBatch.remaining_bags || 0;
+  if (bagsNum > maxAvail) {
+    const input = row.querySelector('.js-dispense-bags');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    alert(`Cannot dispense ${bagsNum} bag(s). Batch ${selectedBatch.batch_number} only has ${maxAvail} bag(s) remaining in stock.`);
+    return false;
+  }
+
+  return true;
+}
+
+function _enforceNumericOnly(input) {
+  if (!input || input._hasNumericEnforced) return;
+  input._hasNumericEnforced = true;
+
+  input.addEventListener('keydown', (e) => {
+    // Navigation / editing keys allowed
+    if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+      return;
+    }
+    // Allow Ctrl/Cmd hotkeys
+    if (e.ctrlKey || e.metaKey) return;
+
+    // Block non-digit keys: 'e', 'E', '+', '-', '.', ',', etc.
+    if (['e', 'E', '+', '-', '.', ','].includes(e.key) || !/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    const clean = input.value.replace(/[^\d]/g, '');
+    if (input.value !== clean) {
+      input.value = clean;
+    }
+    if (parseInt(clean, 10) > 0) {
+      input.classList.remove('cell-invalid');
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -699,6 +898,12 @@ function _setupCellBarSync() {
     }
     if (_activeTargetCell && (_activeTargetCell.tagName === 'INPUT' || _activeTargetCell.tagName === 'SELECT')) {
       _isSyncingCell = true;
+      if (_activeTargetCell.classList.contains('js-batch-bags') || _activeTargetCell.classList.contains('js-dispense-bags')) {
+        const cleanDigits = barInput.value.replace(/[^\d]/g, '');
+        if (barInput.value !== cleanDigits) {
+          barInput.value = cleanDigits;
+        }
+      }
       if (_activeTargetCell.tagName === 'SELECT') {
         const val = barInput.value.toLowerCase().trim();
         const match = Array.from(_activeTargetCell.options).find(

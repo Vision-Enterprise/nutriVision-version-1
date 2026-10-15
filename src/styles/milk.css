@@ -363,11 +363,34 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   position: relative;
 }
 
+/* Calendar & Clock Picker indicator cursor and styling */
+.grid-cell-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 2px;
+  filter: contrast(120%);
+  transition: opacity 0.15s ease;
+}
+
+.grid-cell-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Strict Validation Error State (Invalid cell) */
+.cell-invalid,
+.milk-sheet-table .cell-invalid,
+.grid-cell-input.cell-invalid {
+  border: 1.5px solid #ef4444 !important;
+  background-color: #fef2f2 !important;
+  outline: 2px solid #ef4444 !important;
+  outline-offset: -2px !important;
+  color: #b91c1c !important;
+}
+
 /* Subtle row highlight when inspecting cells in saved rows */
 .milk-sheet-table tbody tr.row-active-excel td {
   background-color: #f0f9ff;
 }
-
 
 .grid-cell-input--mono {
   font-family: monospace;

@@ -150,20 +150,20 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
                value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 24-672-760" aria-label="Donor Name / Code" autofocus>
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-exp-date"
-               value="${escapeHtml(draft.expression_date_notes || '@see donor log')}" aria-label="Expression Date">
+        <input type="date" class="grid-cell-input js-donor-exp-date"
+               value="${draft.expression_date_notes || today}" aria-label="Milk Expression Date">
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-exp-time"
-               value="${escapeHtml(draft.expression_time || '')}" placeholder="Time (opt)" aria-label="Expression Time">
+        <input type="time" class="grid-cell-input js-donor-exp-time"
+               value="${draft.expression_time || '08:00'}" aria-label="Milk Expression Time">
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-trans-date"
-               value="${escapeHtml(draft.transport_date || today)}" placeholder="Date / Range" aria-label="Transport Date">
+        <input type="date" class="grid-cell-input js-donor-trans-date"
+               value="${draft.transport_date || today}" aria-label="Transport Date">
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-trans-time"
-               value="${escapeHtml(draft.transport_time || '12:00 PM')}" aria-label="Transport Time">
+        <input type="time" class="grid-cell-input js-donor-trans-time"
+               value="${draft.transport_time || '12:00'}" aria-label="Transport Time">
       </td>
       <td style="text-align:center;">
         <select class="grid-cell-select js-donor-cond-col" aria-label="Condition @ Collection">
@@ -176,8 +176,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
                value="${draft.arrival_date || today}" aria-label="Arrival Date">
       </td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-arrival-time"
-               value="${escapeHtml(draft.arrival_time || '12:30 PM')}" aria-label="Arrival Time">
+        <input type="time" class="grid-cell-input js-donor-arrival-time"
+               value="${draft.arrival_time || '12:30'}" aria-label="Arrival Time">
       </td>
       <td style="text-align:center;">
         <select class="grid-cell-select js-donor-cond-arr" aria-label="Condition @ Arrival">
@@ -187,7 +187,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-trans-cond"
-               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler (opt)" aria-label="Conditions of Transport">
+               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler box (opt)" aria-label="Conditions of Transport">
       </td>
       <td>
         <span class="text-muted text-xs">Self (on save)</span>
@@ -209,15 +209,15 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <td>
         <span class="milk-donor-code">${escapeHtml(d.donor_code)}</span>
       </td>
-      <td class="text-sm">${escapeHtml(d.expression_date_notes || '@see donor log')}</td>
-      <td class="text-muted text-xs">${escapeHtml(d.expression_time || '—')}</td>
-      <td class="text-sm">${escapeHtml(d.transport_date || '—')}</td>
-      <td class="text-muted text-xs">${escapeHtml(d.transport_time || '—')}</td>
+      <td class="text-sm">${formatDate(d.expression_date_notes)}</td>
+      <td class="text-muted text-xs">${formatTime(d.expression_time)}</td>
+      <td class="text-sm">${formatDate(d.transport_date)}</td>
+      <td class="text-muted text-xs">${formatTime(d.transport_time)}</td>
       <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_collection || 'ok')}</span>
       </td>
       <td class="text-sm">${formatDate(d.arrival_date)}</td>
-      <td class="text-muted text-xs">${escapeHtml(d.arrival_time || '—')}</td>
+      <td class="text-muted text-xs">${formatTime(d.arrival_time)}</td>
       <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_arrival || 'ok')}</span>
       </td>
@@ -757,10 +757,24 @@ function formatDate(dateStr) {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
   } catch {
     return dateStr;
   }
+}
+
+export function formatTime(timeStr) {
+  if (!timeStr) return '—';
+  const match = String(timeStr).match(/^(\d{1,2}):(\d{2})/);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  }
+  return timeStr;
 }
 
 function escapeHtml(str) {
