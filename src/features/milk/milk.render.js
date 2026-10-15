@@ -113,6 +113,28 @@ export function renderMetrics(metrics) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// Upper Cell Content & Editor Bar (Excel-Style Row & Cell Viewer, No FX)
+// ════════════════════════════════════════════════════════════════════════════
+export function renderCellBar(placeholder = 'Click any table cell to inspect or edit full content...') {
+  return `
+    <div class="milk-cell-bar" id="milk-cell-bar">
+      <div class="milk-cell-badge" id="milk-cell-badge" title="Active Cell / Row Position">
+        <span class="icon icon--sm" style="font-size:15px;" aria-hidden="true">edit_note</span>
+        <span id="milk-cell-badge-text">Select Cell</span>
+      </div>
+      <input type="text"
+             class="milk-cell-input"
+             id="milk-cell-input"
+             placeholder="${placeholder}"
+             aria-label="Cell content inspector and editor"
+             autocomplete="off"
+             spellcheck="false" />
+      <div class="milk-cell-status" id="milk-cell-status" style="display:none;"></div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // SHEET 1: Log of Milk Received (Form MH.MNAO.FM.002.00) Spreadsheet
 // Strictly matches the official paper form headers and columns
 // ════════════════════════════════════════════════════════════════════════════
@@ -125,47 +147,47 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
         <input type="text" class="grid-cell-input grid-cell-input--mono js-donor-code"
-               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 24-672-760" autofocus>
+               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 24-672-760" aria-label="Donor Name / Code" autofocus>
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-exp-date"
-               value="${escapeHtml(draft.expression_date_notes || '@see donor log')}">
+               value="${escapeHtml(draft.expression_date_notes || '@see donor log')}" aria-label="Expression Date">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-exp-time"
-               value="${escapeHtml(draft.expression_time || '')}" placeholder="Time (opt)">
+               value="${escapeHtml(draft.expression_time || '')}" placeholder="Time (opt)" aria-label="Expression Time">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-trans-date"
-               value="${escapeHtml(draft.transport_date || today)}" placeholder="Date / Range">
+               value="${escapeHtml(draft.transport_date || today)}" placeholder="Date / Range" aria-label="Transport Date">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-trans-time"
-               value="${escapeHtml(draft.transport_time || '12:00 PM')}">
+               value="${escapeHtml(draft.transport_time || '12:00 PM')}" aria-label="Transport Time">
       </td>
       <td style="text-align:center;">
-        <select class="grid-cell-select js-donor-cond-col">
+        <select class="grid-cell-select js-donor-cond-col" aria-label="Condition @ Collection">
           <option value="ok" ${draft.condition_at_collection === 'ok' ? 'selected' : ''}>ok</option>
           <option value="compromised" ${draft.condition_at_collection === 'compromised' ? 'selected' : ''}>compromised</option>
         </select>
       </td>
       <td>
         <input type="date" class="grid-cell-input js-donor-arrival-date"
-               value="${draft.arrival_date || today}">
+               value="${draft.arrival_date || today}" aria-label="Arrival Date">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-arrival-time"
-               value="${escapeHtml(draft.arrival_time || '12:30 PM')}">
+               value="${escapeHtml(draft.arrival_time || '12:30 PM')}" aria-label="Arrival Time">
       </td>
       <td style="text-align:center;">
-        <select class="grid-cell-select js-donor-cond-arr">
+        <select class="grid-cell-select js-donor-cond-arr" aria-label="Condition @ Arrival">
           <option value="ok" ${draft.condition_at_arrival === 'ok' ? 'selected' : ''}>ok</option>
           <option value="compromised" ${draft.condition_at_arrival === 'compromised' ? 'selected' : ''}>compromised</option>
         </select>
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-trans-cond"
-               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler (opt)">
+               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler (opt)" aria-label="Conditions of Transport">
       </td>
       <td>
         <span class="text-muted text-xs">Self (on save)</span>
@@ -232,6 +254,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </button>
       </div>
     </div>
+
+    ${renderCellBar('Click any cell in Log of Milk Received to inspect or edit full content...')}
 
     <div class="table-responsive">
       <table class="milk-sheet-table">
@@ -333,24 +357,24 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ New</td>
       <td>
         <input type="text" class="grid-cell-input grid-cell-input--mono js-batch-no"
-               value="${escapeHtml(draft.batch_number || '')}" placeholder="e.g. BM-096" autofocus>
+               value="${escapeHtml(draft.batch_number || '')}" placeholder="e.g. BM-096" aria-label="Batch Number" autofocus>
       </td>
       <td>
         <input type="date" class="grid-cell-input js-batch-date-past"
-               value="${draft.date_pasteurized || new Date().toISOString().split('T')[0]}">
+               value="${draft.date_pasteurized || new Date().toISOString().split('T')[0]}" aria-label="Date Pasteurized">
       </td>
       <td>
         <input type="date" class="grid-cell-input js-batch-expiry"
-               value="${draft.expiry_date || ''}">
+               value="${draft.expiry_date || ''}" aria-label="Expiry Date">
       </td>
       <td>
-        <select class="grid-cell-select js-batch-shelf">
+        <select class="grid-cell-select js-batch-shelf" aria-label="Freezer Shelf">
           ${shelfOptionsHtml(draft.freezer_shelf || shelves[0])}
         </select>
       </td>
       <td style="max-width:90px;text-align:center;">
         <input type="number" class="grid-cell-input js-batch-bags" min="1"
-               value="${draft.total_bags || ''}" placeholder="Bags">
+               value="${draft.total_bags || ''}" placeholder="Bags" aria-label="Initial Bags">
       </td>
       <td style="text-align:center;color:var(--color-text-muted);">—</td>
       <td style="text-align:center;">
@@ -414,6 +438,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
   }).join('');
 
   return `
+    ${renderCellBar('Click any cell in Pasteurized Batches to inspect or edit full content...')}
     <div class="table-responsive">
       <table class="milk-sheet-table">
         <thead>
@@ -582,28 +607,28 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Issue</td>
       <td>
         <input type="date" class="grid-cell-input js-dispense-date"
-               value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}">
+               value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}" aria-label="Date Dispensed">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-dispense-recipient"
-               value="${escapeHtml(draft.recipient_name || '')}" placeholder="e.g. Baby Cruz / Maria Cruz" autofocus>
+               value="${escapeHtml(draft.recipient_name || '')}" placeholder="e.g. Baby Cruz / Maria Cruz" aria-label="Recipient Infant / Mother" autofocus>
       </td>
       <td>
-        <select class="grid-cell-select js-dispense-brgy">
+        <select class="grid-cell-select js-dispense-brgy" aria-label="Barangay">
           ${brgyOptionsHtml(draft.barangay || BARANGAYS[0])}
         </select>
       </td>
       <td>
-        <select class="grid-cell-select js-dispense-batch">
+        <select class="grid-cell-select js-dispense-batch" aria-label="Batch Issued (FEFO)">
           ${batchOptionsHtml(draft.batch_id)}
         </select>
       </td>
       <td style="max-width:90px;text-align:center;">
         <input type="number" class="grid-cell-input js-dispense-bags" min="1"
-               value="${draft.bags_dispensed || 1}">
+               value="${draft.bags_dispensed || 1}" aria-label="Bags Dispensed">
       </td>
       <td>
-        <select class="grid-cell-select js-dispense-indication">
+        <select class="grid-cell-select js-dispense-indication" aria-label="Clinical Indication">
           ${indicationOptionsHtml(draft.indication || DISPENSE_INDICATIONS[0])}
         </select>
       </td>
@@ -669,6 +694,8 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         </button>
       </div>
     </div>
+
+    ${renderCellBar('Click any cell in Dispensing Ledger to inspect or edit full content...')}
 
     <div class="table-responsive">
       <table class="milk-sheet-table">

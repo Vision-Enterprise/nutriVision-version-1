@@ -208,11 +208,87 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+/* ── Upper Cell Content & Editor Bar (Excel-style Cell Viewer, no fx) ── */
+.milk-cell-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-bottom: 2px solid var(--color-milk-primary, #0284c7);
+  border-radius: 6px 6px 0 0;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  transition: all 0.15s ease;
+}
+
+.milk-cell-bar:focus-within {
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+}
+
+.milk-cell-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  user-select: none;
+  border: 1px solid #bae6fd;
+}
+
+.milk-cell-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: #0f172a;
+  font-family: inherit;
+  padding: 3px 0;
+  min-width: 140px;
+}
+
+.milk-cell-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.milk-cell-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.milk-cell-status--draft {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.milk-cell-status--saved {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
 /* ── Spreadsheet Grid & Table (Excel-like Clean Lines) ─────────────── */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 0 0 6px 6px;
 }
 
 .milk-sheet-table {
@@ -221,6 +297,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   text-align: left;
   font-size: 13px;
   border: 1px solid #cbd5e1;
+  border-top: none;
 }
 
 .milk-sheet-table th {
@@ -277,13 +354,20 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 
 /* Active Excel Cell Highlight (like Google Sheets / Excel active cell ring) */
 .grid-cell-input:focus,
-.grid-cell-select:focus {
-  background: #ffffff;
-  outline: 2px solid #0284c7;
-  outline-offset: -2px;
+.grid-cell-select:focus,
+.cell-active-excel {
+  background: #ffffff !important;
+  outline: 2px solid #0284c7 !important;
+  outline-offset: -2px !important;
   z-index: 3;
   position: relative;
 }
+
+/* Subtle row highlight when inspecting cells in saved rows */
+.milk-sheet-table tbody tr.row-active-excel td {
+  background-color: #f0f9ff;
+}
+
 
 .grid-cell-input--mono {
   font-family: monospace;

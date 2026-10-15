@@ -117,13 +117,18 @@ function _renderActiveSheet() {
   if (_activeTab === 'intake') {
     contentArea.innerHTML = renderDonationsSheet(_donations, _draftDonations);
     _bindDonationsSheetEvents();
+    _setupCellBarSync();
   } else if (_activeTab === 'batches') {
     contentArea.innerHTML = renderBatchesSheet(_batches, _draftBatches, _batchesSubView, _shelves, fefoBatch);
     _bindBatchesSheetEvents();
+    if (_batchesSubView === 'table') {
+      _setupCellBarSync();
+    }
   } else if (_activeTab === 'dispense') {
     const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
     contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch);
     _bindDispatchesSheetEvents();
+    _setupCellBarSync();
   }
 }
 
@@ -548,3 +553,194 @@ function _collectDispatchRowData(row) {
     indication:     row.querySelector('.js-dispense-indication')?.value || ''
   };
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Upper Cell Content & Editor Bar — Real-Time Two-Way Sync (No FX)
+// ════════════════════════════════════════════════════════════════════════════
+let _activeTargetCell = null;
+let _isSyncingCell = false;
+
+function _setupCellBarSync() {
+  const barInput = document.getElementById('milk-cell-input');
+  const badgeText = document.getElementById('milk-cell-badge-text');
+  const statusEl = document.getElementById('milk-cell-status');
+  const table = document.querySelector('.milk-sheet-table');
+  if (!barInput || !table) return;
+
+  _activeTargetCell = null;
+  _isSyncingCell = false;
+
+  function setActiveTarget(element) {
+    if (!element) return;
+
+    // Clear previous cell & row active outlines
+    document.querySelectorAll('.cell-active-excel').forEach(el => el.classList.remove('cell-active-excel'));
+    document.querySelectorAll('.row-active-excel').forEach(el => el.classList.remove('row-active-excel'));
+
+    _activeTargetCell = element;
+    const tr = element.closest('tr');
+    if (tr) tr.classList.add('row-active-excel');
+
+    const td = element.tagName === 'TD' ? element : element.closest('td');
+    if (td) td.classList.add('cell-active-excel');
+    if (element !== td) element.classList.add('cell-active-excel');
+
+    // 1. Determine Row indicator
+    let rowLabel = 'Row';
+    if (tr) {
+      if (tr.classList.contains('grid-row--draft')) {
+        const draftIdx = tr.getAttribute('data-draft-idx');
+        rowLabel = draftIdx !== null ? `Draft #${parseInt(draftIdx, 10) + 1}` : 'Draft';
+      } else {
+        const firstTd = tr.querySelector('td');
+        const numText = firstTd ? firstTd.textContent.trim() : '';
+        rowLabel = numText ? `Row ${numText}` : `Row ${tr.rowIndex || ''}`;
+      }
+    }
+
+    // 2. Determine Column Name
+    let colName = 'Cell';
+    if (element.getAttribute('aria-label')) {
+      colName = element.getAttribute('aria-label');
+    } else if (element.getAttribute('placeholder')) {
+      colName = element.getAttribute('placeholder');
+    } else if (td && tr) {
+      const colIdx = Array.from(tr.children).indexOf(td);
+      const thHeaders = Array.from(table.querySelectorAll('thead th'));
+      if (colIdx >= 0 && colIdx < thHeaders.length) {
+        colName = thHeaders[colIdx]?.innerText.split('\n')[0].trim() || 'Cell';
+      }
+    }
+
+    // Update Badge Text
+    if (badgeText) {
+      badgeText.textContent = `${rowLabel} • ${colName}`;
+    }
+
+    // 3. Handle Input (Draft) vs Static Text (Saved)
+    const isInput = element.tagName === 'INPUT' || element.tagName === 'SELECT';
+
+    if (!_isSyncingCell) {
+      if (isInput) {
+        barInput.value = element.value || '';
+        barInput.removeAttribute('readonly');
+        barInput.style.opacity = '1';
+        barInput.placeholder = `Editing ${colName} (${rowLabel})...`;
+        if (statusEl) {
+          statusEl.textContent = 'Editable';
+          statusEl.className = 'milk-cell-status milk-cell-status--draft';
+          statusEl.style.display = 'inline-block';
+        }
+      } else {
+        // Saved row cell
+        const rawText = (element.innerText || '').trim();
+        barInput.value = rawText;
+        barInput.setAttribute('readonly', 'true');
+        barInput.style.opacity = '0.95';
+        barInput.placeholder = `Inspecting ${colName}...`;
+        if (statusEl) {
+          statusEl.textContent = 'Saved Record';
+          statusEl.className = 'milk-cell-status milk-cell-status--saved';
+          statusEl.style.display = 'inline-block';
+        }
+      }
+    }
+  }
+
+  // Focus and click inside table
+  table.addEventListener('focusin', (e) => {
+    const target = e.target.closest('input, select, td');
+    if (target && !target.closest('.grid-actions-cell') && !target.closest('button')) {
+      setActiveTarget(target);
+    }
+  });
+
+  table.addEventListener('click', (e) => {
+    const target = e.target.closest('input, select, td');
+    if (target && !target.closest('.grid-actions-cell') && !target.closest('button')) {
+      setActiveTarget(target);
+    }
+  });
+
+  // Table input live sync into upper bar
+  table.addEventListener('input', (e) => {
+    if (_activeTargetCell && e.target === _activeTargetCell && !_isSyncingCell) {
+      _isSyncingCell = true;
+      barInput.value = _activeTargetCell.value;
+      _isSyncingCell = false;
+    }
+  });
+
+  table.addEventListener('change', (e) => {
+    if (_activeTargetCell && e.target === _activeTargetCell && !_isSyncingCell) {
+      _isSyncingCell = true;
+      barInput.value = _activeTargetCell.value;
+      _isSyncingCell = false;
+    }
+  });
+
+  // Upper bar focus auto-picks first draft cell if available
+  barInput.addEventListener('focus', () => {
+    if (!_activeTargetCell || !document.body.contains(_activeTargetCell)) {
+      const firstInput = table.querySelector('.grid-row--draft input:not([disabled])');
+      if (firstInput) {
+        firstInput.focus();
+        setActiveTarget(firstInput);
+      }
+    }
+  });
+
+  // Upper bar live sync into active table cell input
+  barInput.addEventListener('input', () => {
+    if (_isSyncingCell) return;
+    if (!_activeTargetCell || !document.body.contains(_activeTargetCell)) {
+      const firstInput = table.querySelector('.grid-row--draft input:not([disabled])');
+      if (firstInput) setActiveTarget(firstInput);
+    }
+    if (_activeTargetCell && (_activeTargetCell.tagName === 'INPUT' || _activeTargetCell.tagName === 'SELECT')) {
+      _isSyncingCell = true;
+      if (_activeTargetCell.tagName === 'SELECT') {
+        const val = barInput.value.toLowerCase().trim();
+        const match = Array.from(_activeTargetCell.options).find(
+          o => o.value.toLowerCase() === val || o.text.toLowerCase().includes(val)
+        );
+        if (match) {
+          _activeTargetCell.value = match.value;
+        }
+      } else {
+        _activeTargetCell.value = barInput.value;
+      }
+      _activeTargetCell.dispatchEvent(new Event('input', { bubbles: true }));
+      _activeTargetCell.dispatchEvent(new Event('change', { bubbles: true }));
+      _isSyncingCell = false;
+    }
+  });
+
+  // Pressing Enter in upper bar moves to next input in current row
+  barInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_activeTargetCell) {
+        _activeTargetCell.dispatchEvent(new Event('change', { bubbles: true }));
+        const currentTr = _activeTargetCell.closest('tr');
+        if (currentTr) {
+          const inputs = Array.from(currentTr.querySelectorAll('input:not([disabled]):not([readonly]), select:not([disabled])'));
+          const currentIdx = inputs.indexOf(_activeTargetCell);
+          if (currentIdx >= 0 && currentIdx < inputs.length - 1) {
+            const nextInput = inputs[currentIdx + 1];
+            nextInput.focus();
+            setActiveTarget(nextInput);
+          } else {
+            const saveBtn = currentTr.querySelector('.btn-grid-save');
+            if (saveBtn) saveBtn.focus();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      if (_activeTargetCell && typeof _activeTargetCell.focus === 'function') {
+        _activeTargetCell.focus();
+      }
+    }
+  });
+}
+
