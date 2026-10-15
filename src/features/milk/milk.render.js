@@ -245,7 +245,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </button>
         <button id="btn-add-donation-row" class="btn btn-secondary btn-sm" type="button">
           <span class="icon icon--sm" aria-hidden="true">add</span>
-          + Add Entry Row
+          Add Entry Row
         </button>
         <button id="btn-save-all-donations" class="btn btn-primary btn-sm btn--ice" type="button"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
@@ -287,7 +287,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No intake records yet. Click <strong>+ Add Entry Row</strong> above to begin logging.
+                No intake records yet. Click <strong>Add Entry Row</strong> above to begin logging.
               </td>
             </tr>
           ` : ''}
@@ -328,7 +328,7 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
         ${subView === 'table' ? `
           <button id="btn-add-batch-row" class="btn btn-secondary btn-sm" type="button">
             <span class="icon icon--sm" aria-hidden="true">add</span>
-            + Add Batch Row
+            Add Batch Row
           </button>
           <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button"
                   ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
@@ -460,7 +460,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
               <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No pasteurized batches recorded yet. Click <strong>+ Add Batch Row</strong> to log a BM batch.
+                No pasteurized batches recorded yet. Click <strong>Add Batch Row</strong> to log a BM batch.
               </td>
             </tr>
           ` : ''}
@@ -685,7 +685,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         <button id="btn-add-dispatch-row" class="btn btn-secondary btn-sm" type="button"
                 ${availableBatches.length === 0 ? 'disabled title="No stock available"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">add</span>
-          + Record Dispense Row
+          Record Dispense Row
         </button>
         <button id="btn-save-all-dispatches" class="btn btn-primary btn-sm btn--ice" type="button"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
@@ -718,7 +718,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No milk dispatches logged yet. Click <strong>+ Record Dispense Row</strong> to issue milk.
+                No milk dispatches logged yet. Click <strong>Record Dispense Row</strong> to issue milk.
               </td>
             </tr>
           ` : ''}
