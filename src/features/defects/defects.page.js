@@ -7,6 +7,7 @@ import { renderDefectsLayout, renderIncidentRows, renderPdfArchiveRows, renderPd
 import { openLogIncidentModal, openRestoreModal } from './defects.modal.js';
 import { getDefectPdfFileName, showDefectPrintPreview } from './defects.pdf.js';
 import { supabase } from '../../core/supabase.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 const MODULE     = '[Defects]';
 const ARCHIVE_KEY = 'nutrivision_defect_pdf_archive';
@@ -108,8 +109,14 @@ function _refreshPdfArchive() {
   const clearBtn = document.getElementById('btn-clear-defect-archive');
   if (clearBtn) {
     clearBtn.style.display = archive.length > 0 ? 'inline-flex' : 'none';
-    clearBtn.onclick = () => {
-      if (!confirm(`Clear all ${archive.length} generated PDF reports from history?`)) return;
+    clearBtn.onclick = async () => {
+      const confirmed = await SystemDialog.confirm(
+        `Clear all ${archive.length} generated PDF reports from history?`,
+        'Clear Defect Archive',
+        'Clear All',
+        true
+      );
+      if (!confirmed) return;
       localStorage.removeItem(ARCHIVE_KEY);
       _refreshPdfArchive();
     };
@@ -128,12 +135,18 @@ function _refreshPdfArchive() {
 
   // Attach click listeners to delete individual report buttons
   tbody.querySelectorAll('.btn-delete-defect-pdf').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const item = archive.find(a => a.id === id);
       const name = item?.fileName || 'this report';
-      if (!confirm(`Remove "${name}" from PDF archive history?`)) return;
+      const confirmed = await SystemDialog.confirm(
+        `Remove "${name}" from PDF archive history?`,
+        'Remove Defect PDF',
+        'Remove',
+        true
+      );
+      if (!confirmed) return;
 
       const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
       const updated = raw.filter(a => a.id !== id);

@@ -1,9 +1,11 @@
+import { SystemDialog } from '../../shared/components/dialog.component.js';
+
 /**
  * Converts JSON data array to CSV format and triggers download.
  */
 export function exportToCSV(data, modelId, filters) {
   if (!data || !data.length) {
-    alert('No data available to export.');
+    SystemDialog.alert('No data available to export.', 'Export Failed');
     return;
   }
 

@@ -6,6 +6,7 @@
 import { fetchActiveBatchesForSelector } from './defects.service.js';
 import { showDefectPrintPreview, getDefectPdfFileName } from './defects.pdf.js';
 import { logDefectIncident } from './defects.service.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 const CLASSIFICATIONS = [
   'Damaged Packaging / Torn',
@@ -26,7 +27,7 @@ export async function openLogIncidentModal(profile, onSuccess) {
   // Fetch active batches first
   const { data: batches, error } = await fetchActiveBatchesForSelector();
   if (error) {
-    alert('Error: ' + error);
+    await SystemDialog.alert('Error: ' + error, 'Load Failed');
     return;
   }
 
@@ -411,7 +412,7 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
     showDefectPrintPreview(incidentData, selectedBatch, profile, async () => {
       const { data, error } = await logDefectIncident(incidentData, profile);
       if (error) {
-        alert('Error saving incident: ' + error);
+        await SystemDialog.alert('Error saving incident: ' + error, 'Save Incident Failed');
         return;
       }
       // Close modal and refresh page

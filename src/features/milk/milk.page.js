@@ -31,6 +31,17 @@ import {
 } from './milk.render.js';
 
 import { showMilkIntakePrintPreview } from './milk.pdf.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
+
+// ── Themed Modal Helper with Blue Accents for Milk Bank Module ────────────────
+const MilkModal = {
+  alert: (message, title = 'Milk Bank Notice') => 
+    SystemDialog.alert(message, title, { theme: 'blue', icon: 'info' }),
+  confirm: (message, title = 'Confirm Action', confirmText = 'Confirm', isDanger = false) => 
+    SystemDialog.confirm(message, title, confirmText, isDanger, { theme: 'blue', icon: isDanger ? 'warning' : 'help' }),
+  prompt: (message, defaultValue = '', title = 'Storage Rack', confirmText = 'Save') =>
+    SystemDialog.prompt(message, defaultValue, title, { theme: 'blue', icon: 'kitchen', confirmText })
+};
 
 // ── Controller State ──────────────────────────────────────────────────────────
 let _profile = null;
@@ -193,7 +204,7 @@ function _bindDonationsSheetEvents() {
       const row = btn.closest('tr');
       const data = _collectDonationRowData(row);
 
-      if (!_validateDonationData(data, row)) {
+      if (!await _validateDonationData(data, row)) {
         return;
       }
 
@@ -207,7 +218,7 @@ function _bindDonationsSheetEvents() {
       });
 
       if (error) {
-        alert('Error saving row: ' + error);
+        await MilkModal.alert('Error saving row: ' + error, 'Save Failed');
         btn.disabled = false;
         btn.innerHTML = '<span class="icon" style="font-size:16px;">check</span> Save';
       } else {
@@ -235,7 +246,7 @@ function _bindDonationsSheetEvents() {
 
     for (const row of rows) {
       const data = _collectDonationRowData(row);
-      if (!_validateDonationData(data, row)) {
+      if (!await _validateDonationData(data, row)) {
         return;
       }
       validRows.push(data);
@@ -247,7 +258,7 @@ function _bindDonationsSheetEvents() {
 
     const { error } = await createMilkDonationsBulk(validRows, _profile?.id, _profile?.full_name);
     if (error) {
-      alert('Bulk save error: ' + error);
+      await MilkModal.alert('Bulk save error: ' + error, 'Bulk Save Failed');
       btn.disabled = false;
       btn.textContent = `Save All Pending (${_draftDonations.length})`;
     } else {
@@ -273,14 +284,14 @@ function _collectDonationRowData(row) {
   };
 }
 
-function _validateDonationData(data, row) {
+async function _validateDonationData(data, row) {
   row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
 
   if (!data.donor_code) {
     const input = row.querySelector('.js-donor-code');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Please enter a Donor Name or Donor Code (e.g. 24-672-760).');
+    await MilkModal.alert('Please enter a Donor Name or Donor Code (e.g. 24-672-760).', 'Validation Required');
     return false;
   }
 
@@ -289,7 +300,7 @@ function _validateDonationData(data, row) {
       const input = row.querySelector('.js-donor-arrival-date');
       input?.classList.add('cell-invalid');
       input?.focus();
-      alert(`Arrival date (${data.arrival_date}) cannot be earlier than milk expression date (${data.expression_date_notes}).`);
+      await MilkModal.alert(`Arrival date (${data.arrival_date}) cannot be earlier than milk expression date (${data.expression_date_notes}).`, 'Invalid Date Sequence');
       return false;
     }
   }
@@ -346,7 +357,7 @@ function _bindBatchesSheetEvents() {
       const data = _collectBatchRowData(row);
 
       const otherDrafts = _draftBatches.filter((_, i) => i !== idx);
-      if (!_validateBatchData(data, row, _batches, otherDrafts)) {
+      if (!(await _validateBatchData(data, row, _batches, otherDrafts))) {
         return;
       }
 
@@ -359,7 +370,7 @@ function _bindBatchesSheetEvents() {
       });
 
       if (error) {
-        alert('Error saving batch: ' + error);
+        await MilkModal.alert('Error saving batch: ' + error, 'Save Failed');
         btn.disabled = false;
         btn.innerHTML = '<span class="icon" style="font-size:16px;">check</span> Save';
       } else {
@@ -389,7 +400,7 @@ function _bindBatchesSheetEvents() {
       const row = rows[i];
       const data = _collectBatchRowData(row);
       const otherDrafts = validRows;
-      if (!_validateBatchData(data, row, _batches, otherDrafts)) {
+      if (!(await _validateBatchData(data, row, _batches, otherDrafts))) {
         return;
       }
       validRows.push(data);
@@ -401,7 +412,7 @@ function _bindBatchesSheetEvents() {
 
     const { error } = await createMilkBatchesBulk(validRows, _profile?.id);
     if (error) {
-      alert('Bulk batch save error: ' + error);
+      await MilkModal.alert('Bulk batch save error: ' + error, 'Bulk Save Failed');
       btn.disabled = false;
       btn.textContent = `Save All Pending (${_draftBatches.length})`;
     } else {
@@ -420,7 +431,7 @@ function _bindBatchesSheetEvents() {
       const { error } = await updateBatchShelf(batchId, newShelf);
       select.disabled = false;
       if (error) {
-        alert('Failed to update shelf: ' + error);
+        await MilkModal.alert('Failed to update shelf: ' + error, 'Shelf Update Failed');
       }
     });
   });
@@ -456,19 +467,30 @@ function _bindBatchesSheetEvents() {
   });
 
   // Virtual Freezer: Add Shelf
-  document.getElementById('btn-add-shelf')?.addEventListener('click', () => {
+  document.getElementById('btn-add-shelf')?.addEventListener('click', async () => {
     const nextShelfNum = _shelves.length;
-    const name = prompt('Enter name for the new freezer shelf:', `Shelf ${nextShelfNum}`);
-    if (name) {
-      _shelves = addFreezerShelf(name);
+    const name = await MilkModal.prompt(
+      'Enter name for the new freezer shelf:',
+      `Shelf ${nextShelfNum}`,
+      'Add Freezer Shelf',
+      'Add Shelf'
+    );
+    if (name && name.trim()) {
+      _shelves = addFreezerShelf(name.trim());
       _renderActiveSheet();
     }
   });
 
   // Virtual Freezer: Remove Last Shelf
-  document.getElementById('btn-remove-shelf')?.addEventListener('click', () => {
+  document.getElementById('btn-remove-shelf')?.addEventListener('click', async () => {
     const lastShelf = _shelves[_shelves.length - 1];
-    if (confirm(`Remove "${lastShelf}"? (Active batches on this shelf should be relocated first)`)) {
+    const confirmed = await MilkModal.confirm(
+      `Remove "${lastShelf}"? (Active batches on this shelf should be relocated first)`,
+      'Remove Freezer Shelf',
+      'Remove Shelf',
+      true
+    );
+    if (confirmed) {
       _shelves = removeFreezerShelf(lastShelf);
       _renderActiveSheet();
     }
@@ -519,7 +541,7 @@ function _bindDispatchesSheetEvents() {
       const data = _collectDispatchRowData(row);
 
       const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
-      if (!_validateDispatchData(data, row, available)) {
+      if (!(await _validateDispatchData(data, row, available))) {
         return;
       }
 
@@ -533,7 +555,7 @@ function _bindDispatchesSheetEvents() {
       });
 
       if (error) {
-        alert('Error issuing milk: ' + error);
+        await MilkModal.alert('Error issuing milk: ' + error, 'Dispense Failed');
         btn.disabled = false;
         btn.innerHTML = '<span class="icon" style="font-size:16px;">check</span> Issue';
       } else {
@@ -562,7 +584,7 @@ function _bindDispatchesSheetEvents() {
 
     for (const row of rows) {
       const data = _collectDispatchRowData(row);
-      if (!_validateDispatchData(data, row, available)) {
+      if (!(await _validateDispatchData(data, row, available))) {
         return;
       }
       validRows.push(data);
@@ -579,7 +601,7 @@ function _bindDispatchesSheetEvents() {
         profileName: _profile?.full_name || 'Nutrition Staff'
       });
       if (error) {
-        alert(`Error dispensing for ${item.recipient_name}: ${error}`);
+        await MilkModal.alert(`Error dispensing for ${item.recipient_name}: ${error}`, 'Dispense Failed');
         btn.disabled = false;
         btn.textContent = `Save All Pending (${_draftDispatches.length})`;
         return;
@@ -602,7 +624,7 @@ function _collectDispatchRowData(row) {
   };
 }
 
-function _validateBatchData(data, row, existingBatches = [], otherDraftBatches = []) {
+async function _validateBatchData(data, row, existingBatches = [], otherDraftBatches = []) {
   row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
 
   // 1. Batch Number
@@ -610,7 +632,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-no');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Please enter a Batch Number (e.g. BM-096).');
+    await MilkModal.alert('Please enter a Batch Number (e.g. BM-096).', 'Validation Required');
     return false;
   }
 
@@ -622,7 +644,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-no');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert(`Batch Number "${cleanBatchNo}" already exists in the database. Every pasteurized batch must have a unique identifier.`);
+    await MilkModal.alert(`Batch Number "${cleanBatchNo}" already exists in the database. Every pasteurized batch must have a unique identifier.`, 'Duplicate Batch Number');
     return false;
   }
 
@@ -632,7 +654,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-no');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert(`Batch Number "${cleanBatchNo}" is duplicated across pending rows. Please use unique batch numbers.`);
+    await MilkModal.alert(`Batch Number "${cleanBatchNo}" is duplicated across pending rows. Please use unique batch numbers.`, 'Duplicate Batch Number');
     return false;
   }
 
@@ -642,7 +664,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-bags');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Quantity (Total Bags) must be a whole positive number (minimum 1 bag).');
+    await MilkModal.alert('Quantity (Total Bags) must be a whole positive number (minimum 1 bag).', 'Invalid Quantity');
     return false;
   }
 
@@ -651,7 +673,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-date-past');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Please select a Date Pasteurized.');
+    await MilkModal.alert('Please select a Date Pasteurized.', 'Missing Date');
     return false;
   }
 
@@ -659,7 +681,7 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-expiry');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Please select an Expiration Date.');
+    await MilkModal.alert('Please select an Expiration Date.', 'Missing Expiration Date');
     return false;
   }
 
@@ -667,14 +689,14 @@ function _validateBatchData(data, row, existingBatches = [], otherDraftBatches =
     const input = row.querySelector('.js-batch-expiry');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert(`Expiration date (${data.expiry_date}) must be strictly after the date pasteurized (${data.date_pasteurized}).`);
+    await MilkModal.alert(`Expiration date (${data.expiry_date}) must be strictly after the date pasteurized (${data.date_pasteurized}).`, 'Invalid Expiration Date');
     return false;
   }
 
   return true;
 }
 
-function _validateDispatchData(data, row, availableBatches = []) {
+async function _validateDispatchData(data, row, availableBatches = []) {
   row.querySelectorAll('.cell-invalid').forEach(el => el.classList.remove('cell-invalid'));
 
   // 1. Recipient
@@ -682,7 +704,7 @@ function _validateDispatchData(data, row, availableBatches = []) {
     const input = row.querySelector('.js-dispense-recipient');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Please enter Recipient Infant / Mother name.');
+    await MilkModal.alert('Please enter Recipient Infant / Mother name.', 'Validation Required');
     return false;
   }
 
@@ -691,13 +713,13 @@ function _validateDispatchData(data, row, availableBatches = []) {
     const select = row.querySelector('.js-dispense-batch');
     select?.classList.add('cell-invalid');
     select?.focus();
-    alert('Please select a pasteurized batch to dispense from.');
+    await MilkModal.alert('Please select a pasteurized batch to dispense from.', 'Select Batch');
     return false;
   }
 
   const selectedBatch = availableBatches.find(b => b.id === data.batch_id);
   if (!selectedBatch) {
-    alert('Selected batch is not available in stock.');
+    await MilkModal.alert('Selected batch is not available in stock.', 'Out of Stock');
     return false;
   }
 
@@ -707,7 +729,7 @@ function _validateDispatchData(data, row, availableBatches = []) {
     const input = row.querySelector('.js-dispense-bags');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert('Quantity to dispense must be a whole positive number (minimum 1 bag).');
+    await MilkModal.alert('Quantity to dispense must be a whole positive number (minimum 1 bag).', 'Invalid Quantity');
     return false;
   }
 
@@ -717,7 +739,7 @@ function _validateDispatchData(data, row, availableBatches = []) {
     const input = row.querySelector('.js-dispense-bags');
     input?.classList.add('cell-invalid');
     input?.focus();
-    alert(`Cannot dispense ${bagsNum} bag(s). Batch ${selectedBatch.batch_number} only has ${maxAvail} bag(s) remaining in stock.`);
+    await MilkModal.alert(`Cannot dispense ${bagsNum} bag(s). Batch ${selectedBatch.batch_number} only has ${maxAvail} bag(s) remaining in stock.`, 'Insufficient Stock');
     return false;
   }
 

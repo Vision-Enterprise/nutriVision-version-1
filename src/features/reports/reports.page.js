@@ -8,6 +8,7 @@ import {
 } from './reports.service.js';
 import { exportToCSV } from './reports.export.js';
 import { showPrintPreview } from './reports.pdf.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 const MODULE = '[Reports]';
 const ARCHIVE_KEY = 'nv_report_archive';
@@ -159,7 +160,7 @@ async function _handleGenerate(format, isReplay = false) {
   const checkedRadio = _el.querySelector('input[name="report_model"]:checked');
   if (!checkedRadio) {
     console.error(`${MODULE} No report model selected`);
-    alert('Please select a report model.');
+    await SystemDialog.alert('Please select a report model.', 'Select Model');
     return;
   }
   const modelId = checkedRadio.value;
@@ -203,19 +204,19 @@ async function _handleGenerate(format, isReplay = false) {
       dataRes = await fetchAllocationBalances(filters);
     } else {
       console.error(`${MODULE} Unknown modelId:`, modelId);
-      alert('Unknown report model. Please select one.');
+      await SystemDialog.alert('Unknown report model. Please select one.', 'Invalid Model');
       return;
     }
 
     console.log(`${MODULE} data fetched, rows:`, dataRes?.data?.length ?? 'N/A', 'error:', dataRes?.error);
 
     if (dataRes.error) {
-      alert('Error fetching report data: ' + dataRes.error);
+      await SystemDialog.alert('Error fetching report data: ' + dataRes.error, 'Query Error');
       return;
     }
 
     if (!dataRes.data || dataRes.data.length === 0) {
-      alert('No data found for the selected filters.');
+      await SystemDialog.alert('No data found for the selected filters.', 'No Records Found');
       // Don't save to archive if empty
       return;
     }
@@ -248,7 +249,7 @@ async function _handleGenerate(format, isReplay = false) {
 
   } catch (err) {
     console.error(`${MODULE} _handleGenerate error:`, err);
-    alert('Unexpected error while generating report. Check console.');
+    await SystemDialog.alert('Unexpected error while generating report. Check console.', 'Report Generation Error');
   } finally {
     btns.forEach(b => (b.disabled = false));
   }
@@ -314,8 +315,14 @@ function _refreshArchiveTable() {
   const clearBtn = _el?.querySelector('#btn-clear-archive');
   if (clearBtn) {
     clearBtn.style.display = history.length > 0 ? 'inline-flex' : 'none';
-    clearBtn.onclick = () => {
-      if (!confirm(`Clear all ${history.length} archived reports from history?`)) return;
+    clearBtn.onclick = async () => {
+      const confirmed = await SystemDialog.confirm(
+        `Clear all ${history.length} archived reports from history?`,
+        'Clear Report Archive',
+        'Clear All',
+        true
+      );
+      if (!confirmed) return;
       localStorage.removeItem(ARCHIVE_KEY);
       _refreshArchiveTable();
     };
@@ -337,12 +344,18 @@ function _refreshArchiveTable() {
 
   // Re-bind delete individual report buttons
   tbody.querySelectorAll('.btn-delete-report').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const item = history.find(h => h.id === id);
       const name = item?.name || 'this report';
-      if (!confirm(`Remove "${name}" from report archive history?`)) return;
+      const confirmed = await SystemDialog.confirm(
+        `Remove "${name}" from report archive history?`,
+        'Remove Archived Report',
+        'Remove',
+        true
+      );
+      if (!confirmed) return;
 
       const updated = history.filter(h => h.id !== id);
       localStorage.setItem(ARCHIVE_KEY, JSON.stringify(updated));
