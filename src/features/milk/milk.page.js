@@ -19,8 +19,23 @@ import {
   getFreezerShelves,
   addFreezerShelf,
   removeFreezerShelf,
-  getFefoPriorityBatch
+  getFefoPriorityBatch,
+  getFreezers,
+  saveFreezers,
+  getActiveFreezerId,
+  setActiveFreezerId,
+  addFreezer,
+  renameFreezer,
+  deleteFreezer,
+  addShelfToFreezer,
+  removeShelfFromFreezer
 } from './milk.service.js';
+
+import {
+  openEditBatchModal,
+  openDeleteBatchModal,
+  openDispenseModal
+} from './milk.modal.js';
 
 import {
   renderMilkPageSkeleton,
@@ -53,6 +68,10 @@ let _donations = [];
 let _dispatches = [];
 let _metrics = null;
 let _shelves = [];
+let _freezers = [];
+let _activeFreezerId = null;
+let _selectedBatch = null;
+let _selectedShelf = null;
 
 // In-memory draft rows waiting to be saved
 let _draftDonations = [];
@@ -74,6 +93,8 @@ export async function renderMilkPage(profile) {
   content.innerHTML = renderMilkPageSkeleton();
 
   _bindTabHeaderEvents();
+  _freezers = getFreezers();
+  _activeFreezerId = getActiveFreezerId();
   _shelves = getFreezerShelves();
   await _loadData();
 }
@@ -130,7 +151,19 @@ function _renderActiveSheet() {
     _bindDonationsSheetEvents();
     _setupCellBarSync();
   } else if (_activeTab === 'batches') {
-    contentArea.innerHTML = renderBatchesSheet(_batches, _draftBatches, _batchesSubView, _shelves, fefoBatch);
+    contentArea.innerHTML = renderBatchesSheet(
+      _batches,
+      _draftBatches,
+      _batchesSubView,
+      _shelves,
+      fefoBatch,
+      {
+        freezers: _freezers,
+        activeFreezerId: _activeFreezerId,
+        selectedBatch: _selectedBatch,
+        selectedShelf: _selectedShelf
+      }
+    );
     _bindBatchesSheetEvents();
     if (_batchesSubView === 'table') {
       _setupCellBarSync();
@@ -466,35 +499,195 @@ function _bindBatchesSheetEvents() {
     btn.addEventListener('click', () => jumpToDispense(btn.dataset.batchId));
   });
 
-  // Virtual Freezer: Add Shelf
-  document.getElementById('btn-add-shelf')?.addEventListener('click', async () => {
-    const nextShelfNum = _shelves.length;
-    const name = await MilkModal.prompt(
-      'Enter name for the new freezer shelf:',
-      `Shelf ${nextShelfNum}`,
-      'Add Freezer Shelf',
-      'Add Shelf'
-    );
-    if (name && name.trim()) {
-      _shelves = addFreezerShelf(name.trim());
-      _renderActiveSheet();
-    }
-  });
+  // ── Digital Twin Freezer Events ───────────────────────────────────────────
+  if (_batchesSubView === 'freezer') {
+    // Top bar: Add New Batch -> switch to table view and add new draft row
+    document.getElementById('btn-freezer-add-batch')?.addEventListener('click', async () => {
+      _batchesSubView = 'table';
+      const nextBatch = await getNextBatchNumber();
+      const today = new Date().toISOString().split('T')[0];
+      const sixMonths = new Date();
+      sixMonths.setMonth(sixMonths.getMonth() + 6);
 
-  // Virtual Freezer: Remove Last Shelf
-  document.getElementById('btn-remove-shelf')?.addEventListener('click', async () => {
-    const lastShelf = _shelves[_shelves.length - 1];
-    const confirmed = await MilkModal.confirm(
-      `Remove "${lastShelf}"? (Active batches on this shelf should be relocated first)`,
-      'Remove Freezer Shelf',
-      'Remove Shelf',
-      true
-    );
-    if (confirmed) {
-      _shelves = removeFreezerShelf(lastShelf);
+      _draftBatches.unshift({
+        batch_number: nextBatch,
+        date_pasteurized: today,
+        expiry_date: sixMonths.toISOString().split('T')[0],
+        freezer_shelf: _shelves[0] || 'Shelf 1',
+        total_bags: ''
+      });
       _renderActiveSheet();
-    }
-  });
+    });
+
+    // Freezer Tabs: Switch between freezers
+    document.querySelectorAll('.js-switch-freezer').forEach(tabBtn => {
+      tabBtn.addEventListener('click', (e) => {
+        if (e.target.closest('.js-rename-freezer')) return;
+        const fId = tabBtn.dataset.freezerId;
+        if (fId && fId !== _activeFreezerId) {
+          _activeFreezerId = fId;
+          setActiveFreezerId(fId);
+          _shelves = getFreezerShelves();
+          _selectedBatch = null;
+          _selectedShelf = null;
+          _renderActiveSheet();
+        }
+      });
+    });
+
+    // Freezer Tabs: Add New Freezer button
+    document.getElementById('btn-add-freezer')?.addEventListener('click', async () => {
+      const defaultName = `Freezer ${String.fromCharCode(65 + _freezers.length)}`;
+      const name = await MilkModal.prompt(
+        'Enter a name for the new cold-chain freezer unit:',
+        defaultName,
+        'Add New Freezer',
+        'Create Freezer'
+      );
+      if (name && name.trim()) {
+        _freezers = addFreezer(name.trim());
+        _activeFreezerId = getActiveFreezerId();
+        _shelves = getFreezerShelves();
+        _selectedBatch = null;
+        _selectedShelf = null;
+        _renderActiveSheet();
+      }
+    });
+
+    // Rename Freezer (works for both current and any tab)
+    document.querySelectorAll('.js-rename-freezer').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const fId = btn.dataset.freezerId || _activeFreezerId;
+        const targetFreezer = _freezers.find(f => f.id === fId);
+        const newName = await MilkModal.prompt(
+          'Enter new name for this cold-chain freezer:',
+          targetFreezer ? targetFreezer.name : '',
+          'Rename Freezer',
+          'Save Name'
+        );
+        if (newName && newName.trim() && targetFreezer && newName.trim() !== targetFreezer.name) {
+          _freezers = renameFreezer(fId, newName.trim());
+          _renderActiveSheet();
+        }
+      });
+    });
+
+    // Shelf click: select shelf and update system status + details card
+    document.querySelectorAll('.js-freezer-shelf').forEach(shelfEl => {
+      shelfEl.addEventListener('click', (e) => {
+        if (e.target.closest('.js-freezer-batch-box')) return;
+        const shelfName = shelfEl.dataset.shelfName;
+        if (_selectedShelf === shelfName && !_selectedBatch) {
+          _selectedShelf = null;
+        } else {
+          _selectedShelf = shelfName;
+          _selectedBatch = null;
+        }
+        _renderActiveSheet();
+      });
+    });
+
+    // Batch Box click: select batch and update system status + details card
+    document.querySelectorAll('.js-freezer-batch-box').forEach(boxEl => {
+      boxEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const batchId = boxEl.dataset.batchId;
+        const found = _batches.find(b => b.id === batchId);
+        if (found) {
+          _selectedBatch = found;
+          _selectedShelf = found.freezer_shelf;
+          _renderActiveSheet();
+        }
+      });
+    });
+
+    // Edit Batch (from Detail Card)
+    document.querySelectorAll('.js-freezer-edit-batch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const batchId = btn.dataset.batchId;
+        const batch = _batches.find(b => b.id === batchId);
+        if (batch) {
+          openEditBatchModal({
+            batch,
+            shelves: _shelves,
+            profile: _profile,
+            onSave: async () => {
+              await _loadData();
+              _selectedBatch = _batches.find(b => b.id === batchId) || null;
+              _renderActiveSheet();
+            }
+          });
+        }
+      });
+    });
+
+    // Delete Batch (from Detail Card)
+    document.querySelectorAll('.js-freezer-delete-batch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const batchId = btn.dataset.batchId;
+        const batch = _batches.find(b => b.id === batchId);
+        if (batch) {
+          openDeleteBatchModal({
+            batch,
+            profile: _profile,
+            onDelete: async () => {
+              _selectedBatch = null;
+              await _loadData();
+            }
+          });
+        }
+      });
+    });
+
+    // Dispense Bags (from Detail Card)
+    document.querySelectorAll('.js-freezer-dispense-batch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const batchId = btn.dataset.batchId;
+        openDispenseModal({
+          preselectedBatchId: batchId,
+          onSave: async () => {
+            await _loadData();
+            _selectedBatch = _batches.find(b => b.id === batchId) || null;
+            _renderActiveSheet();
+          }
+        });
+      });
+    });
+
+    // Add Shelf to current freezer
+    document.getElementById('btn-freezer-add-shelf')?.addEventListener('click', async () => {
+      const nextNum = _shelves.length + 1;
+      const name = await MilkModal.prompt(
+        'Enter name for the new shelf:',
+        `Shelf ${nextNum}`,
+        'Add Shelf',
+        'Add Shelf'
+      );
+      if (name && name.trim()) {
+        _shelves = addShelfToFreezer(_activeFreezerId, name.trim());
+        _freezers = getFreezers();
+        _renderActiveSheet();
+      }
+    });
+
+    // Remove Last Shelf from current freezer
+    document.getElementById('btn-freezer-remove-shelf')?.addEventListener('click', async () => {
+      const lastShelf = _shelves[_shelves.length - 1];
+      const confirmed = await MilkModal.confirm(
+        `Remove "${lastShelf}"? (Active batches on this shelf should be relocated first)`,
+        'Remove Shelf',
+        'Remove Shelf',
+        true
+      );
+      if (confirmed) {
+        _shelves = removeShelfFromFreezer(_activeFreezerId);
+        _freezers = getFreezers();
+        if (_selectedShelf === lastShelf) _selectedShelf = null;
+        _renderActiveSheet();
+      }
+    });
+  }
 }
 
 function _collectBatchRowData(row) {

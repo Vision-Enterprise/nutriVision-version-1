@@ -465,9 +465,9 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   border: 1px solid #e2e8f0;
 }
 
-/* ── Virtual Freezer Map (Option B Visualization) ─────────────────── */
+/* ── Virtual Freezer Map — Carousel Layout ────────────────────────── */
 .freezer-workspace {
-  padding: 24px;
+  padding: 20px 24px 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -475,19 +475,17 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 
 .freezer-cabinet-card {
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px solid #cbd5e1;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.06), inset 0 2px 4px rgba(255,255,255,0.8);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.07), inset 0 2px 4px rgba(255,255,255,0.8);
   overflow: hidden;
-  max-width: 900px;
-  margin: 0 auto;
   width: 100%;
 }
 
 .freezer-cabinet-topbar {
   background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
   color: #ffffff;
-  padding: 14px 20px;
+  padding: 13px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -502,128 +500,515 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   letter-spacing: 0.02em;
 }
 
-.freezer-shelves-list {
-  padding: 16px;
+/* ── Digital Twin Freezer — Side-by-Side & Vertical Scroll ───────── */
+.digital-twin-workspace {
+  padding: 16px 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
-.freezer-shelf-row {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 18px;
+.digital-twin-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
+  flex-wrap: wrap;
 }
 
-.freezer-shelf-row:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-/* Shelf holding the earliest expiring batch — FEFO highlight */
-.freezer-shelf-row--fefo {
-  border: 2px solid #f59e0b !important;
-  background: linear-gradient(90deg, #fffbeb 0%, #ffffff 100%) !important;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
-}
-
-.freezer-shelf-info {
+.digital-twin-title-group {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 220px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.freezer-shelf-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: #e0f2fe;
-  color: #0369a1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.freezer-shelf-row--fefo .freezer-shelf-icon {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.freezer-shelf-name {
+.digital-twin-title {
+  font-size: 20px;
   font-weight: 700;
-  font-size: 14px;
   color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.freezer-shelf-count {
-  font-size: 12px;
+.digital-twin-subtitle {
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
-.freezer-shelf-batches {
+/* Freezer tabs bar */
+.digital-twin-tabs-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  flex: 1;
+  padding-bottom: 4px;
 }
 
-.freezer-batch-pill {
+.digital-twin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.digital-twin-tab:hover {
+  background: #e2e8f0;
+}
+
+.digital-twin-tab--active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.digital-twin-tab-rename-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.8;
+  color: inherit;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.digital-twin-tab-rename-btn:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.25);
+}
+
+.digital-twin-add-freezer-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 7px 12px;
+  background: #ffffff;
+  border: 1.5px dashed #0284c7;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0284c7;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.fefo-star-badge {
+.digital-twin-add-freezer-btn:hover {
+  background: #f0f9ff;
+  border-style: solid;
+}
+
+/* 2-Column Split Grid */
+.digital-twin-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 480px) minmax(380px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .digital-twin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Visual Freezer Cabinet */
+.digital-twin-cabinet {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.digital-twin-cabinet-header {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 16px 20px;
+}
+
+.digital-twin-cabinet-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.digital-twin-cabinet-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.digital-twin-rename-inline-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fcd34d;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
-  animation: pulse 2s infinite;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+.digital-twin-rename-inline-btn:hover {
+  background: rgba(255,255,255,0.25);
+  color: #ffffff;
 }
 
-.freezer-shelf-controls {
+/* System Status Box */
+.digital-twin-status-box {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 14px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-/* Freezer Shelf Management Bar */
-.freezer-mgmt-bar {
+.digital-twin-status-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.digital-twin-status-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+  font-family: monospace;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* VERTICAL SCROLL PANE for Shelves */
+.digital-twin-shelves-pane {
+  max-height: 540px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.digital-twin-shelves-pane::-webkit-scrollbar {
+  width: 8px;
+}
+
+.digital-twin-shelves-pane::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.digital-twin-shelves-pane::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+  border: 2px solid #f1f5f9;
+}
+
+.digital-twin-shelves-pane::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Shelf Card */
+.digital-twin-shelf {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.digital-twin-shelf:hover {
+  border-color: #38bdf8;
+  background: #f8fafc;
+}
+
+.digital-twin-shelf--selected {
+  border-color: #0284c7 !important;
+  background: #f0f9ff !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+}
+
+.digital-twin-shelf--fefo {
+  border-color: #fcd34d;
+}
+
+.digital-twin-shelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.digital-twin-shelf-pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #e0f2fe;
+  color: #0369a1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.digital-twin-shelf-pill--priority {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.digital-twin-shelf-pill--newest {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
+.digital-twin-shelf-bags-count {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* 4-Slots Per Row Grid */
+.batch-boxes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.batch-box {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  user-select: none;
+}
+
+.batch-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.batch-box--selected {
+  border-color: #0284c7 !important;
+  background: #e0f2fe !important;
+  box-shadow: 0 0 0 2px #0284c7 !important;
+}
+
+.batch-box--normal {
+  border-color: #86efac;
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.batch-box--priority {
+  border-color: #fcd34d;
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.batch-box--low {
+  border-color: #fdba74;
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.batch-box__no {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.batch-box__bags {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.batch-box--empty {
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 8px;
+  min-height: 48px;
+  background: #fafafa;
+  opacity: 0.6;
+}
+
+/* Shelf Management Bar */
+.digital-twin-mgmt-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
+  gap: 10px;
+}
+
+/* Right Column: Detail Card */
+.digital-twin-details-card {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 400px;
+}
+
+.details-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.details-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.details-card-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.priority-pick-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1.5px solid #fcd34d;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Inner Details Box */
+.details-inner-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.details-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.details-field-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.details-field-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.details-field-val--batch {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: monospace;
+  color: #0284c7;
+}
+
+.details-field-val--qty {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.details-field-val--expiry {
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.details-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-outline-danger {
+  background: #ffffff;
+  border: 1.5px solid #fca5a5;
+  color: #dc2626;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn-outline-danger:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
 }
 
 /* ── Themed Modal with Blue Accents (Milk Bank & Cold-Chain) ───────── */

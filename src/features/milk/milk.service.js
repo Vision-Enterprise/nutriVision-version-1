@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../../core/supabase.js';
+import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 
 const MODULE = '[MilkBankService]';
 
@@ -333,7 +334,7 @@ export async function dispenseMilk({
 /**
  * Update freezer shelf location of a batch
  */
-export async function updateBatchShelf(batchId, newShelf) {
+export async function updateBatchShelf(batchId, newShelf, batchNumber = '', profile = null) {
   try {
     const { data, error } = await supabase
       .from('milk_batches')
@@ -346,6 +347,22 @@ export async function updateBatchShelf(batchId, newShelf) {
       .single();
 
     if (error) throw error;
+
+    // Log shelf movement to audit trail if profile provided
+    if (profile?.id) {
+      try {
+        await supabase.from('audit_logs').insert({
+          user_id:     profile.id,
+          action:      AUDIT_ACTIONS.MOVE_MILK_SHELF,
+          entity_type: 'milk_batch',
+          entity_id:   batchId,
+          description: `${profile.full_name || 'User'} moved milk batch "${batchNumber || data.batch_number}" to ${newShelf}.`
+        });
+      } catch (auditErr) {
+        console.warn(`${MODULE} Audit log failed for move shelf:`, auditErr);
+      }
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error(`${MODULE} updateBatchShelf error:`, err);
@@ -353,53 +370,224 @@ export async function updateBatchShelf(batchId, newShelf) {
   }
 }
 
-// ── Shelf Customization (Add / Subtract / Persist) ──────────────────────────
-
-const SHELVES_KEY = 'nutrivision_milk_shelves_v1';
-
-export function getFreezerShelves() {
+/**
+ * Update full milk batch attributes (from Edit Modal)
+ */
+export async function updateMilkBatch(batchId, updates, profile = null) {
   try {
-    const stored = localStorage.getItem(SHELVES_KEY);
+    const totalBags = parseInt(updates.total_bags, 10);
+    const remainingBags = updates.remaining_bags !== undefined ? parseInt(updates.remaining_bags, 10) : totalBags;
+
+    const payload = {
+      date_pasteurized: updates.date_pasteurized,
+      expiry_date: updates.expiry_date,
+      total_bags: totalBags,
+      remaining_bags: remainingBags,
+      freezer_shelf: updates.freezer_shelf,
+      remarks: updates.remarks?.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.batch_number) {
+      payload.batch_number = updates.batch_number.trim().toUpperCase();
+    }
+
+    const { data, error } = await supabase
+      .from('milk_batches')
+      .update(payload)
+      .eq('id', batchId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Audit log
+    if (profile?.id) {
+      try {
+        await supabase.from('audit_logs').insert({
+          user_id:     profile.id,
+          action:      AUDIT_ACTIONS.UPDATE_MILK_BATCH,
+          entity_type: 'milk_batch',
+          entity_id:   batchId,
+          description: `${profile.full_name || 'User'} edited milk batch "${data.batch_number}" (${data.freezer_shelf}, ${data.remaining_bags} bags).`
+        });
+      } catch (auditErr) {
+        console.warn(`${MODULE} Audit log failed for batch edit:`, auditErr);
+      }
+    }
+
+    return { data, error: null };
+  } catch (err) {
+    console.error(`${MODULE} updateMilkBatch error:`, err);
+    return { data: null, error: err.message || 'Failed to update batch details.' };
+  }
+}
+
+/**
+ * Delete a milk batch (from Delete Modal)
+ */
+export async function deleteMilkBatch(batchId, batchNumber, profile = null) {
+  try {
+    const { error } = await supabase
+      .from('milk_batches')
+      .delete()
+      .eq('id', batchId);
+
+    if (error) throw error;
+
+    // Audit log
+    if (profile?.id) {
+      try {
+        await supabase.from('audit_logs').insert({
+          user_id:     profile.id,
+          action:      AUDIT_ACTIONS.DELETE_MILK_BATCH,
+          entity_type: 'milk_batch',
+          entity_id:   batchId,
+          description: `${profile.full_name || 'User'} deleted milk batch "${batchNumber || batchId}".`
+        });
+      } catch (auditErr) {
+        console.warn(`${MODULE} Audit log failed for batch delete:`, auditErr);
+      }
+    }
+
+    return { error: null };
+  } catch (err) {
+    console.error(`${MODULE} deleteMilkBatch error:`, err);
+    return { error: err.message || 'Failed to delete milk batch.' };
+  }
+}
+
+// ── Multi-Freezer & Shelf Customization ──────────────────────────────────────
+
+const FREEZERS_KEY = 'nutrivision_milk_freezers_v2';
+const ACTIVE_FREEZER_KEY = 'nutrivision_active_freezer_v2';
+
+const DEFAULT_FREEZERS = [
+  {
+    id: 'freezer-1',
+    name: 'Upright Freezer A',
+    shelves: ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4', 'Shelf 5', 'Shelf 6', 'Shelf 7']
+  }
+];
+
+export function getFreezers() {
+  try {
+    const stored = localStorage.getItem(FREEZERS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {
-    console.warn(`${MODULE} getFreezerShelves parse error:`, e);
+    console.warn(`${MODULE} getFreezers parse error:`, e);
   }
-  return [...SHELF_LOCATIONS];
+  return JSON.parse(JSON.stringify(DEFAULT_FREEZERS));
+}
+
+export function saveFreezers(freezers) {
+  try {
+    localStorage.setItem(FREEZERS_KEY, JSON.stringify(freezers));
+  } catch (e) {
+    console.error(`${MODULE} saveFreezers error:`, e);
+  }
+}
+
+export function getActiveFreezerId() {
+  const freezers = getFreezers();
+  const stored = localStorage.getItem(ACTIVE_FREEZER_KEY);
+  if (stored && freezers.some(f => f.id === stored)) {
+    return stored;
+  }
+  return freezers[0]?.id || 'freezer-1';
+}
+
+export function setActiveFreezerId(id) {
+  localStorage.setItem(ACTIVE_FREEZER_KEY, id);
+}
+
+export function addFreezer(name) {
+  const freezers = getFreezers();
+  const trimmedName = name?.trim() || `Freezer ${String.fromCharCode(65 + freezers.length)}`;
+  const newFreezer = {
+    id: `freezer-${Date.now()}`,
+    name: trimmedName,
+    shelves: ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4']
+  };
+  freezers.push(newFreezer);
+  saveFreezers(freezers);
+  setActiveFreezerId(newFreezer.id);
+  return freezers;
+}
+
+export function renameFreezer(id, newName) {
+  const freezers = getFreezers();
+  const freezer = freezers.find(f => f.id === id);
+  if (freezer && newName?.trim()) {
+    freezer.name = newName.trim();
+    saveFreezers(freezers);
+  }
+  return freezers;
+}
+
+export function deleteFreezer(id) {
+  let freezers = getFreezers();
+  if (freezers.length <= 1) return freezers; // Keep at least one freezer
+  freezers = freezers.filter(f => f.id !== id);
+  saveFreezers(freezers);
+  setActiveFreezerId(freezers[0].id);
+  return freezers;
+}
+
+export function addShelfToFreezer(freezerId, customName) {
+  const freezers = getFreezers();
+  const freezer = freezers.find(f => f.id === freezerId) || freezers[0];
+  if (!freezer) return getFreezerShelves();
+
+  const name = customName?.trim() || `Shelf ${freezer.shelves.length + 1}`;
+  if (!freezer.shelves.includes(name)) {
+    freezer.shelves.push(name);
+    saveFreezers(freezers);
+  }
+  return freezer.shelves;
+}
+
+export function removeShelfFromFreezer(freezerId, shelfName) {
+  const freezers = getFreezers();
+  const freezer = freezers.find(f => f.id === freezerId) || freezers[0];
+  if (!freezer || freezer.shelves.length <= 2) return freezer?.shelves || [];
+
+  if (shelfName) {
+    freezer.shelves = freezer.shelves.filter(s => s !== shelfName);
+  } else {
+    freezer.shelves.pop();
+  }
+  saveFreezers(freezers);
+  return freezer.shelves;
+}
+
+// Backward-compatible shelf functions
+export function getFreezerShelves() {
+  const activeId = getActiveFreezerId();
+  const freezers = getFreezers();
+  const active = freezers.find(f => f.id === activeId) || freezers[0];
+  return active ? active.shelves : [...SHELF_LOCATIONS];
 }
 
 export function saveFreezerShelves(shelves) {
-  try {
-    localStorage.setItem(SHELVES_KEY, JSON.stringify(shelves));
-  } catch (e) {
-    console.error(`${MODULE} saveFreezerShelves error:`, e);
+  const activeId = getActiveFreezerId();
+  const freezers = getFreezers();
+  const active = freezers.find(f => f.id === activeId) || freezers[0];
+  if (active) {
+    active.shelves = shelves;
+    saveFreezers(freezers);
   }
 }
 
 export function addFreezerShelf(customName) {
-  const current = getFreezerShelves();
-  const name = customName?.trim() || `Shelf ${current.length}`;
-  if (!current.includes(name)) {
-    // Insert before Bottom Bin if Bottom Bin is last
-    const bottomIndex = current.findIndex(s => s.toLowerCase().includes('bottom'));
-    if (bottomIndex !== -1) {
-      current.splice(bottomIndex, 0, name);
-    } else {
-      current.push(name);
-    }
-    saveFreezerShelves(current);
-  }
-  return current;
+  return addShelfToFreezer(getActiveFreezerId(), customName);
 }
 
 export function removeFreezerShelf(shelfName) {
-  let current = getFreezerShelves();
-  if (current.length <= 2) return current; // Keep at least 2 shelves
-  current = current.filter(s => s !== shelfName);
-  saveFreezerShelves(current);
-  return current;
+  return removeShelfFromFreezer(getActiveFreezerId(), shelfName);
 }
 
 // ── Bulk Insert Helpers ─────────────────────────────────────────────────────

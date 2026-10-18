@@ -9,6 +9,8 @@ import {
   DISPENSE_INDICATIONS,
   getNextBatchNumber,
   createMilkBatch,
+  updateMilkBatch,
+  deleteMilkBatch,
   createMilkDonation,
   dispenseMilk,
   fetchMilkBatches
@@ -620,3 +622,252 @@ export async function openDispenseModal({ preselectedBatchId = null, onSave }) {
     }
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODAL 4: Edit Pasteurized Batch
+// ════════════════════════════════════════════════════════════════════════════
+export function openEditBatchModal({ batch, shelves = [], profile, onSave }) {
+  if (!batch) return;
+
+  const shelfList = (shelves && shelves.length > 0) ? shelves : SHELF_LOCATIONS;
+  const currentShelf = batch.freezer_shelf || shelfList[0] || 'Shelf 1';
+
+  const shelfOptions = shelfList.map(s =>
+    `<option value="${s}" ${s === currentShelf ? 'selected' : ''}>${s}</option>`
+  ).join('');
+
+  const header = `
+    <div style="display:flex;align-items:flex-start;gap:var(--space-4);">
+      ${_iconCircle('edit_document')}
+      <div>
+        <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin:0;">
+          Edit Batch ${batch.batch_number}
+        </h2>
+        <p style="font-size:var(--font-size-sm);color:var(--color-text-muted);margin:2px 0 0;">
+          Update batch quantities, dates, or shelf position.
+        </p>
+      </div>
+    </div>
+    ${_closeBtn('edit-batch-close-btn')}
+  `;
+
+  const body = `
+    ${_errorBox('edit-batch-error-box')}
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-batch-no">Batch Number</label>
+        <input id="input-edit-batch-no" type="text" class="form-input"
+               value="${batch.batch_number || ''}" required
+               style="font-family:monospace;font-weight:700;letter-spacing:0.05em;color:${ICE_BLUE_ICON};">
+      </div>
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-date-past">Date Pasteurized</label>
+        <input id="input-edit-date-past" type="date" class="form-input"
+               value="${batch.date_pasteurized || ''}" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-total-bags">Initial Bags</label>
+        <input id="input-edit-total-bags" type="number" class="form-input" min="1"
+               value="${batch.total_bags || 1}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-remaining-bags">Remaining Bags</label>
+        <input id="input-edit-remaining-bags" type="number" class="form-input" min="0"
+               value="${batch.remaining_bags !== undefined ? batch.remaining_bags : (batch.total_bags || 1)}" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-shelf">Freezer Shelf</label>
+        <select id="input-edit-shelf" class="form-select" required>
+          ${shelfOptions}
+        </select>
+        <span class="form-hint">Shelf location inside cold-chain freezer</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label form-label--required" for="input-edit-expiry-date">Expiration Date</label>
+        <input id="input-edit-expiry-date" type="date" class="form-input"
+               value="${batch.expiry_date || ''}" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="input-edit-batch-remarks">Remarks / Donor Pool Notes</label>
+      <input id="input-edit-batch-remarks" type="text" class="form-input"
+             value="${batch.remarks || ''}" placeholder="e.g. Pooled from donors 25-185">
+    </div>
+  `;
+
+  const footer = `
+    <button id="edit-batch-cancel-btn" class="btn btn-ghost">Cancel</button>
+    <button id="edit-batch-submit-btn" class="btn btn-primary"
+            style="background:${ICE_BLUE_BTN};border-color:${ICE_BLUE_BTN};"
+            onmouseover="this.style.background='${ICE_BLUE_BTN_HOVER}';this.style.borderColor='${ICE_BLUE_BTN_HOVER}'"
+            onmouseout="this.style.background='${ICE_BLUE_BTN}';this.style.borderColor='${ICE_BLUE_BTN}'">
+      <span class="icon" style="font-size:18px;">save</span>
+      Save Changes
+    </button>
+  `;
+
+  const overlay = _mount('milk-modal-overlay', _shell('540px', header, body, footer));
+
+  overlay.querySelector('#edit-batch-close-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
+  overlay.querySelector('#edit-batch-cancel-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) _destroy('milk-modal-overlay'); });
+
+  overlay.querySelector('#edit-batch-submit-btn').addEventListener('click', async () => {
+    const errorBox  = overlay.querySelector('#edit-batch-error-box');
+    const submitBtn = overlay.querySelector('#edit-batch-submit-btn');
+    errorBox.style.display = 'none';
+
+    const batchNo   = overlay.querySelector('#input-edit-batch-no').value.trim();
+    const datePast  = overlay.querySelector('#input-edit-date-past').value;
+    const totalBags = overlay.querySelector('#input-edit-total-bags').value;
+    const remBags   = overlay.querySelector('#input-edit-remaining-bags').value;
+    const shelf     = overlay.querySelector('#input-edit-shelf').value;
+    const expiry    = overlay.querySelector('#input-edit-expiry-date').value;
+    const remarks   = overlay.querySelector('#input-edit-batch-remarks').value;
+
+    if (!batchNo || !datePast || !totalBags || !expiry) {
+      errorBox.textContent = 'Please fill in all required fields.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    if (parseInt(remBags, 10) > parseInt(totalBags, 10)) {
+      errorBox.textContent = 'Remaining bags cannot exceed total bags.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+
+    const { error } = await updateMilkBatch(batch.id, {
+      batch_number: batchNo,
+      date_pasteurized: datePast,
+      expiry_date: expiry,
+      total_bags: totalBags,
+      remaining_bags: remBags,
+      freezer_shelf: shelf,
+      remarks
+    }, profile);
+
+    if (error) {
+      errorBox.textContent = error;
+      errorBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span class="icon" style="font-size:18px;">save</span> Save Changes';
+    } else {
+      _destroy('milk-modal-overlay');
+      if (onSave) onSave();
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODAL 5: Delete Pasteurized Batch (Confirmation with Audit Warning)
+// ════════════════════════════════════════════════════════════════════════════
+export function openDeleteBatchModal({ batch, profile, onDelete }) {
+  if (!batch) return;
+
+  const hasStock = (batch.remaining_bags || 0) > 0;
+
+  const header = `
+    <div style="display:flex;align-items:flex-start;gap:var(--space-4);">
+      <div style="width:44px;height:44px;border-radius:var(--radius-full);flex-shrink:0;
+                  background:#fee2e2;display:flex;align-items:center;justify-content:center;">
+        <span class="icon" style="color:#dc2626;font-size:22px;">delete_forever</span>
+      </div>
+      <div>
+        <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin:0;color:#991b1b;">
+          Delete Batch ${batch.batch_number}
+        </h2>
+        <p style="font-size:var(--font-size-sm);color:var(--color-text-muted);margin:2px 0 0;">
+          Confirm removal of this pasteurized batch from storage.
+        </p>
+      </div>
+    </div>
+    ${_closeBtn('del-batch-close-btn')}
+  `;
+
+  const body = `
+    ${_errorBox('del-batch-error-box')}
+
+    <div style="background:var(--color-surface-alt);border:1px solid var(--color-border);
+                border-radius:var(--radius-lg);padding:14px 18px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:var(--color-text-muted);">Batch Number:</span>
+        <strong style="font-family:monospace;color:${ICE_BLUE_ICON};">${batch.batch_number}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:var(--color-text-muted);">Current Location:</span>
+        <strong>${batch.freezer_shelf || 'Shelf 1'}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:var(--color-text-muted);">Current In Stock:</span>
+        <strong style="color:${hasStock ? '#b45309' : 'var(--color-text)'};">${batch.remaining_bags || 0} Bags</strong>
+      </div>
+    </div>
+
+    ${hasStock ? `
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius-md);
+                  padding:12px 14px;display:flex;align-items:flex-start;gap:10px;color:#92400e;font-size:13px;">
+        <span class="icon" style="color:#d97706;font-size:20px;flex-shrink:0;">warning</span>
+        <div>
+          <strong>Warning: Active Inventory</strong>
+          <div style="margin-top:2px;">
+            This batch currently has <strong>${batch.remaining_bags} sealed bags</strong> stored in the freezer. Deleting will permanently remove them from inventory counts.
+          </div>
+        </div>
+      </div>
+    ` : ''}
+
+    <div style="font-size:12px;color:var(--color-text-muted);display:flex;align-items:center;gap:6px;">
+      <span class="icon" style="font-size:15px;">history</span>
+      <span>This deletion will be permanently logged in the system audit trail under <strong>${profile?.full_name || 'your account'}</strong>.</span>
+    </div>
+  `;
+
+  const footer = `
+    <button id="del-batch-cancel-btn" class="btn btn-ghost">Cancel</button>
+    <button id="del-batch-submit-btn" class="btn btn-danger"
+            style="background:#dc2626;border-color:#dc2626;color:#ffffff;display:flex;align-items:center;gap:6px;">
+      <span class="icon" style="font-size:18px;">delete</span>
+      Delete Batch
+    </button>
+  `;
+
+  const overlay = _mount('milk-modal-overlay', _shell('480px', header, body, footer));
+
+  overlay.querySelector('#del-batch-close-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
+  overlay.querySelector('#del-batch-cancel-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) _destroy('milk-modal-overlay'); });
+
+  overlay.querySelector('#del-batch-submit-btn').addEventListener('click', async () => {
+    const errorBox  = overlay.querySelector('#del-batch-error-box');
+    const submitBtn = overlay.querySelector('#del-batch-submit-btn');
+    errorBox.style.display = 'none';
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Deleting…';
+
+    const { error } = await deleteMilkBatch(batch.id, batch.batch_number, profile);
+
+    if (error) {
+      errorBox.textContent = error;
+      errorBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span class="icon" style="font-size:18px;">delete</span> Delete Batch';
+    } else {
+      _destroy('milk-modal-overlay');
+      if (onDelete) onDelete();
+    }
+  });
+}
+
