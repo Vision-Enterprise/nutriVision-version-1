@@ -288,7 +288,35 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 8px 8px;
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+/* Enlarge horizontal scrollbar for easy navigation & click-drag */
+.table-responsive::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+  border: 2px solid #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:active {
+  background: #0369a1;
 }
 
 .milk-sheet-table {

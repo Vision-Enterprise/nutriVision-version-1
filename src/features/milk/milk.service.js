@@ -34,8 +34,8 @@ export async function fetchMilkBatches() {
     const { data, error } = await supabase
       .from('milk_batches')
       .select('*')
-      .order('date_pasteurized', { ascending: false })
-      .order('batch_number', { ascending: false });
+      .order('date_pasteurized', { ascending: true })
+      .order('batch_number', { ascending: true });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -53,7 +53,8 @@ export async function fetchMilkDonations() {
     const { data, error } = await supabase
       .from('milk_donations')
       .select('*')
-      .order('arrival_date', { ascending: false });
+      .order('arrival_date', { ascending: true })
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -75,7 +76,8 @@ export async function fetchMilkDispatches() {
         dispensed_date, dispensed_at, released_by_name, remarks,
         milk_batches ( batch_number, freezer_shelf )
       `)
-      .order('dispensed_at', { ascending: false });
+      .order('dispensed_date', { ascending: true })
+      .order('dispensed_at', { ascending: true });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -208,7 +210,7 @@ export async function fetchMilkAuditLogs() {
         profiles ( full_name )
       `)
       .in('entity_type', ['milk_batch', 'milk_donation', 'milk_dispatch', 'cold_chain'])
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(300);
 
     if (error) throw error;

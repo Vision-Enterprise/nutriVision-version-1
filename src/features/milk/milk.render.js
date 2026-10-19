@@ -287,8 +287,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           </tr>
         </thead>
         <tbody>
-          ${draftHtml}
           ${savedHtml}
+          ${draftHtml}
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
@@ -331,6 +331,10 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
         </div>
 
         ${subView === 'table' ? `
+          <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button">
+            <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
+            Export Batches (PDF)
+          </button>
           <button id="btn-add-batch-row" class="btn btn-secondary btn-sm" type="button">
             <span class="icon icon--sm" aria-hidden="true">add</span>
             Add Batch Row
@@ -495,8 +499,8 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </tr>
         </thead>
         <tbody>
-          ${draftHtml}
           ${savedHtml}
+          ${draftHtml}
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
               <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
@@ -1067,6 +1071,10 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         <span class="milk-sheet-subtitle">Release of Pasteurized Milk to Infants</span>
       </div>
       <div class="milk-sheet-actions">
+        <button id="btn-export-dispenses-pdf" class="btn btn-secondary btn-sm" type="button">
+          <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
+          Export Ledger (PDF)
+        </button>
         <button id="btn-add-dispatch-row" class="btn btn-secondary btn-sm" type="button"
                 ${availableBatches.length === 0 ? 'disabled title="No stock available"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">add</span>
@@ -1097,8 +1105,8 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           </tr>
         </thead>
         <tbody>
-          ${draftHtml}
           ${savedHtml}
+          ${draftHtml}
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">

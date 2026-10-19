@@ -51,7 +51,11 @@ import {
   renderMilkAuditSheet
 } from './milk.render.js';
 
-import { showMilkIntakePrintPreview } from './milk.pdf.js';
+import {
+  showMilkIntakePrintPreview,
+  showMilkBatchesPrintPreview,
+  showMilkDispensingPrintPreview
+} from './milk.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 // ── Themed Modal Helper with Blue Accents for Milk Bank Module ────────────────
@@ -203,6 +207,18 @@ function _renderActiveSheet() {
     contentArea.innerHTML = renderMilkAuditSheet(_auditLogs, _auditFilter, _auditSearch);
     _bindAuditSheetEvents();
   }
+
+  _bindHorizontalScrollSupport();
+}
+
+function _bindHorizontalScrollSupport() {
+  document.querySelectorAll('.table-responsive').forEach(container => {
+    container.addEventListener('wheel', (e) => {
+      if (e.shiftKey) {
+        container.scrollLeft += e.deltaY;
+      }
+    }, { passive: true });
+  });
 }
 
 function _bindAuditSheetEvents() {
@@ -245,15 +261,33 @@ function _bindTabHeaderEvents() {
   });
 }
 
+/**
+ * Smoothly scroll ledger to bottom to reveal newly appended draft row
+ */
+function _scrollToBottomDraft() {
+  setTimeout(() => {
+    const tableWrap = document.querySelector('.table-responsive');
+    if (tableWrap) {
+      tableWrap.scrollTop = tableWrap.scrollHeight;
+    }
+    const draftInputs = document.querySelectorAll('.grid-row--draft input:not([disabled])');
+    if (draftInputs.length > 0) {
+      const firstInDraft = draftInputs[0];
+      firstInDraft.focus();
+      firstInDraft.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, 70);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // SHEET 1: Log of Milk Received (FM.002.00) Events
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDonationsSheetEvents() {
   const today = new Date().toISOString().split('T')[0];
 
-  // Add new draft row with default native date and time values
+  // Add new draft row at bottom of ledger (physical ledger style)
   document.getElementById('btn-add-donation-row')?.addEventListener('click', () => {
-    _draftDonations.unshift({
+    _draftDonations.push({
       donor_code: '',
       expression_date_notes: today,
       expression_time: '08:00',
@@ -266,6 +300,7 @@ function _bindDonationsSheetEvents() {
       transport_condition: ''
     });
     _renderActiveSheet();
+    _scrollToBottomDraft();
   });
 
   // Clear invalid outline on input
@@ -414,7 +449,12 @@ function _bindBatchesSheetEvents() {
     el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
-  // Table View: Add batch row
+  // Table View: Export Batches PDF
+  document.getElementById('btn-export-batches-pdf')?.addEventListener('click', () => {
+    showMilkBatchesPrintPreview(_batches);
+  });
+
+  // Table View: Add batch row at bottom of ledger
   document.getElementById('btn-add-batch-row')?.addEventListener('click', async () => {
     const nextBatch = await getNextBatchNumber();
     const today = new Date().toISOString().split('T')[0];
@@ -424,7 +464,7 @@ function _bindBatchesSheetEvents() {
     const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
     const defaultShelf = (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0]) || 'Shelf 1';
 
-    _draftBatches.unshift({
+    _draftBatches.push({
       batch_number: nextBatch,
       date_pasteurized: today,
       expiry_date: sixMonths.toISOString().split('T')[0],
@@ -432,6 +472,7 @@ function _bindBatchesSheetEvents() {
       total_bags: ''
     });
     _renderActiveSheet();
+    _scrollToBottomDraft();
   });
 
   // Dynamic freezer selection for draft rows: auto-assign next available shelf in selected freezer
@@ -587,7 +628,7 @@ function _bindBatchesSheetEvents() {
     _activeTab = 'dispense';
     const targetBatch = _batches.find(b => b.id === batchId);
     const defaultQty = targetBatch ? (targetBatch.remaining_bags || 1) : 1;
-    _draftDispatches.unshift({
+    _draftDispatches.push({
       dispensed_date: new Date().toISOString().split('T')[0],
       recipient_name: '',
       barangay: '',
@@ -603,12 +644,7 @@ function _bindBatchesSheetEvents() {
     });
 
     _renderActiveSheet();
-
-    // Auto-focus on recipient input for instant entry
-    setTimeout(() => {
-      const recipientInput = document.querySelector('.grid-row--draft .js-dispense-recipient');
-      if (recipientInput) recipientInput.focus();
-    }, 80);
+    _scrollToBottomDraft();
   };
 
   const dispenseFromShelf = (shelfName) => {
@@ -625,18 +661,17 @@ function _bindBatchesSheetEvents() {
     _activeTab = 'dispense';
     const today = new Date().toISOString().split('T')[0];
 
-    // Reverse iterate so unshifted rows appear in shelf order
+    // Push rows sequentially in shelf order at bottom of ledger
     const validBatches = targetShelf.batches.filter(item => item.batch && item.bags > 0);
-    for (let i = validBatches.length - 1; i >= 0; i--) {
-      const item = validBatches[i];
-      _draftDispatches.unshift({
+    validBatches.forEach(item => {
+      _draftDispatches.push({
         dispensed_date: today,
         recipient_name: '',
         barangay: '',
         batch_id: item.batch.id,
         bags_dispensed: item.bags
       });
-    }
+    });
 
     // Update active tab header UI
     document.querySelectorAll('.milk-tab').forEach(t => {
@@ -646,12 +681,7 @@ function _bindBatchesSheetEvents() {
     });
 
     _renderActiveSheet();
-
-    // Auto-focus first empty recipient input
-    setTimeout(() => {
-      const recipientInput = document.querySelector('.grid-row--draft .js-dispense-recipient');
-      if (recipientInput) recipientInput.focus();
-    }, 80);
+    _scrollToBottomDraft();
   };
 
   document.querySelectorAll('.js-quick-dispense-btn').forEach(btn => {
@@ -668,7 +698,7 @@ function _bindBatchesSheetEvents() {
 
   // ── Digital Twin Freezer Events ───────────────────────────────────────────
   if (_batchesSubView === 'freezer') {
-    // Top bar: Add New Batch -> switch to table view and add new draft row
+    // Top bar: Add New Batch -> switch to table view and add new draft row at bottom of ledger
     document.getElementById('btn-freezer-add-batch')?.addEventListener('click', async () => {
       _batchesSubView = 'table';
       const nextBatch = await getNextBatchNumber();
@@ -679,7 +709,7 @@ function _bindBatchesSheetEvents() {
       const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
       const defaultShelf = (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0]) || 'Shelf 1';
 
-      _draftBatches.unshift({
+      _draftBatches.push({
         batch_number: nextBatch,
         date_pasteurized: today,
         expiry_date: sixMonths.toISOString().split('T')[0],
@@ -687,6 +717,7 @@ function _bindBatchesSheetEvents() {
         total_bags: ''
       });
       _renderActiveSheet();
+      _scrollToBottomDraft();
     });
 
     // Freezer Tabs: Switch between freezers
@@ -1046,11 +1077,16 @@ function _bindDispatchesSheetEvents() {
     el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
+  // Export Dispensing Ledger PDF
+  document.getElementById('btn-export-dispenses-pdf')?.addEventListener('click', () => {
+    showMilkDispensingPrintPreview(_dispatches, _batches);
+  });
+
   document.getElementById('btn-add-dispatch-row')?.addEventListener('click', () => {
     const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
     const fefo = getFefoPriorityBatch(_batches) || available[0];
     const defaultQty = fefo ? (fefo.remaining_bags || 1) : 1;
-    _draftDispatches.unshift({
+    _draftDispatches.push({
       dispensed_date: new Date().toISOString().split('T')[0],
       recipient_name: '',
       barangay: '',
@@ -1058,6 +1094,7 @@ function _bindDispatchesSheetEvents() {
       bags_dispensed: defaultQty
     });
     _renderActiveSheet();
+    _scrollToBottomDraft();
   });
 
   // Save single dispatch row with strict validation

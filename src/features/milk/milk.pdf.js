@@ -1,16 +1,14 @@
 /**
- * Milk Bank — Official Intake Sheet Print Preview
- * Generates official Form MH.MNAO.FM.002.00 (LOG OF MILK RECEIVED)
- * Formatted precisely for A4 Landscape print/PDF export.
+ * Milk Bank — Official Print / PDF Export Generator
+ * Formatted precisely for A4 Landscape print/PDF export matching official paper forms.
  */
 
-export function showMilkIntakePrintPreview(donations = []) {
-  const dateStr = new Date().toISOString().split('T')[0];
-  const pdfTitle = `LOG_OF_MILK_RECEIVED_FM_002_00_${dateStr}`;
+/**
+ * Shared modal overlay for print preview
+ */
+function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
   const originalTitle = document.title;
-  document.title = pdfTitle;
-
-  const html = generateMilkIntakeReportHTML(donations);
+  document.title = pdfFilename;
 
   const overlay = document.createElement('div');
   overlay.id = 'milk-print-preview-overlay';
@@ -32,7 +30,7 @@ export function showMilkIntakePrintPreview(donations = []) {
         padding: 16px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
       ">
         <h3 style="font-size: 16px; font-weight: 600; margin: 0; color: #0f172a;">
-          Print Preview — Form MH.MNAO.FM.002.00 (LOG OF MILK RECEIVED)
+          ${escapeHtml(previewTitle)}
         </h3>
         <div style="display: flex; gap: 10px; align-items: center;">
           <button id="milk-preview-cancel" style="
@@ -64,7 +62,7 @@ export function showMilkIntakePrintPreview(donations = []) {
   const iframe = document.getElementById('milk-preview-iframe');
   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
   iframeDoc.open();
-  iframeDoc.write(html);
+  iframeDoc.write(htmlContent);
   iframeDoc.close();
 
   const cleanup = () => {
@@ -80,8 +78,17 @@ export function showMilkIntakePrintPreview(donations = []) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. LOG OF MILK RECEIVED (Form MH.MNAO.FM.002.00)
+// ─────────────────────────────────────────────────────────────────────────────
+export function showMilkIntakePrintPreview(donations = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const pdfTitle = `LOG_OF_MILK_RECEIVED_FM_002_00_${dateStr}`;
+  const html = generateMilkIntakeReportHTML(donations);
+  showPrintPreviewOverlay('Print Preview — Form MH.MNAO.FM.002.00 (LOG OF MILK RECEIVED)', pdfTitle, html);
+}
+
 function generateMilkIntakeReportHTML(donations = []) {
-  // Ensure at least 15 rows for authentic look like paper form
   const totalRows = Math.max(15, donations.length);
   const rowsHtml = [];
 
@@ -110,116 +117,16 @@ function generateMilkIntakeReportHTML(donations = []) {
     <head>
       <meta charset="UTF-8">
       <title>LOG OF MILK RECEIVED (MH.MNAO.FM.002.00)</title>
-      <style>
-        @page {
-          size: A4 landscape;
-          margin: 10mm 12mm 10mm 12mm;
-        }
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-          font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-          color: #000;
-        }
-        body {
-          background: #fff;
-          padding: 10px;
-          font-size: 11px;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 12px;
-          border-bottom: 1.5px solid #000;
-          padding-bottom: 8px;
-          position: relative;
-        }
-        .header h3 {
-          font-size: 11px;
-          font-weight: normal;
-          text-transform: uppercase;
-        }
-        .header h2 {
-          font-size: 13px;
-          font-weight: bold;
-          text-transform: uppercase;
-          margin: 2px 0;
-        }
-        .header h4 {
-          font-size: 12px;
-          font-weight: bold;
-        }
-        .header-meta {
-          font-size: 9.5px;
-          margin-top: 3px;
-        }
-        .form-title {
-          text-align: center;
-          font-size: 14px;
-          font-weight: bold;
-          text-decoration: underline;
-          margin: 12px 0 8px 0;
-        }
-        table.intake-grid {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 10px;
-        }
-        table.intake-grid th, table.intake-grid td {
-          border: 1px solid #000;
-          padding: 4px 5px;
-          height: 24px;
-        }
-        table.intake-grid th {
-          background-color: #f1f5f9;
-          font-weight: bold;
-          text-align: center;
-          vertical-align: middle;
-        }
-        .signatures {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 32px;
-          padding: 0 40px;
-          font-size: 11px;
-        }
-        .sig-block {
-          width: 280px;
-          text-align: center;
-        }
-        .sig-line {
-          border-bottom: 1px solid #000;
-          margin-bottom: 4px;
-          height: 35px;
-        }
-        .form-code {
-          position: fixed;
-          bottom: 10px;
-          right: 15px;
-          font-size: 9px;
-          border: 1px solid #000;
-          padding: 2px 6px;
-          font-weight: bold;
-        }
-      </style>
+      <style>${getBasePrintStyles()}</style>
     </head>
     <body>
-      <div class="header">
-        <h3>Province of Bukidnon</h3>
-        <h2>Municipality of Manolo Fortich</h2>
-        <h4>Municipal Nutrition Action Office</h4>
-        <div class="header-meta">
-          lgumanolofortich@yahoo.com &bull; manolofortich.com.ph &bull; 0917 729 3453
-        </div>
-      </div>
+      ${getHeaderHTML('LOG OF MILK RECEIVED')}
 
-      <div class="form-title">LOG OF MILK RECEIVED</div>
-
-      <table class="intake-grid">
+      <table class="report-grid">
         <thead>
           <tr>
             <th rowspan="2" style="width: 25px;">#</th>
-            <th rowspan="2" style="width: 110px;">Donor name</th>
+            <th rowspan="2" style="width: 110px;">Donor name / Code</th>
             <th colspan="1">Milk expression</th>
             <th colspan="2">Transport</th>
             <th rowspan="2" style="width: 90px;">Condition of milk when collected from donor</th>
@@ -241,23 +148,311 @@ function generateMilkIntakeReportHTML(donations = []) {
         </tbody>
       </table>
 
-      <div class="signatures">
-        <div class="sig-block">
-          <div style="text-align: left; margin-bottom: 2px;">Endorsed by:</div>
-          <div class="sig-line"></div>
-          <strong>Municipal Nutrition Action Officer</strong>
-        </div>
-
-        <div class="sig-block">
-          <div style="text-align: left; margin-bottom: 2px;">Noted by:</div>
-          <div class="sig-line"></div>
-          <strong>Rural Health Physician</strong>
-        </div>
-      </div>
-
+      ${getSignaturesHTML('Endorsed by:', 'Municipal Nutrition Action Officer', 'Noted by:', 'Rural Health Physician')}
       <div class="form-code">MH.MNAO.FM.002.00</div>
     </body>
     </html>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. PASTEURIZED BATCHES INVENTORY & FREEZER LOG
+// ─────────────────────────────────────────────────────────────────────────────
+export function showMilkBatchesPrintPreview(batches = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const pdfTitle = `PASTEURIZED_BATCHES_INVENTORY_${dateStr}`;
+  const html = generateMilkBatchesReportHTML(batches);
+  showPrintPreviewOverlay('Print Preview — Pasteurized Human Milk Batches & Freezer Log', pdfTitle, html);
+}
+
+function generateMilkBatchesReportHTML(batches = []) {
+  const totalRows = Math.max(15, batches.length);
+  const rowsHtml = [];
+  let totalBags = 0;
+  let remainingBags = 0;
+
+  batches.forEach(b => {
+    totalBags += parseInt(b.total_bags, 10) || 0;
+    remainingBags += parseInt(b.remaining_bags, 10) || 0;
+  });
+
+  for (let i = 0; i < totalRows; i++) {
+    const b = batches[i] || null;
+    let statusText = '';
+    if (b) {
+      statusText = (b.remaining_bags || 0) <= 0 ? 'Depleted' : `Available (${b.remaining_bags})`;
+    }
+
+    rowsHtml.push(`
+      <tr>
+        <td style="text-align: center;">${i + 1}.</td>
+        <td style="font-weight: 700; font-family: monospace;">${b ? escapeHtml(b.batch_number) : ''}</td>
+        <td style="text-align: center;">${b ? formatDate(b.date_pasteurized) : ''}</td>
+        <td style="text-align: center;">${b ? formatDate(b.expiry_date) : ''}</td>
+        <td>${b ? escapeHtml(b.freezer_shelf || 'Upright Freezer A') : ''}</td>
+        <td style="text-align: center;">${b ? b.total_bags : ''}</td>
+        <td style="text-align: center; font-weight: 700;">${b ? b.remaining_bags : ''}</td>
+        <td style="text-align: center;">${b ? escapeHtml(statusText) : ''}</td>
+        <td style="height: 24px;"></td>
+      </tr>
+    `);
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>PASTEURIZED MILK INVENTORY & FREEZER STORAGE LOG</title>
+      <style>${getBasePrintStyles()}</style>
+    </head>
+    <body>
+      ${getHeaderHTML('PASTEURIZED MILK INVENTORY &amp; FREEZER STORAGE LOG')}
+
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 10px; color: #334155;">
+        <span><strong>Total Batches:</strong> ${batches.length}</span>
+        <span><strong>Initial Total Bags:</strong> ${totalBags}</span>
+        <span><strong>Current Stock Remaining:</strong> ${remainingBags} bag(s)</span>
+        <span><strong>As of:</strong> ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+      </div>
+
+      <table class="report-grid">
+        <thead>
+          <tr>
+            <th style="width: 25px;">#</th>
+            <th style="width: 100px;">Batch No.</th>
+            <th style="width: 95px;">Date Pasteurized</th>
+            <th style="width: 95px;">Expiration Date</th>
+            <th style="width: 140px;">Cold-Chain Storage Location</th>
+            <th style="width: 65px; text-align: center;">Initial Bags</th>
+            <th style="width: 75px; text-align: center;">Remaining Bags</th>
+            <th style="width: 85px; text-align: center;">Batch Status</th>
+            <th style="width: 110px;">Verification Sign</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml.join('')}
+        </tbody>
+      </table>
+
+      ${getSignaturesHTML('Prepared by:', 'Milk Bank Technician / Encoder', 'Approved by:', 'Municipal Nutrition Action Officer')}
+      <div class="form-code">MH.MNAO.FM.003.00</div>
+    </body>
+    </html>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. BENEFICIARY MILK DISPENSING & ISSUANCE LEDGER
+// ─────────────────────────────────────────────────────────────────────────────
+export function showMilkDispensingPrintPreview(dispatches = [], batches = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const pdfTitle = `BENEFICIARY_MILK_DISPENSING_LEDGER_${dateStr}`;
+  const html = generateMilkDispensingReportHTML(dispatches);
+  showPrintPreviewOverlay('Print Preview — Beneficiary Milk Dispensing & Issuance Ledger', pdfTitle, html);
+}
+
+function generateMilkDispensingReportHTML(dispatches = []) {
+  const totalRows = Math.max(15, dispatches.length);
+  const rowsHtml = [];
+  let totalBagsDispensed = 0;
+
+  dispatches.forEach(d => {
+    totalBagsDispensed += parseInt(d.bags_dispensed, 10) || 0;
+  });
+
+  for (let i = 0; i < totalRows; i++) {
+    const d = dispatches[i] || null;
+    const batchNo = d?.milk_batches?.batch_number || '';
+    const shelfLoc = d?.milk_batches?.freezer_shelf || '';
+
+    rowsHtml.push(`
+      <tr>
+        <td style="text-align: center;">${i + 1}.</td>
+        <td style="text-align: center;">${d ? formatDate(d.dispensed_date) : ''}</td>
+        <td style="font-weight: 600;">${d ? escapeHtml(d.recipient_name) : ''}</td>
+        <td>${d ? escapeHtml(d.barangay || '') : ''}</td>
+        <td style="font-weight: 600; font-family: monospace;">${escapeHtml(batchNo)}</td>
+        <td style="font-size: 9px; color: #475569;">${escapeHtml(shelfLoc)}</td>
+        <td style="text-align: center; font-weight: 700;">${d ? `${d.bags_dispensed} bag(s)` : ''}</td>
+        <td>${d ? escapeHtml(d.released_by_name || 'Staff') : ''}</td>
+        <td style="height: 24px;"></td>
+      </tr>
+    `);
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>BENEFICIARY MILK DISPENSING & ISSUANCE LEDGER</title>
+      <style>${getBasePrintStyles()}</style>
+    </head>
+    <body>
+      ${getHeaderHTML('BENEFICIARY MILK DISPENSING &amp; ISSUANCE LEDGER')}
+
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 10px; color: #334155;">
+        <span><strong>Total Issuance Logs:</strong> ${dispatches.length}</span>
+        <span><strong>Total Bags Dispensed:</strong> ${totalBagsDispensed} bag(s)</span>
+        <span><strong>Date Range:</strong> As of ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+      </div>
+
+      <table class="report-grid">
+        <thead>
+          <tr>
+            <th style="width: 25px;">#</th>
+            <th style="width: 80px;">Date Dispensed</th>
+            <th style="width: 140px;">Recipient Infant / Mother</th>
+            <th style="width: 110px;">Barangay</th>
+            <th style="width: 90px;">Batch Issued (FEFO)</th>
+            <th style="width: 120px;">Storage Source</th>
+            <th style="width: 75px; text-align: center;">Quantity Issued</th>
+            <th style="width: 100px;">Released By</th>
+            <th style="width: 110px;">Recipient / Nurse Signature</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml.join('')}
+        </tbody>
+      </table>
+
+      ${getSignaturesHTML('Dispensed by:', 'Nutrition Staff / Nurse on Duty', 'Verified & Noted by:', 'Municipal Nutrition Action Officer')}
+      <div class="form-code">MH.MNAO.FM.004.00</div>
+    </body>
+    </html>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Print Layout & Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function getBasePrintStyles() {
+  return `
+    @page {
+      size: A4 landscape;
+      margin: 10mm 12mm 10mm 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      color: #000;
+    }
+    body {
+      background: #fff;
+      padding: 10px;
+      font-size: 11px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+      border-bottom: 1.5px solid #000;
+      padding-bottom: 6px;
+      position: relative;
+    }
+    .header h3 {
+      font-size: 11px;
+      font-weight: normal;
+      text-transform: uppercase;
+    }
+    .header h2 {
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 2px 0;
+    }
+    .header h4 {
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .header-meta {
+      font-size: 9.5px;
+      margin-top: 3px;
+    }
+    .form-title {
+      text-align: center;
+      font-size: 13.5px;
+      font-weight: bold;
+      text-decoration: underline;
+      margin: 8px 0 6px 0;
+      letter-spacing: 0.04em;
+    }
+    table.report-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+    table.report-grid th, table.report-grid td {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      height: 22px;
+    }
+    table.report-grid th {
+      background-color: #f1f5f9;
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 9.5px;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 26px;
+      padding: 0 40px;
+      font-size: 11px;
+    }
+    .sig-block {
+      width: 280px;
+      text-align: center;
+    }
+    .sig-line {
+      border-bottom: 1px solid #000;
+      margin-bottom: 4px;
+      height: 32px;
+    }
+    .form-code {
+      position: fixed;
+      bottom: 10px;
+      right: 15px;
+      font-size: 9px;
+      border: 1px solid #000;
+      padding: 2px 6px;
+      font-weight: bold;
+    }
+  `;
+}
+
+function getHeaderHTML(title) {
+  return `
+    <div class="header">
+      <h3>Province of Bukidnon</h3>
+      <h2>Municipality of Manolo Fortich</h2>
+      <h4>Municipal Nutrition Action Office &bull; Human Milk Bank</h4>
+      <div class="header-meta">
+        lgumanolofortich@yahoo.com &bull; manolofortich.com.ph &bull; 0917 729 3453
+      </div>
+    </div>
+    <div class="form-title">${title}</div>
+  `;
+}
+
+function getSignaturesHTML(leftLabel, leftRole, rightLabel, rightRole) {
+  return `
+    <div class="signatures">
+      <div class="sig-block">
+        <div style="text-align: left; margin-bottom: 2px;">${escapeHtml(leftLabel)}</div>
+        <div class="sig-line"></div>
+        <strong>${escapeHtml(leftRole)}</strong>
+      </div>
+
+      <div class="sig-block">
+        <div style="text-align: left; margin-bottom: 2px;">${escapeHtml(rightLabel)}</div>
+        <div class="sig-line"></div>
+        <strong>${escapeHtml(rightRole)}</strong>
+      </div>
+    </div>
   `;
 }
 
