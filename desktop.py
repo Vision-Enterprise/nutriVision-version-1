@@ -16,11 +16,15 @@ if backend_dir not in sys.path:
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-def is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
-    """Checks if the local server port is already active."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.5)
-        return s.connect_ex((host, port)) == 0
+def is_nutrivision_running(port: int = 8000, host: str = "127.0.0.1") -> bool:
+    """Checks if the local server port is active AND running NutriVision."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"http://{host}:{port}/api/health", headers={'User-Agent': 'NutriVision-Desktop'})
+        with urllib.request.urlopen(req, timeout=0.8) as response:
+            return response.status == 200
+    except Exception:
+        return False
 
 def start_backend():
     """Starts the FastAPI backend inside an isolated thread."""
@@ -30,25 +34,23 @@ def start_backend():
 
 def launch():
     # 1. Start server if not already running
-    if not is_port_in_use(8000):
+    if not is_nutrivision_running(8000):
         print("[NutriVision] Starting local FastAPI server on port 8000...")
         t = threading.Thread(target=start_backend, daemon=True)
         t.start()
         
-        # Wait up to 5 seconds for the server to be responsive
-        retries = 10
-        while retries > 0 and not is_port_in_use(8000):
+        # Wait up to 6 seconds for the server to be fully responsive
+        retries = 12
+        while retries > 0 and not is_nutrivision_running(8000):
             time.sleep(0.5)
             retries -= 1
         print("[NutriVision] Backend server is active.")
     else:
-        print("[NutriVision] Existing server detected on port 8000. Connecting...")
+        print("[NutriVision] Existing NutriVision server detected on port 8000. Connecting...")
 
-    # 2. Launch native desktop window via pywebview
+    # 2. Launch native desktop window via pywebview (enforcing Edge WebView2)
     import webview
 
-    logo_icon = os.path.join(root_dir, "src", "assets", "logo-icon.png")
-    
     window = webview.create_window(
         title="NutriVision — Commodity Inventory System",
         url="http://127.0.0.1:8000",
@@ -59,7 +61,10 @@ def launch():
     )
 
     print("[NutriVision] Opening desktop window...")
-    webview.start(debug=False)
+    try:
+        webview.start(gui='edgechromium', debug=False)
+    except Exception:
+        webview.start(debug=False)
     print("[NutriVision] Window closed. Exiting.")
     sys.exit(0)
 

@@ -56,27 +56,68 @@ app.mount("/src/assets", StaticFiles(directory=assets_dir), name="src_assets")
 # Network Helper: Detect Laptop Local Wi-Fi IPv4 Address
 # ---------------------------------------------------------------------------
 def get_local_ip() -> str:
-    """Find the laptop's actual local IPv4 address on the Wi-Fi/LAN network using a dummy UDP socket."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    """Find the laptop's actual local IPv4 address across Wi-Fi, Hotspot, and LAN adapters."""
+    for target in [('8.8.8.8', 80), ('192.168.1.254', 1), ('10.255.255.255', 1)]:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.3)
+            s.connect(target)
+            ip = s.getsockname()[0]
+            s.close()
+            if ip and not ip.startswith('127.'):
+                return ip
+        except Exception:
+            continue
+
     try:
-        # Connect to a non-routable address; doesn't transmit actual packets
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
+        hostname = socket.gethostname()
+        for ip in socket.gethostbyname_ex(hostname)[2]:
+            if not ip.startswith('127.'):
+                return ip
     except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
+        pass
+    return '127.0.0.1'
 
 # ---------------------------------------------------------------------------
-# In-Memory Mobile Sessions State
+# In-Memory Mobile Sessions State & Temp Cleanup
 # ---------------------------------------------------------------------------
 mobile_sessions: Dict[str, Dict[str, Any]] = {}
 
 def get_temp_dir() -> str:
     temp_dir = os.path.join(current_dir, "temp")
     os.makedirs(temp_dir, exist_ok=True)
+    
+    # Automatically purge old temporary session folders older than 4 hours to prevent disk bloat
+    try:
+        now = time.time()
+        for item in os.listdir(temp_dir):
+            if item == ".gitkeep":
+                continue
+            item_path = os.path.join(temp_dir, item)
+            # Remove expired folders and orphaned raw image files older than 4 hours
+            if now - os.path.getmtime(item_path) > 14400:
+                if os.path.isdir(item_path):
+                    import shutil
+                    shutil.rmtree(item_path, ignore_errors=True)
+                elif item.startswith('raw_'):
+                    try:
+                        os.remove(item_path)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
     return temp_dir
+
+@app.get('/api/health')
+def health_check():
+    """Lightweight health check for launcher and monitoring."""
+    return {
+        "status": "ok",
+        "app": "nutrivision",
+        "local_ip": get_local_ip(),
+        "timestamp": time.time()
+    }
 
 # ---------------------------------------------------------------------------
 # Existing OCR Processing Logic

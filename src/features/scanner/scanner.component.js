@@ -18,7 +18,7 @@ export class ScannerComponent {
     this.mobileScanCount = 0;
     this.activeReceiptUrl = null;
     this.isReceiptZoomed = false;
-    this.apiBase = 'http://localhost:8000';
+    this.apiBase = window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin;
     this.init();
   }
 
