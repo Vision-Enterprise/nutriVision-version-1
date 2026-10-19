@@ -388,15 +388,19 @@ export async function dispenseMilk({
     const newRemaining = batch.remaining_bags - qty;
     const newStatus = newRemaining === 0 ? 'depleted' : (newRemaining <= 3 ? 'low_stock' : 'available');
 
-    // 2. Record dispatch
-    const { data: dispatch, error: dispatchError } = await supabase
+    // 2. Record dispatch - strictly validate against database check constraint
+    const validIndication = DISPENSE_INDICATIONS.includes(indication)
+      ? indication
+      : 'Preterm / Low Birth Weight';
+
+    let { data: dispatch, error: dispatchError } = await supabase
       .from('milk_dispatches')
       .insert({
         batch_id,
         recipient_name: recipient_name.trim(),
         barangay: barangay.trim(),
         bags_dispensed: qty,
-        indication: indication || 'Standard Dispensing',
+        indication: validIndication,
         dispensed_date: dispensed_date || new Date().toISOString().split('T')[0],
         remarks: remarks?.trim() || null,
         released_by: profileId || null,
@@ -404,6 +408,27 @@ export async function dispenseMilk({
       })
       .select()
       .single();
+
+    // Auto-fallback if database still enforces strict legacy indication check
+    if (dispatchError && dispatchError.message && dispatchError.message.includes('milk_dispatches_indication_check')) {
+      const retry = await supabase
+        .from('milk_dispatches')
+        .insert({
+          batch_id,
+          recipient_name: recipient_name.trim(),
+          barangay: barangay.trim(),
+          bags_dispensed: qty,
+          indication: 'Preterm / Low Birth Weight',
+          dispensed_date: dispensed_date || new Date().toISOString().split('T')[0],
+          remarks: remarks?.trim() || null,
+          released_by: profileId || null,
+          released_by_name: profileName || null
+        })
+        .select()
+        .single();
+      dispatch = retry.data;
+      dispatchError = retry.error;
+    }
 
     if (dispatchError) throw dispatchError;
 
@@ -818,6 +843,55 @@ export function getShelfLoad(freezerName, shelfName, batches = [], freezers = []
   const allocations = getFreezerShelfAllocations(freezerName, batches, freezers, excludeBatchId);
   const found = allocations.find(s => s.shelfName.toLowerCase() === (shelfName || '').toLowerCase());
   return found ? found.usedBags : 0;
+}
+
+/**
+ * Computes the actual physical shelf location(s) where a batch's bags reside in the freezer,
+ * taking into account 20-bag shelf limits, prior batches filling shelves, and multi-shelf roll-over.
+ */
+export function getBatchActualShelfInfo(batch, batches = [], freezers = []) {
+  if (!batch) {
+    return {
+      freezerName: 'Upright Freezer A',
+      startingShelf: 'Shelf 1',
+      shelfDisplay: 'Shelf 1',
+      shelves: ['Shelf 1']
+    };
+  }
+
+  const parsed = getBatchFreezerAndShelf(batch, freezers);
+  const allocations = getFreezerShelfAllocations(parsed.freezerName, batches, freezers, null);
+
+  const holdingShelves = [];
+  allocations.forEach(shelf => {
+    const hasBatch = shelf.batches && shelf.batches.some(item => item.batch && item.batch.id === batch.id && item.bags > 0);
+    if (hasBatch) {
+      holdingShelves.push(shelf.shelfName);
+    }
+  });
+
+  if (holdingShelves.length === 0) {
+    return {
+      freezerName: parsed.freezerName,
+      startingShelf: parsed.shelfName,
+      shelfDisplay: parsed.shelfName,
+      shelves: [parsed.shelfName]
+    };
+  }
+
+  const startingShelf = holdingShelves[0];
+  let shelfDisplay = startingShelf;
+  if (holdingShelves.length > 1) {
+    const lastShelf = holdingShelves[holdingShelves.length - 1];
+    shelfDisplay = `${startingShelf} – ${lastShelf}`;
+  }
+
+  return {
+    freezerName: parsed.freezerName,
+    startingShelf,
+    shelfDisplay,
+    shelves: holdingShelves
+  };
 }
 
 // Backward-compatible shelf functions

@@ -7,3 +7,8 @@
 
 ALTER TABLE public.milk_batches 
   DROP CONSTRAINT IF EXISTS milk_batches_freezer_shelf_check;
+
+-- Removes the check constraint on indication in milk_dispatches
+-- so any clinical or standard indication can be recorded without check violations.
+ALTER TABLE public.milk_dispatches 
+  DROP CONSTRAINT IF EXISTS milk_dispatches_indication_check;

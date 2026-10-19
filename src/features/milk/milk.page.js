@@ -33,6 +33,7 @@ import {
   formatFreezerShelf,
   getShelfLoad,
   getFreezerShelfAllocations,
+  getBatchActualShelfInfo,
   fetchMilkAuditLogs
 } from './milk.service.js';
 
@@ -125,6 +126,19 @@ async function _loadData() {
   _metrics = metrics;
   _auditLogs = auditRes.data || [];
 
+  // Auto-reconcile batches whose physical starting shelf drifted from saved shelf (e.g. target shelf was full)
+  for (const b of _batches) {
+    if ((b.remaining_bags || 0) > 0) {
+      const actual = getBatchActualShelfInfo(b, _batches, _freezers);
+      const parsed = getBatchFreezerAndShelf(b, _freezers);
+      if (actual.startingShelf && actual.startingShelf.toLowerCase() !== parsed.shelfName.toLowerCase()) {
+        const updatedCombined = formatFreezerShelf(actual.freezerName, actual.startingShelf);
+        b.freezer_shelf = updatedCombined;
+        updateBatchShelf(b.id, updatedCombined, b.batch_number, _profile).catch(console.error);
+      }
+    }
+  }
+
   _updateMetricsView();
   _updateTabCounts();
   _renderActiveSheet();
@@ -182,7 +196,7 @@ function _renderActiveSheet() {
     }
   } else if (_activeTab === 'dispense') {
     const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
-    contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch);
+    contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch, _freezers);
     _bindDispatchesSheetEvents();
     _setupCellBarSync();
   } else if (_activeTab === 'audit') {
@@ -484,6 +498,14 @@ function _bindBatchesSheetEvents() {
         if (!confirmed) {
           return;
         }
+
+        // If target shelf is already 100% full, assign to the first shelf that actually has space
+        if (targetLoad >= 20) {
+          const allocations = getFreezerShelfAllocations(loc.freezerName, _batches, _freezers, null);
+          const availableShelf = allocations.find(a => a.usedBags < 20);
+          const actualStartShelf = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
+          data.freezer_shelf = formatFreezerShelf(loc.freezerName, actualStartShelf);
+        }
       }
 
       btn.disabled = true;
@@ -626,7 +648,7 @@ function _bindBatchesSheetEvents() {
   document.querySelectorAll('.js-update-shelf').forEach(select => {
     select.addEventListener('change', async () => {
       const batchId = select.dataset.batchId;
-      const newShelf = select.value;
+      let effectiveShelf = select.value;
       const row = select.closest('tr');
       const freezerSelect = row?.querySelector('.js-update-freezer');
       const currentFreezerName = freezerSelect?.value || (_freezers[0]?.name || 'Upright Freezer A');
@@ -636,21 +658,28 @@ function _bindBatchesSheetEvents() {
 
       // Check capacity of target shelf
       const batchBags = batch ? (batch.remaining_bags || 0) : 0;
-      const targetLoad = getShelfLoad(currentFreezerName, newShelf, _batches, _freezers, batchId);
+      const targetLoad = getShelfLoad(currentFreezerName, effectiveShelf, _batches, _freezers, batchId);
 
       if (targetLoad >= 20 || targetLoad + batchBags > 20) {
         const msg = targetLoad >= 20
-          ? `"${newShelf}" in ${currentFreezerName} is already full (${targetLoad}/20 bags).\n\nMoving batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
-          : `"${newShelf}" in ${currentFreezerName} currently has ${targetLoad}/20 bags.\n\nAdding batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) will exceed the 20-bag shelf limit by ${targetLoad + batchBags - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
+          ? `"${effectiveShelf}" in ${currentFreezerName} is already full (${targetLoad}/20 bags).\n\nMoving batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
+          : `"${effectiveShelf}" in ${currentFreezerName} currently has ${targetLoad}/20 bags.\n\nAdding batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) will exceed the 20-bag shelf limit by ${targetLoad + batchBags - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
 
         const confirmed = await MilkModal.confirm(msg, 'Shelf Capacity Notice', 'Proceed & Roll Over', false);
         if (!confirmed) {
           select.value = prevLoc.shelfName;
           return;
         }
+
+        // If target shelf is already 100% full, move to first shelf that actually has space
+        if (targetLoad >= 20) {
+          const allocations = getFreezerShelfAllocations(currentFreezerName, _batches, _freezers, batchId);
+          const availableShelf = allocations.find(a => a.usedBags < 20);
+          effectiveShelf = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
+        }
       }
 
-      const combinedLocation = formatFreezerShelf(currentFreezerName, newShelf);
+      const combinedLocation = formatFreezerShelf(currentFreezerName, effectiveShelf);
 
       // Instantly update batch in memory so switching to Virtual Freezer reflects immediately with zero reload!
       if (batch) {
@@ -679,12 +708,14 @@ function _bindBatchesSheetEvents() {
   // Quick Dispense: Jumps directly to Beneficiary Dispensing Ledger with batch preselected (NO MODAL)
   const jumpToDispense = (batchId) => {
     _activeTab = 'dispense';
+    const targetBatch = _batches.find(b => b.id === batchId);
+    const defaultQty = targetBatch ? (targetBatch.remaining_bags || 1) : 1;
     _draftDispatches.unshift({
       dispensed_date: new Date().toISOString().split('T')[0],
       recipient_name: '',
       barangay: '',
       batch_id: batchId || '',
-      bags_dispensed: 1
+      bags_dispensed: defaultQty
     });
 
     // Update active tab header UI
@@ -960,7 +991,40 @@ function _collectBatchRowData(row) {
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDispatchesSheetEvents() {
   // Enforce numeric only on all dispense bags quantity inputs
-  document.querySelectorAll('.js-dispense-bags').forEach(inp => _enforceNumericOnly(inp));
+  document.querySelectorAll('.js-dispense-bags').forEach(inp => {
+    _enforceNumericOnly(inp);
+    inp.addEventListener('input', () => {
+      const row = inp.closest('tr');
+      const batchSelect = row?.querySelector('.js-dispense-batch');
+      const batch = _batches.find(b => b.id === batchSelect?.value);
+      const max = batch ? (batch.remaining_bags || 1) : 9999;
+      let val = parseInt(inp.value, 10);
+      if (!isNaN(val) && val > max) {
+        inp.value = max;
+      }
+    });
+  });
+
+  // Batch dropdown change in draft row: default quantity to remaining bags & update max
+  document.querySelectorAll('.js-dispense-batch').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const row = sel.closest('tr');
+      const idx = parseInt(sel.dataset.draftIdx, 10);
+      const batchId = sel.value;
+      const batch = _batches.find(b => b.id === batchId);
+      const bagsInput = row?.querySelector('.js-dispense-bags');
+      if (batch && bagsInput) {
+        const avail = batch.remaining_bags || 1;
+        bagsInput.max = avail;
+        bagsInput.value = avail; // Defaults to its full amount!
+        bagsInput.title = `Maximum available for ${batch.batch_number}: ${avail} bag(s)`;
+        if (_draftDispatches[idx]) {
+          _draftDispatches[idx].batch_id = batchId;
+          _draftDispatches[idx].bags_dispensed = avail;
+        }
+      }
+    });
+  });
 
   // Clear invalid outline on input
   document.querySelectorAll('.milk-sheet-table input, .milk-sheet-table select').forEach(el => {
@@ -969,13 +1033,15 @@ function _bindDispatchesSheetEvents() {
   });
 
   document.getElementById('btn-add-dispatch-row')?.addEventListener('click', () => {
-    const fefo = getFefoPriorityBatch(_batches);
+    const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+    const fefo = getFefoPriorityBatch(_batches) || available[0];
+    const defaultQty = fefo ? (fefo.remaining_bags || 1) : 1;
     _draftDispatches.unshift({
       dispensed_date: new Date().toISOString().split('T')[0],
       recipient_name: '',
       barangay: '',
       batch_id: fefo ? fefo.id : '',
-      bags_dispensed: 1
+      bags_dispensed: defaultQty
     });
     _renderActiveSheet();
   });
@@ -1169,23 +1235,24 @@ async function _validateDispatchData(data, row, availableBatches = []) {
     return false;
   }
 
-  // 3. Quantity (Bags Dispensed) - STRICT NUMBER ONLY (Integer >= 1)
+  // 3. Quantity (Bags Dispensed) - STRICT NUMBER ONLY (Integer >= 1, cannot be 0)
   const bagsNum = Number(data.bags_dispensed);
   if (!data.bags_dispensed || isNaN(bagsNum) || !Number.isInteger(bagsNum) || bagsNum <= 0) {
     const input = row.querySelector('.js-dispense-bags');
     input?.classList.add('cell-invalid');
     input?.focus();
-    await MilkModal.alert('Quantity to dispense must be a whole positive number (minimum 1 bag).', 'Invalid Quantity');
+    await MilkModal.alert('Quantity to dispense cannot be zero or empty. It must be a whole positive number (minimum 1 bag).', 'Invalid Quantity');
     return false;
   }
 
-  // 4. Stock Availability Check
+  // 4. Stock Availability Check - cannot exceed batch amount
   const maxAvail = selectedBatch.remaining_bags || 0;
   if (bagsNum > maxAvail) {
     const input = row.querySelector('.js-dispense-bags');
     input?.classList.add('cell-invalid');
+    if (input) input.value = maxAvail;
     input?.focus();
-    await MilkModal.alert(`Cannot dispense ${bagsNum} bag(s). Batch ${selectedBatch.batch_number} only has ${maxAvail} bag(s) remaining in stock.`, 'Insufficient Stock');
+    await MilkModal.alert(`Cannot dispense ${bagsNum} bag(s). The limit for Batch "${selectedBatch.batch_number}" is ${maxAvail} bag(s) currently available.`, 'Quantity Exceeds Batch Limit');
     return false;
   }
 

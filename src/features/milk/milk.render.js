@@ -6,7 +6,7 @@
  */
 
 import { BARANGAYS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
-import { getBatchFreezerAndShelf, getFreezerShelfAllocations } from './milk.service.js';
+import { getBatchFreezerAndShelf, getFreezerShelfAllocations, getBatchActualShelfInfo } from './milk.service.js';
 
 /**
  * 2-Section Page Skeleton:
@@ -442,7 +442,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     const statusBadge = getBatchStatusBadge(b);
     const daysLeft = calculateDaysRemaining(b.expiry_date);
     const expiryClass = daysLeft <= 0 ? 'text-danger fw-bold' : (daysLeft <= 30 ? 'text-warning fw-bold' : '');
-    const loc = getBatchFreezerAndShelf(b, activeFreezers);
+    const actualLoc = getBatchActualShelfInfo(b, batches, activeFreezers);
 
     return `
       <tr data-batch-id="${b.id}">
@@ -460,13 +460,18 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td>
           <select class="milk-shelf-select js-update-freezer" data-batch-id="${b.id}" aria-label="Freezer">
-            ${freezerOptionsHtml(loc.freezerName)}
+            ${freezerOptionsHtml(actualLoc.freezerName)}
           </select>
         </td>
         <td>
           <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Shelf">
-            ${shelfOptionsForFreezerHtml(loc.freezerName, loc.shelfName, b.id)}
+            ${shelfOptionsForFreezerHtml(actualLoc.freezerName, actualLoc.startingShelf, b.id)}
           </select>
+          ${actualLoc.shelves.length > 1 ? `
+            <div style="font-size:11px;color:#0284c7;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:3px;" title="Due to 20-bag shelf limit, this batch's bags span across ${actualLoc.shelfDisplay}">
+              <span class="icon icon--sm" style="font-size:12px;">layers</span> Spans ${escapeHtml(actualLoc.shelfDisplay)}
+            </div>
+          ` : ''}
         </td>
         <td class="text-center">${b.total_bags}</td>
         <td class="text-center">
@@ -966,8 +971,9 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
 // SHEET 3: Dispensing Ledger Spreadsheet (Clinical Indication REMOVED)
 // Exactly 8 columns: #, Date, Recipient, Barangay, Batch, Bags, Released By, Actions
 // ════════════════════════════════════════════════════════════════════════════
-export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null) {
+export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null, freezers = []) {
   const pendingCount = draftRows.length;
+  const activeFreezers = freezers.length > 0 ? freezers : [];
 
   const brgyOptionsHtml = (selected) => (BARANGAYS || []).map(b => `
     <option value="${b}" ${selected === b ? 'selected' : ''}>${b}</option>
@@ -977,52 +983,64 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
     return availableBatches.map(b => {
       const isFefo = fefoBatch && fefoBatch.id === b.id;
       const isSel = (selectedId ? selectedId === b.id : isFefo);
+      const actualLoc = getBatchActualShelfInfo(b, availableBatches, activeFreezers);
       return `
-        <option value="${b.id}" ${isSel ? 'selected' : ''}>
-          ${isFefo ? '[DISPATCH FIRST] ' : ''}${b.batch_number} (${b.remaining_bags} bags avail · ${b.freezer_shelf})
+        <option value="${b.id}" ${isSel ? 'selected' : ''} data-remaining="${b.remaining_bags || 0}">
+          ${isFefo ? '[DISPATCH FIRST] ' : ''}${b.batch_number} (${b.remaining_bags} bags avail · ${actualLoc.shelfDisplay})
         </option>
       `;
     }).join('');
   };
 
-  const draftHtml = draftRows.map((draft, idx) => `
-    <tr class="grid-row--draft" data-draft-idx="${idx}">
-      <td style="color:#0284c7;font-weight:700;text-align:center;">+ Issue</td>
-      <td>
-        <input type="date" class="grid-cell-input js-dispense-date"
-               value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}" aria-label="Date Dispensed">
-      </td>
-      <td>
-        <input type="text" class="grid-cell-input js-dispense-recipient"
-               value="${escapeHtml(draft.recipient_name || '')}" placeholder="e.g. Baby Cruz / Maria Cruz" aria-label="Recipient Infant / Mother" autofocus>
-      </td>
-      <td>
-        <select class="grid-cell-select js-dispense-brgy" aria-label="Barangay">
-          ${brgyOptionsHtml(draft.barangay || BARANGAYS[0])}
-        </select>
-      </td>
-      <td>
-        <select class="grid-cell-select js-dispense-batch" aria-label="Batch Issued (FEFO)">
-          ${batchOptionsHtml(draft.batch_id)}
-        </select>
-      </td>
-      <td style="max-width:90px;text-align:center;">
-        <input type="number" class="grid-cell-input js-dispense-bags" min="1"
-               value="${draft.bags_dispensed || 1}" aria-label="Bags Dispensed">
-      </td>
-      <td>
-        <span class="text-muted text-xs">Self</span>
-      </td>
-      <td class="grid-actions-cell" style="text-align:center;">
-        <button class="btn-grid-save js-save-single-dispatch" data-draft-idx="${idx}" title="Issue milk">
-          <span class="icon" style="font-size:16px;">check</span> Issue
-        </button>
-        <button class="btn-grid-discard js-discard-single-dispatch" data-draft-idx="${idx}" title="Discard">
-          <span class="icon" style="font-size:16px;">close</span>
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  const draftHtml = draftRows.map((draft, idx) => {
+    const selectedBatch = availableBatches.find(b => b.id === draft.batch_id) || (fefoBatch || availableBatches[0]);
+    const maxBags = selectedBatch ? (selectedBatch.remaining_bags || 1) : 1;
+    const currentBags = draft.bags_dispensed !== undefined ? draft.bags_dispensed : maxBags;
+    draft.bags_dispensed = currentBags;
+    if (selectedBatch && !draft.batch_id) {
+      draft.batch_id = selectedBatch.id;
+    }
+
+    return `
+      <tr class="grid-row--draft" data-draft-idx="${idx}">
+        <td style="color:#0284c7;font-weight:700;text-align:center;">+ Issue</td>
+        <td>
+          <input type="date" class="grid-cell-input js-dispense-date"
+                 value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}" aria-label="Date Dispensed">
+        </td>
+        <td>
+          <input type="text" class="grid-cell-input js-dispense-recipient"
+                 value="${escapeHtml(draft.recipient_name || '')}" placeholder="e.g. Baby Cruz / Maria Cruz" aria-label="Recipient Infant / Mother" autofocus>
+        </td>
+        <td>
+          <select class="grid-cell-select js-dispense-brgy" aria-label="Barangay">
+            ${brgyOptionsHtml(draft.barangay || BARANGAYS[0])}
+          </select>
+        </td>
+        <td>
+          <select class="grid-cell-select js-dispense-batch" data-draft-idx="${idx}" aria-label="Batch Issued (FEFO)">
+            ${batchOptionsHtml(draft.batch_id || (selectedBatch ? selectedBatch.id : ''))}
+          </select>
+        </td>
+        <td style="max-width:90px;text-align:center;">
+          <input type="number" class="grid-cell-input js-dispense-bags" min="1" max="${maxBags}"
+                 value="${currentBags}" aria-label="Bags Dispensed"
+                 title="Maximum available for this batch: ${maxBags} bag(s)">
+        </td>
+        <td>
+          <span class="text-muted text-xs">Self</span>
+        </td>
+        <td class="grid-actions-cell" style="text-align:center;">
+          <button class="btn-grid-save js-save-single-dispatch" data-draft-idx="${idx}" title="Issue milk">
+            <span class="icon" style="font-size:16px;">check</span> Issue
+          </button>
+          <button class="btn-grid-discard js-discard-single-dispatch" data-draft-idx="${idx}" title="Discard">
+            <span class="icon" style="font-size:16px;">close</span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   const savedHtml = dispatches.map((item, index) => {
     const batchNo = item.milk_batches?.batch_number || 'Unknown Batch';
