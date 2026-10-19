@@ -734,12 +734,59 @@ function _bindBatchesSheetEvents() {
     }, 80);
   };
 
+  const dispenseFromShelf = (shelfName) => {
+    if (!shelfName) return;
+    const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
+    const allocations = getFreezerShelfAllocations(activeFreezer ? activeFreezer.name : '', _batches, _freezers, null);
+    const targetShelf = allocations.find(s => s.shelfName.toLowerCase() === shelfName.toLowerCase());
+
+    if (!targetShelf || !targetShelf.batches || targetShelf.batches.length === 0) {
+      MilkModal.alert(`No active batches to dispense on ${shelfName}.`, 'Shelf Empty');
+      return;
+    }
+
+    _activeTab = 'dispense';
+    const today = new Date().toISOString().split('T')[0];
+
+    // Reverse iterate so unshifted rows appear in shelf order
+    const validBatches = targetShelf.batches.filter(item => item.batch && item.bags > 0);
+    for (let i = validBatches.length - 1; i >= 0; i--) {
+      const item = validBatches[i];
+      _draftDispatches.unshift({
+        dispensed_date: today,
+        recipient_name: '',
+        barangay: '',
+        batch_id: item.batch.id,
+        bags_dispensed: item.bags
+      });
+    }
+
+    // Update active tab header UI
+    document.querySelectorAll('.milk-tab').forEach(t => {
+      const isTarget = t.dataset.tab === 'dispense';
+      t.classList.toggle('milk-tab--active', isTarget);
+      t.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+    });
+
+    _renderActiveSheet();
+
+    // Auto-focus first empty recipient input
+    setTimeout(() => {
+      const recipientInput = document.querySelector('.grid-row--draft .js-dispense-recipient');
+      if (recipientInput) recipientInput.focus();
+    }, 80);
+  };
+
   document.querySelectorAll('.js-quick-dispense-btn').forEach(btn => {
     btn.addEventListener('click', () => jumpToDispense(btn.dataset.batchId));
   });
 
   document.querySelectorAll('.js-freezer-dispense').forEach(btn => {
     btn.addEventListener('click', () => jumpToDispense(btn.dataset.batchId));
+  });
+
+  document.querySelectorAll('.js-dispense-shelf-btn').forEach(btn => {
+    btn.addEventListener('click', () => dispenseFromShelf(btn.dataset.shelfName));
   });
 
   // ── Digital Twin Freezer Events ───────────────────────────────────────────

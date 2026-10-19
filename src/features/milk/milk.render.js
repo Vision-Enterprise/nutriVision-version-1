@@ -576,11 +576,18 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
     items: [] // { batch, bags, isExcess, totalBatchBags }
   }));
 
-  // Sort batches: Priority/FEFO batch first, then earliest expiration
+  // Sort batches: Priority/FEFO batch first, then earliest expiration (FEFO + FIFO)
   const sortedBatches = [...freezerBatches].sort((a, b) => {
     if (fefoBatch && fefoBatch.id === a.id) return -1;
     if (fefoBatch && fefoBatch.id === b.id) return 1;
-    return new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0);
+    const diffExpiry = new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0);
+    if (diffExpiry !== 0) return diffExpiry;
+    const diffPast = new Date(a.date_pasteurized || 0) - new Date(b.date_pasteurized || 0);
+    if (diffPast !== 0) return diffPast;
+    const numA = parseInt((a.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt((b.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    if (numA !== numB) return numA - numB;
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
   });
 
   // Place batches onto shelves with 20 bags max per shelf
@@ -859,9 +866,9 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
 
       <div class="details-actions-row">
         ${shelfItems.length > 0 ? `
-          <button class="btn btn-primary js-quick-dispense-btn" data-batch-id="${shelfItems[0].batch.id}" type="button"
+          <button class="btn btn-primary js-dispense-shelf-btn" data-shelf-name="${escapeHtml(selectedShelf)}" type="button"
                   style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
-            <span class="icon icon--sm">volunteer_activism</span> Dispense From Shelf
+            <span class="icon icon--sm">volunteer_activism</span> Dispense From Shelf (${selectedShelfBags} bags)
           </button>
         ` : ''}
       </div>

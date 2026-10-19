@@ -34,7 +34,8 @@ export async function fetchMilkBatches() {
     const { data, error } = await supabase
       .from('milk_batches')
       .select('*')
-      .order('date_pasteurized', { ascending: false });
+      .order('date_pasteurized', { ascending: false })
+      .order('batch_number', { ascending: false });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -802,8 +803,17 @@ export function getFreezerShelfAllocations(freezerName, batches = [], freezers =
     return loc.freezerName.toLowerCase() === (freezer ? freezer.name.toLowerCase() : '');
   });
 
-  // Sort by expiry_date
-  activeBatches.sort((a, b) => new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0));
+  // Sort by expiry_date (FEFO) with tie-breakers: earlier pasteurization, lower batch number, created_at
+  activeBatches.sort((a, b) => {
+    const diffExpiry = new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0);
+    if (diffExpiry !== 0) return diffExpiry;
+    const diffPast = new Date(a.date_pasteurized || 0) - new Date(b.date_pasteurized || 0);
+    if (diffPast !== 0) return diffPast;
+    const numA = parseInt((a.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt((b.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    if (numA !== numB) return numA - numB;
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  });
 
   activeBatches.forEach(b => {
     const loc = getBatchFreezerAndShelf(b, activeFreezers);
@@ -1023,5 +1033,21 @@ export function getFefoPriorityBatch(batches = []) {
   const available = (batches || []).filter(b => (b.remaining_bags || 0) > 0 && b.expiry_date);
   if (available.length === 0) return null;
 
-  return available.slice().sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date))[0];
+  return available.slice().sort((a, b) => {
+    // 1. Primary: Earliest expiration date (FEFO)
+    const diffExpiry = new Date(a.expiry_date) - new Date(b.expiry_date);
+    if (diffExpiry !== 0) return diffExpiry;
+
+    // 2. Tie-breaker 1: Earlier pasteurization date (FIFO)
+    const diffPast = new Date(a.date_pasteurized || 0) - new Date(b.date_pasteurized || 0);
+    if (diffPast !== 0) return diffPast;
+
+    // 3. Tie-breaker 2: Lower numeric batch number (e.g., BM-096 before BM-097)
+    const numA = parseInt((a.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt((b.batch_number || '').replace(/\D/g, ''), 10) || 0;
+    if (numA !== numB) return numA - numB;
+
+    // 4. Tie-breaker 3: Earlier creation timestamp
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  })[0];
 }
