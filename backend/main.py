@@ -678,8 +678,8 @@ def render_mobile_upload_page(session_id: str):
     </div>
   </header>
 
-  <!-- Native Hardware Camera Trigger -->
-  <input type="file" id="mobile-file-input" accept="image/*" capture="environment" style="display:none;" />
+  <!-- Native Hardware Camera & File Trigger -->
+  <input type="file" id="mobile-file-input" accept="image/*" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;" />
 
   <main class="main-container">
 
@@ -697,13 +697,13 @@ def render_mobile_upload_page(session_id: str):
         <p class="body-medium">
           Place delivery receipt on a flat surface with good lighting for clear table extraction.
         </p>
-        <button class="btn-filled" id="btn-open-camera">
+        <label for="mobile-file-input" class="btn-filled" id="btn-open-camera" onclick="document.getElementById('mobile-file-input').click()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
           <span>Snap Receipt</span>
-        </button>
+        </label>
         <div class="helper-tip">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--md-sys-color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -781,13 +781,13 @@ def render_mobile_upload_page(session_id: str):
         <div class="count-indicator" id="batch-counter-badge">
           1 Receipt Sent in this Session
         </div>
-        <button class="btn-filled" id="btn-scan-another">
+        <label for="mobile-file-input" class="btn-filled" id="btn-scan-another" onclick="setStage('launchpad'); document.getElementById('mobile-file-input').click();">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
           <span>Scan Another Receipt</span>
-        </button>
+        </label>
       </div>
     </section>
 
