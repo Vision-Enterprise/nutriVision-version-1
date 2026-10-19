@@ -309,28 +309,36 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
   const pendingCount = draftBatches.length;
 
   return `
-    <div class="milk-sheet-toolbar">
+    <div class="milk-sheet-toolbar milk-sheet-toolbar--batches">
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">science</span>
         Pasteurized Batches (BM-XXX)
         <span class="milk-sheet-subtitle">Freezer Inventory &amp; FEFO Dispatch</span>
       </div>
-      <div class="milk-sheet-actions">
-        <!-- Option B View Switcher -->
-        <div class="milk-view-switcher">
-          <button class="milk-view-btn ${subView === 'table' ? 'milk-view-btn--active' : ''}"
-                  id="btn-subview-table" type="button">
-            <span class="icon icon--sm">table_rows</span>
-            Table View
-          </button>
-          <button class="milk-view-btn ${subView === 'freezer' ? 'milk-view-btn--active' : ''}"
-                  id="btn-subview-freezer" type="button">
-            <span class="icon icon--sm">kitchen</span>
-            Virtual Freezer
-          </button>
-        </div>
 
-        ${subView === 'table' ? `
+      <!-- Option B View Switcher (Fixed Position in both Table & Freezer views) -->
+      <div class="milk-view-switcher" role="tablist" aria-label="Pasteurized Batches View">
+        <button class="milk-view-btn ${subView === 'table' ? 'milk-view-btn--active' : ''}"
+                id="btn-subview-table" type="button" role="tab" aria-selected="${subView === 'table'}">
+          <span class="icon icon--sm">table_rows</span>
+          Table View
+        </button>
+        <button class="milk-view-btn ${subView === 'freezer' ? 'milk-view-btn--active' : ''}"
+                id="btn-subview-freezer" type="button" role="tab" aria-selected="${subView === 'freezer'}">
+          <span class="icon icon--sm">kitchen</span>
+          Virtual Freezer
+        </button>
+      </div>
+    </div>
+
+    ${subView === 'table' ? `
+      <div class="milk-sub-toolbar">
+        <div class="milk-sub-toolbar-title text-muted text-xs font-weight-medium">
+          <span class="badge badge--info" style="font-size:11.5px;padding:3px 8px;font-weight:600;">
+            Physical Ledger · Ascending Order
+          </span>
+        </div>
+        <div class="milk-sheet-actions">
           <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button">
             <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
             Export Batches (PDF)
@@ -344,9 +352,9 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
             <span class="icon icon--sm" aria-hidden="true">save</span>
             Save All Pending (${pendingCount})
           </button>
-        ` : ''}
+        </div>
       </div>
-    </div>
+    ` : ''}
 
     ${subView === 'freezer'
       ? renderFreezerMapView({
