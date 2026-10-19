@@ -232,8 +232,7 @@ export async function createMilkBatch({
   profileName
 }) {
   try {
-    const numBags = parseInt(total_bags, 10);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('milk_batches')
       .insert({
         batch_number: batch_number.trim().toUpperCase(),
@@ -248,6 +247,31 @@ export async function createMilkBatch({
       })
       .select()
       .single();
+
+    // Auto-fallback if database still has legacy constraint checking exact shelf literals
+    if (error && error.message && error.message.includes('milk_batches_freezer_shelf_check') && (freezer_shelf || '').includes(' / ')) {
+      const fallbackShelf = (freezer_shelf || '').split(' / ').pop().trim();
+      const retry = await supabase
+        .from('milk_batches')
+        .insert({
+          batch_number: batch_number.trim().toUpperCase(),
+          date_pasteurized,
+          expiry_date,
+          total_bags: numBags,
+          remaining_bags: numBags,
+          freezer_shelf: fallbackShelf,
+          status: 'available',
+          remarks: remarks?.trim() || null,
+          created_by: profileId || null
+        })
+        .select()
+        .single();
+
+      if (!retry.error) {
+        data = retry.data;
+        error = null;
+      }
+    }
 
     if (error) throw error;
 
@@ -418,15 +442,35 @@ export async function dispenseMilk({
  */
 export async function updateBatchShelf(batchId, newShelf, batchNumber = '', profile = null) {
   try {
-    const { data, error } = await supabase
+    let shelfToSave = newShelf;
+    let { data, error } = await supabase
       .from('milk_batches')
       .update({
-        freezer_shelf: newShelf,
+        freezer_shelf: shelfToSave,
         updated_at: new Date().toISOString()
       })
       .eq('id', batchId)
       .select()
       .single();
+
+    // Auto-fallback if database still has legacy constraint checking exact shelf literals
+    if (error && error.message && error.message.includes('milk_batches_freezer_shelf_check') && shelfToSave.includes(' / ')) {
+      const fallbackShelf = shelfToSave.split(' / ').pop().trim();
+      const retry = await supabase
+        .from('milk_batches')
+        .update({
+          freezer_shelf: fallbackShelf,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', batchId)
+        .select()
+        .single();
+
+      if (!retry.error) {
+        data = retry.data;
+        error = null;
+      }
+    }
 
     if (error) throw error;
 
@@ -706,6 +750,74 @@ export function getBatchFreezerAndShelf(batch, freezers = []) {
 export function formatFreezerShelf(freezerName, shelfName) {
   if (!freezerName) return shelfName || 'Shelf 1';
   return `${freezerName.trim()} / ${(shelfName || 'Shelf 1').trim()}`;
+}
+
+/**
+ * Calculates current bag distribution across shelves for a specific freezer.
+ * Accounts for 20-bag shelf limit and roll-over overflow, optionally excluding a specific batchId.
+ */
+export function getFreezerShelfAllocations(freezerName, batches = [], freezers = [], excludeBatchId = null) {
+  const activeFreezers = freezers.length > 0 ? freezers : getFreezers();
+  const freezer = activeFreezers.find(f => f.name.toLowerCase() === (freezerName || '').toLowerCase()) || activeFreezers[0];
+  const configuredShelves = (freezer && freezer.shelves && freezer.shelves.length > 0)
+    ? [...freezer.shelves]
+    : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
+
+  const allocations = configuredShelves.map(name => ({
+    shelfName: name,
+    usedBags: 0,
+    batches: []
+  }));
+
+  const activeBatches = batches.filter(b => {
+    if (!b || (b.remaining_bags !== undefined && b.remaining_bags <= 0)) return false;
+    if (excludeBatchId && b.id === excludeBatchId) return false;
+    const loc = getBatchFreezerAndShelf(b, activeFreezers);
+    return loc.freezerName.toLowerCase() === (freezer ? freezer.name.toLowerCase() : '');
+  });
+
+  // Sort by expiry_date
+  activeBatches.sort((a, b) => new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0));
+
+  activeBatches.forEach(b => {
+    const loc = getBatchFreezerAndShelf(b, activeFreezers);
+    let startIdx = allocations.findIndex(s => s.shelfName.toLowerCase() === loc.shelfName.toLowerCase());
+    if (startIdx === -1) startIdx = 0;
+
+    let remaining = b.remaining_bags !== undefined ? b.remaining_bags : (b.total_bags || 0);
+    let currIdx = startIdx;
+
+    while (remaining > 0) {
+      if (currIdx >= allocations.length) {
+        allocations.push({
+          shelfName: `Shelf ${allocations.length + 1}`,
+          usedBags: 0,
+          batches: []
+        });
+      }
+
+      const shelfObj = allocations[currIdx];
+      const avail = Math.max(0, 20 - shelfObj.usedBags);
+      if (avail > 0) {
+        const place = Math.min(avail, remaining);
+        shelfObj.batches.push({ batch: b, bags: place });
+        shelfObj.usedBags += place;
+        remaining -= place;
+      }
+      currIdx++;
+    }
+  });
+
+  return allocations;
+}
+
+/**
+ * Returns total bags currently on a specific shelf in a freezer.
+ */
+export function getShelfLoad(freezerName, shelfName, batches = [], freezers = [], excludeBatchId = null) {
+  const allocations = getFreezerShelfAllocations(freezerName, batches, freezers, excludeBatchId);
+  const found = allocations.find(s => s.shelfName.toLowerCase() === (shelfName || '').toLowerCase());
+  return found ? found.usedBags : 0;
 }
 
 // Backward-compatible shelf functions

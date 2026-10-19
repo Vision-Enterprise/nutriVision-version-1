@@ -6,7 +6,7 @@
  */
 
 import { BARANGAYS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
-import { getBatchFreezerAndShelf } from './milk.service.js';
+import { getBatchFreezerAndShelf, getFreezerShelfAllocations } from './milk.service.js';
 
 /**
  * 2-Section Page Skeleton:
@@ -367,14 +367,25 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     </option>
   `).join('');
 
-  const shelfOptionsForFreezerHtml = (freezerName, selectedShelfName) => {
+  const shelfOptionsForFreezerHtml = (freezerName, selectedShelfName, currentBatchId = null) => {
     const f = activeFreezers.find(item => item.name.toLowerCase() === (freezerName || '').toLowerCase()) || activeFreezers[0];
     const shelfList = (f && f.shelves && f.shelves.length > 0) ? f.shelves : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
-    return shelfList.map(s => `
-      <option value="${escapeHtml(s)}" ${s.toLowerCase() === (selectedShelfName || '').toLowerCase() ? 'selected' : ''}>
-        ${escapeHtml(s)}
-      </option>
-    `).join('');
+    const allocations = getFreezerShelfAllocations(f ? f.name : freezerName, batches, activeFreezers, currentBatchId);
+
+    return shelfList.map(s => {
+      const alloc = allocations.find(a => a.shelfName.toLowerCase() === s.toLowerCase());
+      const used = alloc ? alloc.usedBags : 0;
+      let badge = `${used}/20 bags`;
+      if (used >= 20) badge = '20/20 Full';
+      else if (used === 0) badge = '0/20 Empty';
+
+      const isSelected = s.toLowerCase() === (selectedShelfName || '').toLowerCase();
+      return `
+        <option value="${escapeHtml(s)}" ${isSelected ? 'selected' : ''} data-used-bags="${used}">
+          ${escapeHtml(s)} (${badge})
+        </option>
+      `;
+    }).join('');
   };
 
   // Exactly 10 columns: #, Batch No., Date Past., Expiry, Freezer, Shelf, Initial, Remaining, Status, Actions
@@ -454,7 +465,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td>
           <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Shelf">
-            ${shelfOptionsForFreezerHtml(loc.freezerName, loc.shelfName)}
+            ${shelfOptionsForFreezerHtml(loc.freezerName, loc.shelfName, b.id)}
           </select>
         </td>
         <td class="text-center">${b.total_bags}</td>

@@ -13,9 +13,14 @@ import {
   deleteMilkBatch,
   createMilkDonation,
   dispenseMilk,
-  fetchMilkBatches
+  fetchMilkBatches,
+  getBatchFreezerAndShelf,
+  getFreezerShelfAllocations,
+  getShelfLoad,
+  formatFreezerShelf
 } from './milk.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
+import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 const ICE_BLUE_BG   = '#e0f2fe';
@@ -626,15 +631,23 @@ export async function openDispenseModal({ preselectedBatchId = null, onSave }) {
 // ════════════════════════════════════════════════════════════════════════════
 // MODAL 4: Edit Pasteurized Batch
 // ════════════════════════════════════════════════════════════════════════════
-export function openEditBatchModal({ batch, shelves = [], profile, onSave }) {
+export function openEditBatchModal({ batch, shelves = [], freezers = [], batches = [], profile, onSave }) {
   if (!batch) return;
 
+  const loc = getBatchFreezerAndShelf(batch, freezers);
   const shelfList = (shelves && shelves.length > 0) ? shelves : SHELF_LOCATIONS;
-  const currentShelf = batch.freezer_shelf || shelfList[0] || 'Shelf 1';
+  const allocations = getFreezerShelfAllocations(loc.freezerName, batches, freezers, batch.id);
 
-  const shelfOptions = shelfList.map(s =>
-    `<option value="${s}" ${s === currentShelf ? 'selected' : ''}>${s}</option>`
-  ).join('');
+  const shelfOptions = shelfList.map(s => {
+    const alloc = allocations.find(a => a.shelfName.toLowerCase() === s.toLowerCase());
+    const used = alloc ? alloc.usedBags : 0;
+    let badge = `${used}/20 bags`;
+    if (used >= 20) badge = '20/20 Full';
+    else if (used === 0) badge = '0/20 Empty';
+
+    const isSelected = s.toLowerCase() === (loc.shelfName || '').toLowerCase();
+    return `<option value="${s}" ${isSelected ? 'selected' : ''}>${s} (${badge})</option>`;
+  }).join('');
 
   const header = `
     <div style="display:flex;align-items:flex-start;gap:var(--space-4);">
@@ -745,8 +758,24 @@ export function openEditBatchModal({ batch, shelves = [], profile, onSave }) {
       return;
     }
 
+    const numRem = parseInt(remBags, 10) || 0;
+    const targetLoad = getShelfLoad(loc.freezerName, shelf, batches, freezers, batch.id);
+
+    if (targetLoad >= 20 || targetLoad + numRem > 20) {
+      const msg = targetLoad >= 20
+        ? `"${shelf}" in ${loc.freezerName} is already full (${targetLoad}/20 bags).\n\nMoving batch "${batchNo}" (${numRem} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
+        : `"${shelf}" in ${loc.freezerName} currently has ${targetLoad}/20 bags.\n\nAdding batch "${batchNo}" (${numRem} bags) will exceed the 20-bag shelf limit by ${targetLoad + numRem - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
+      
+      const confirmed = await SystemDialog.confirm(msg, 'Shelf Capacity Notice', 'Proceed & Roll Over', false, { theme: 'blue', icon: 'kitchen' });
+      if (!confirmed) {
+        return;
+      }
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving…';
+
+    const combinedLocation = formatFreezerShelf(loc.freezerName, shelf);
 
     const { error } = await updateMilkBatch(batch.id, {
       batch_number: batchNo,
@@ -754,7 +783,7 @@ export function openEditBatchModal({ batch, shelves = [], profile, onSave }) {
       expiry_date: expiry,
       total_bags: totalBags,
       remaining_bags: remBags,
-      freezer_shelf: shelf,
+      freezer_shelf: combinedLocation,
       remarks
     }, profile);
 
