@@ -49,7 +49,8 @@ if not assets_dir:
 libs_dir = os.path.join(assets_dir, "libs")
 os.makedirs(libs_dir, exist_ok=True)
 
-app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+# Mount /src/assets for self-hosted vendor libraries and fonts
+app.mount("/src/assets", StaticFiles(directory=assets_dir), name="src_assets")
 
 # ---------------------------------------------------------------------------
 # Network Helper: Detect Laptop Local Wi-Fi IPv4 Address
@@ -901,6 +902,26 @@ def render_mobile_upload_page(session_id: str):
 </html>
 """
     return HTMLResponse(content=html_content)
+
+# ---------------------------------------------------------------------------
+# Production Single-App Serving: Mount Compiled Frontend (dist/)
+# ---------------------------------------------------------------------------
+possible_dist_paths = [
+    os.path.abspath(os.path.join(current_dir, "..", "dist")),
+    os.path.abspath(os.path.join(os.getcwd(), "dist")),
+    os.path.abspath(os.path.join(current_dir, "dist")),
+]
+dist_dir = None
+for candidate in possible_dist_paths:
+    if os.path.exists(candidate) and os.path.isdir(candidate):
+        dist_dir = candidate
+        break
+
+if dist_dir:
+    dist_assets = os.path.join(dist_dir, "assets")
+    if os.path.exists(dist_assets):
+        app.mount("/assets", StaticFiles(directory=dist_assets), name="dist_assets")
+    app.mount("/", StaticFiles(directory=dist_dir, html=True), name="frontend")
 
 if __name__ == '__main__':
     import uvicorn
