@@ -11,6 +11,9 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
+if not exist "dist\assets\libs" mkdir "dist\assets\libs"
+xcopy /y /e /i "src\assets\libs" "dist\assets\libs"
+
 echo.
 echo [2/2] Packaging Standalone Executable (PyInstaller)...
 call .\backend\venv\Scripts\pyinstaller.exe nutrivision.spec --noconfirm

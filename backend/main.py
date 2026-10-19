@@ -253,10 +253,10 @@ def render_mobile_upload_page(session_id: str):
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>NutriVision Scanner</title>
   <!-- 100% Offline Local Cropper.js Assets (Zero External CDNs) -->
+  <link rel="stylesheet" href="/src/assets/libs/cropper.min.css" />
   <link rel="stylesheet" href="/assets/libs/cropper.min.css" />
-  <script src="/assets/libs/cropper.min.js"></script>
+  <script src="/src/assets/libs/cropper.min.js"></script>
   <style>
     :root {{
       /* Material Design 3 / NutriVision Brand Tokens */
@@ -801,19 +801,23 @@ def render_mobile_upload_page(session_id: str):
       }}
 
       setTimeout(() => {{
-        cropperInstance = new Cropper(cropTargetImg, {{
-          viewMode: 1,
-          dragMode: 'crop',
-          autoCropArea: 0.96,
-          responsive: true,
-          restore: false,
-          guides: true,
-          center: true,
-          highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          toggleDragModeOnDblclick: false
-        }});
+        if (typeof Cropper === 'function') {{
+          cropperInstance = new Cropper(cropTargetImg, {{
+            viewMode: 1,
+            dragMode: 'crop',
+            autoCropArea: 0.96,
+            responsive: true,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false
+          }});
+        }} else {{
+          console.warn("Cropper.js not loaded. Displaying uncropped preview.");
+        }}
       }}, 100);
     }}
 
@@ -838,41 +842,54 @@ def render_mobile_upload_page(session_id: str):
       setStage('launchpad');
     }});
 
-    // Upload Cropped Image
-    btnSend.addEventListener('click', () => {{
-      if (!cropperInstance) return;
-
+    // Upload Cropped Image (with fallback to raw photo if cropper was bypassed)
+    btnSend.addEventListener('click', async () => {{
       btnSend.disabled = true;
       btnSend.innerHTML = '<span class="md-spinner"></span><span>Sending...</span>';
 
-      const canvas = cropperInstance.getCroppedCanvas({{
-        maxWidth: 1600,
-        maxHeight: 2400,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
-      }});
+      let blobToSend = null;
 
-      canvas.toBlob(async (blob) => {{
-        if (!blob) {{
-          alert('Could not process cropped image. Please try again.');
-          btnSend.disabled = false;
-          btnSend.innerHTML = '<span>Upload & Send</span>';
-          return;
-        }}
-
-        const formData = new FormData();
-        formData.append('file', blob, 'mobile_receipt.jpg');
-
+      if (cropperInstance && typeof cropperInstance.getCroppedCanvas === 'function') {{
         try {{
-          const res = await fetch('/api/mobile/upload/' + sessionId, {{
-            method: 'POST',
-            body: formData
+          const canvas = cropperInstance.getCroppedCanvas({{
+            maxWidth: 1600,
+            maxHeight: 2400,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
           }});
+          if (canvas) {{
+            blobToSend = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+          }}
+        }} catch (cropErr) {{
+          console.warn("Could not get cropped canvas, falling back to original image", cropErr);
+        }}
+      }}
 
-          if (!res.ok) throw new Error('Upload error: ' + res.status);
-          
-          const result = await res.json();
-          uploadedCount = result.image_count || (uploadedCount + 1);
+      // Fallback: If cropper wasn't available, use raw camera image directly
+      if (!blobToSend && fileInput.files && fileInput.files[0]) {{
+        blobToSend = fileInput.files[0];
+      }}
+
+      if (!blobToSend) {{
+        alert('Could not prepare image for transmission. Please retake the photo.');
+        btnSend.disabled = false;
+        btnSend.innerHTML = '<span>Upload & Send</span>';
+        return;
+      }}
+
+      const formData = new FormData();
+      formData.append('file', blobToSend, 'mobile_receipt.jpg');
+
+      try {{
+        const res = await fetch('/api/mobile/upload/' + sessionId, {{
+          method: 'POST',
+          body: formData
+        }});
+
+        if (!res.ok) throw new Error('Upload error: ' + res.status);
+        
+        const result = await res.json();
+        uploadedCount = result.image_count || (uploadedCount + 1);
           batchBadge.textContent = uploadedCount + (uploadedCount === 1 ? ' Receipt Sent in this Session' : ' Receipts Sent in this Session');
 
           if (cropperInstance) {{
