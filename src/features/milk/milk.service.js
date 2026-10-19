@@ -564,6 +564,40 @@ export function removeShelfFromFreezer(freezerId, shelfName) {
   return freezer.shelves;
 }
 
+/**
+ * Robustly parses a batch's freezer_shelf string into { freezerName, freezerId, shelfName }
+ * Batches without a prefix strictly belong to the primary default freezer (Freezer A).
+ */
+export function getBatchFreezerAndShelf(batch, freezers = []) {
+  const activeFreezers = freezers.length > 0 ? freezers : getFreezers();
+  const defaultFreezer = activeFreezers[0] || { id: 'freezer-1', name: 'Upright Freezer A', shelves: ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'] };
+  const raw = (batch?.freezer_shelf || '').trim();
+
+  if (raw.includes(' / ')) {
+    const parts = raw.split(' / ');
+    const fName = parts[0].trim();
+    const sName = parts.slice(1).join(' / ').trim();
+    const matched = activeFreezers.find(f => f.name.toLowerCase() === fName.toLowerCase());
+    return {
+      freezerName: matched ? matched.name : fName,
+      freezerId: matched ? matched.id : null,
+      shelfName: sName || 'Shelf 1'
+    };
+  }
+
+  // Legacy or un-prefixed batch belongs strictly to default first freezer
+  return {
+    freezerName: defaultFreezer.name,
+    freezerId: defaultFreezer.id,
+    shelfName: raw || 'Shelf 1'
+  };
+}
+
+export function formatFreezerShelf(freezerName, shelfName) {
+  if (!freezerName) return shelfName || 'Shelf 1';
+  return `${freezerName.trim()} / ${(shelfName || 'Shelf 1').trim()}`;
+}
+
 // Backward-compatible shelf functions
 export function getFreezerShelves() {
   const activeId = getActiveFreezerId();

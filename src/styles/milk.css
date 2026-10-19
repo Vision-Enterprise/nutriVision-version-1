@@ -590,6 +590,23 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   background: rgba(255,255,255,0.25);
 }
 
+.digital-twin-tab-del-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.7;
+  color: inherit;
+  margin-left: 2px;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.digital-twin-tab-del-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444 !important;
+}
+
 .digital-twin-add-freezer-btn {
   display: inline-flex;
   align-items: center;

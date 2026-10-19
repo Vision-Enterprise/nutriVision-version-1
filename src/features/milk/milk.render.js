@@ -6,7 +6,7 @@
  */
 
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
-import { DISPENSE_INDICATIONS } from './milk.service.js';
+import { getBatchFreezerAndShelf } from './milk.service.js';
 
 /**
  * 2-Section Page Skeleton:
@@ -348,61 +348,85 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
           selectedBatch: freezerOptions.selectedBatch,
           selectedShelf: freezerOptions.selectedShelf
         })
-      : renderBatchesTable(batches, draftBatches, shelves, fefoBatch)
+      : renderBatchesTable(batches, draftBatches, shelves, fefoBatch, freezerOptions.freezers || [])
     }
   `;
 }
 
-function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoBatch = null) {
-  const shelfOptionsHtml = (selected) => shelves.map(s => `
-    <option value="${s}" ${selected === s ? 'selected' : ''}>${s}</option>
+function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoBatch = null, freezers = []) {
+  const activeFreezers = freezers.length > 0 ? freezers : [{ id: 'freezer-1', name: 'Upright Freezer A', shelves: ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'] }];
+
+  const freezerOptionsHtml = (selectedName) => activeFreezers.map(f => `
+    <option value="${escapeHtml(f.name)}" ${f.name.toLowerCase() === (selectedName || '').toLowerCase() ? 'selected' : ''}>
+      ${escapeHtml(f.name)}
+    </option>
   `).join('');
 
-  // Exactly 9 columns: #, Batch No., Date Past., Expiry, Shelf, Initial, Remaining, Status, Actions
-  const draftHtml = draftBatches.map((draft, idx) => `
-    <tr class="grid-row--draft" data-draft-idx="${idx}">
-      <td style="color:#0284c7;font-weight:700;text-align:center;">+ New</td>
-      <td>
-        <input type="text" class="grid-cell-input grid-cell-input--mono js-batch-no"
-               value="${escapeHtml(draft.batch_number || '')}" placeholder="e.g. BM-096" aria-label="Batch Number" autofocus>
-      </td>
-      <td>
-        <input type="date" class="grid-cell-input js-batch-date-past"
-               value="${draft.date_pasteurized || new Date().toISOString().split('T')[0]}" aria-label="Date Pasteurized">
-      </td>
-      <td>
-        <input type="date" class="grid-cell-input js-batch-expiry"
-               value="${draft.expiry_date || ''}" aria-label="Expiry Date">
-      </td>
-      <td>
-        <select class="grid-cell-select js-batch-shelf" aria-label="Freezer Shelf">
-          ${shelfOptionsHtml(draft.freezer_shelf || shelves[0])}
-        </select>
-      </td>
-      <td style="max-width:90px;text-align:center;">
-        <input type="number" class="grid-cell-input js-batch-bags" min="1"
-               value="${draft.total_bags || ''}" placeholder="Bags" aria-label="Initial Bags">
-      </td>
-      <td style="text-align:center;color:var(--color-text-muted);">—</td>
-      <td style="text-align:center;">
-        <span class="badge badge--info">Draft</span>
-      </td>
-      <td class="grid-actions-cell" style="text-align:center;">
-        <button class="btn-grid-save js-save-single-batch" data-draft-idx="${idx}" title="Save batch">
-          <span class="icon" style="font-size:16px;">check</span> Save
-        </button>
-        <button class="btn-grid-discard js-discard-single-batch" data-draft-idx="${idx}" title="Discard">
-          <span class="icon" style="font-size:16px;">close</span>
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  const shelfOptionsForFreezerHtml = (freezerName, selectedShelfName) => {
+    const f = activeFreezers.find(item => item.name.toLowerCase() === (freezerName || '').toLowerCase()) || activeFreezers[0];
+    const shelfList = (f && f.shelves && f.shelves.length > 0) ? f.shelves : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
+    return shelfList.map(s => `
+      <option value="${escapeHtml(s)}" ${s.toLowerCase() === (selectedShelfName || '').toLowerCase() ? 'selected' : ''}>
+        ${escapeHtml(s)}
+      </option>
+    `).join('');
+  };
+
+  // Exactly 10 columns: #, Batch No., Date Past., Expiry, Freezer, Shelf, Initial, Remaining, Status, Actions
+  const draftHtml = draftBatches.map((draft, idx) => {
+    const draftLoc = getBatchFreezerAndShelf(draft, activeFreezers);
+
+    return `
+      <tr class="grid-row--draft" data-draft-idx="${idx}">
+        <td style="color:#0284c7;font-weight:700;text-align:center;">+ New</td>
+        <td>
+          <input type="text" class="grid-cell-input grid-cell-input--mono js-batch-no"
+                 value="${escapeHtml(draft.batch_number || '')}" placeholder="e.g. BM-096" aria-label="Batch Number" autofocus>
+        </td>
+        <td>
+          <input type="date" class="grid-cell-input js-batch-date-past"
+                 value="${draft.date_pasteurized || new Date().toISOString().split('T')[0]}" aria-label="Date Pasteurized">
+        </td>
+        <td>
+          <input type="date" class="grid-cell-input js-batch-expiry"
+                 value="${draft.expiry_date || ''}" aria-label="Expiry Date">
+        </td>
+        <td>
+          <select class="grid-cell-select js-draft-freezer" data-draft-idx="${idx}" aria-label="Freezer">
+            ${freezerOptionsHtml(draftLoc.freezerName)}
+          </select>
+        </td>
+        <td>
+          <select class="grid-cell-select js-draft-shelf" data-draft-idx="${idx}" aria-label="Shelf">
+            ${shelfOptionsForFreezerHtml(draftLoc.freezerName, draftLoc.shelfName)}
+          </select>
+        </td>
+        <td style="max-width:90px;text-align:center;">
+          <input type="number" class="grid-cell-input js-batch-bags" min="1"
+                 value="${draft.total_bags || ''}" placeholder="Bags" aria-label="Initial Bags">
+        </td>
+        <td style="text-align:center;color:var(--color-text-muted);">—</td>
+        <td style="text-align:center;">
+          <span class="badge badge--info">Draft</span>
+        </td>
+        <td class="grid-actions-cell" style="text-align:center;">
+          <button class="btn-grid-save js-save-single-batch" data-draft-idx="${idx}" title="Save batch">
+            <span class="icon" style="font-size:16px;">check</span> Save
+          </button>
+          <button class="btn-grid-discard js-discard-single-batch" data-draft-idx="${idx}" title="Discard">
+            <span class="icon" style="font-size:16px;">close</span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   const savedHtml = batches.map((b, index) => {
     const isFefo = fefoBatch && fefoBatch.id === b.id;
     const statusBadge = getBatchStatusBadge(b);
     const daysLeft = calculateDaysRemaining(b.expiry_date);
     const expiryClass = daysLeft <= 0 ? 'text-danger fw-bold' : (daysLeft <= 30 ? 'text-warning fw-bold' : '');
+    const loc = getBatchFreezerAndShelf(b, activeFreezers);
 
     return `
       <tr data-batch-id="${b.id}">
@@ -419,8 +443,13 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </span>
         </td>
         <td>
-          <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Freezer Shelf">
-            ${shelfOptionsHtml(b.freezer_shelf)}
+          <select class="milk-shelf-select js-update-freezer" data-batch-id="${b.id}" aria-label="Freezer">
+            ${freezerOptionsHtml(loc.freezerName)}
+          </select>
+        </td>
+        <td>
+          <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Shelf">
+            ${shelfOptionsForFreezerHtml(loc.freezerName, loc.shelfName)}
           </select>
         </td>
         <td class="text-center">${b.total_bags}</td>
@@ -454,7 +483,8 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
             <th style="min-width:140px;">Batch No.</th>
             <th style="min-width:125px;">Date Pasteurized</th>
             <th style="min-width:140px;">Expiration Date</th>
-            <th style="min-width:130px;">Freezer Shelf</th>
+            <th style="min-width:140px;">Freezer</th>
+            <th style="min-width:110px;">Shelf</th>
             <th style="min-width:85px;text-align:center;">Initial</th>
             <th style="min-width:90px;text-align:center;">Remaining</th>
             <th style="min-width:110px;text-align:center;">Status</th>
@@ -466,7 +496,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${savedHtml}
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
-              <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
+              <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
                 No pasteurized batches recorded yet. Click <strong>Add Batch Row</strong> to log a BM batch.
               </td>
             </tr>
@@ -507,38 +537,73 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
   }
 
   const activeFreezer = freezers.find(f => f.id === activeFreezerId) || freezers[0];
-  const shelves = activeFreezer.shelves && activeFreezer.shelves.length > 0
-    ? activeFreezer.shelves
+  const configuredShelves = (activeFreezer.shelves && activeFreezer.shelves.length > 0)
+    ? [...activeFreezer.shelves]
     : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
 
-  // Map batches to shelves
-  const shelfMap = {};
-  shelves.forEach(s => { shelfMap[s] = []; });
+  // Isolate batches strictly by freezer: A newly created freezer (e.g. Freezer B) has 0 batches
+  const freezerBatches = (batches || []).filter(b => {
+    if ((b.remaining_bags || 0) <= 0) return false;
+    const loc = getBatchFreezerAndShelf(b, freezers);
+    return loc.freezerName.toLowerCase() === activeFreezer.name.toLowerCase();
+  });
 
-  (batches || []).forEach(b => {
-    if ((b.remaining_bags || 0) > 0) {
-      let bShelf = b.freezer_shelf || shelves[0] || 'Shelf 1';
-      // If batch shelf has freezer prefix, e.g. "Upright Freezer A / Shelf 1"
-      if (bShelf.includes(' / ')) {
-        const [fName, sName] = bShelf.split(' / ');
-        if (fName.trim().toLowerCase() === activeFreezer.name.trim().toLowerCase()) {
-          bShelf = sName.trim();
-        } else {
-          return; // Belongs to different freezer
-        }
+  // Dynamic Shelf Distribution: 20-bag max capacity per shelf, with excess rolling over to next shelf
+  const shelfAllocations = configuredShelves.map(name => ({
+    shelfName: name,
+    usedBags: 0,
+    items: [] // { batch, bags, isExcess, totalBatchBags }
+  }));
+
+  // Sort batches: Priority/FEFO batch first, then earliest expiration
+  const sortedBatches = [...freezerBatches].sort((a, b) => {
+    if (fefoBatch && fefoBatch.id === a.id) return -1;
+    if (fefoBatch && fefoBatch.id === b.id) return 1;
+    return new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0);
+  });
+
+  // Place batches onto shelves with 20 bags max per shelf
+  sortedBatches.forEach(b => {
+    const loc = getBatchFreezerAndShelf(b, freezers);
+    let startIdx = shelfAllocations.findIndex(s => s.shelfName.toLowerCase() === loc.shelfName.toLowerCase());
+    if (startIdx === -1) startIdx = 0;
+
+    let remaining = b.remaining_bags;
+    let currIdx = startIdx;
+
+    while (remaining > 0) {
+      if (currIdx >= shelfAllocations.length) {
+        const nextShelfName = `Shelf ${shelfAllocations.length + 1}`;
+        shelfAllocations.push({
+          shelfName: nextShelfName,
+          usedBags: 0,
+          items: []
+        });
       }
-      if (!shelfMap[bShelf]) shelfMap[bShelf] = [];
-      shelfMap[bShelf].push(b);
+
+      const shelfObj = shelfAllocations[currIdx];
+      const avail = Math.max(0, 20 - shelfObj.usedBags);
+
+      if (avail > 0) {
+        const place = Math.min(avail, remaining);
+        shelfObj.items.push({
+          batch: b,
+          bags: place,
+          isExcess: currIdx !== startIdx,
+          totalBatchBags: b.remaining_bags
+        });
+        shelfObj.usedBags += place;
+        remaining -= place;
+      }
+      currIdx++;
     }
   });
 
-  const fefoShelfName = fefoBatch?.freezer_shelf || null;
+  // Selected shelf data if a shelf is clicked
+  const selectedShelfObj = selectedShelf ? shelfAllocations.find(s => s.shelfName === selectedShelf) : null;
+  const selectedShelfBags = selectedShelfObj ? selectedShelfObj.usedBags : 0;
 
-  // Selected shelf bags count if a shelf is selected
-  const selectedShelfBatches = selectedShelf ? (shelfMap[selectedShelf] || []) : [];
-  const selectedShelfBags = selectedShelfBatches.reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
-
-  // Status text determination
+  // Status text determination for dark header
   let statusText = 'Select a shelf or batch';
   let statusSub = 'SYSTEM STATUS';
   if (selectedBatch) {
@@ -546,10 +611,10 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
     statusText = `${escapeHtml(selectedBatch.batch_number)} - ${selectedBatch.remaining_bags} Bags Available`;
   } else if (selectedShelf) {
     statusSub = 'SHELF SELECTED';
-    statusText = `${escapeHtml(selectedShelf)} - ${selectedShelfBags} Bags Total`;
+    statusText = `${escapeHtml(selectedShelf)} - ${selectedShelfBags} / 20 Bags Total`;
   }
 
-  // Freezer Tabs Bar
+  // Freezer Tabs Bar with Rename & Delete (delete shown when >1 freezer)
   const freezerTabsHtml = `
     <div class="digital-twin-tabs-bar">
       ${freezers.map(f => `
@@ -560,6 +625,11 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
           <span class="digital-twin-tab-rename-btn js-rename-freezer" data-freezer-id="${f.id}" title="Rename ${escapeHtml(f.name)}">
             <span class="icon" style="font-size:14px;">edit</span>
           </span>
+          ${freezers.length > 1 ? `
+            <span class="digital-twin-tab-del-btn js-delete-freezer" data-freezer-id="${f.id}" title="Delete ${escapeHtml(f.name)}">
+              <span class="icon" style="font-size:14px;">delete</span>
+            </span>
+          ` : ''}
         </button>
       `).join('')}
       <button class="digital-twin-add-freezer-btn" id="btn-add-freezer" type="button">
@@ -568,16 +638,16 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
     </div>
   `;
 
-  // Shelves HTML (Vertical Scroll Pane)
-  const shelvesListHtml = shelves.map((shelfName, shelfIdx) => {
-    const shelfBatches = shelfMap[shelfName] || [];
-    const totalBags = shelfBatches.reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
-    const isFefoShelf = fefoShelfName === shelfName && totalBags > 0;
-    const isNewestShelf = shelfIdx === shelves.length - 1;
-    const isShelfSelected = selectedShelf === shelfName;
+  // Shelves HTML (Vertical Scroll Pane — NO empty dashed boxes)
+  const shelvesListHtml = shelfAllocations.map((shelfObj, shelfIdx) => {
+    const totalBags = shelfObj.usedBags;
+    const isFefoShelf = shelfObj.items.some(it => fefoBatch && fefoBatch.id === it.batch.id);
+    const isNewestShelf = shelfIdx === shelfAllocations.length - 1;
+    const isShelfSelected = selectedShelf === shelfObj.shelfName;
 
-    // Render batch boxes (4 slots per row minimum)
-    const filledBoxes = shelfBatches.map((b, bIdx) => {
+    // Render batch boxes strictly for actual contents (no empty placeholder boxes)
+    const filledBoxes = shelfObj.items.map(it => {
+      const b = it.batch;
       const isPriority = fefoBatch && fefoBatch.id === b.id;
       const isSelected = selectedBatch && selectedBatch.id === b.id;
       const isLow = (b.remaining_bags || 0) <= 3;
@@ -591,48 +661,46 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
       return `
         <div class="batch-box ${variantClass} js-freezer-batch-box"
              data-batch-id="${b.id}"
-             data-shelf-name="${escapeHtml(shelfName)}"
-             data-pos="${bIdx + 1}"
-             title="${escapeHtml(b.batch_number)}: ${b.remaining_bags} bags (Click to inspect)">
+             data-shelf-name="${escapeHtml(shelfObj.shelfName)}"
+             title="${escapeHtml(b.batch_number)}: ${it.bags} bags on this shelf (${b.remaining_bags} bags total)">
           <span class="batch-box__no">${escapeHtml(b.batch_number)}</span>
-          <span class="batch-box__bags">${b.remaining_bags} ${b.remaining_bags === 1 ? 'bag' : 'bags'}</span>
+          <span class="batch-box__bags">
+            ${it.bags} ${it.bags === 1 ? 'bag' : 'bags'}
+            ${it.isExcess ? '<span style="font-size:9.5px;color:#d97706;font-weight:700;">(excess)</span>' : ''}
+          </span>
         </div>
       `;
     });
 
-    // Render empty dashed slots to maintain at least 4 slots across
-    const emptyCount = Math.max(0, 4 - filledBoxes.length);
-    const emptyBoxes = [];
-    for (let k = 0; k < emptyCount; k++) {
-      emptyBoxes.push(`<div class="batch-box batch-box--empty" title="Empty Slot"></div>`);
-    }
-
-    let pillLabel = shelfName.toUpperCase();
+    let pillLabel = shelfObj.shelfName.toUpperCase();
     let pillClass = 'digital-twin-shelf-pill';
     if (isFefoShelf) {
-      pillLabel = `${shelfName.toUpperCase()} (PRIORITY DISPATCH)`;
+      pillLabel = `${shelfObj.shelfName.toUpperCase()} (PRIORITY DISPATCH)`;
       pillClass += ' digital-twin-shelf-pill--priority';
     } else if (isNewestShelf) {
-      pillLabel = `${shelfName.toUpperCase()} (NEWEST)`;
+      pillLabel = `${shelfObj.shelfName.toUpperCase()} (NEWEST)`;
       pillClass += ' digital-twin-shelf-pill--newest';
     }
 
     return `
       <div class="digital-twin-shelf ${isShelfSelected ? 'digital-twin-shelf--selected' : ''} ${isFefoShelf ? 'digital-twin-shelf--fefo' : ''} js-freezer-shelf"
-           data-shelf-name="${escapeHtml(shelfName)}">
+           data-shelf-name="${escapeHtml(shelfObj.shelfName)}">
         <div class="digital-twin-shelf-header">
           <span class="${pillClass}">
             ${isFefoShelf ? '<span class="icon" style="font-size:12px;">timer</span>' : ''}
             ${escapeHtml(pillLabel)}
           </span>
           <span class="digital-twin-shelf-bags-count">
-            ${totalBags} / 20 bags
+            ${totalBags} / 20 bags ${totalBags >= 20 ? '<span style="color:#dc2626;font-weight:700;margin-left:4px;">(Full)</span>' : ''}
           </span>
         </div>
 
         <div class="batch-boxes-grid">
-          ${filledBoxes.join('')}
-          ${emptyBoxes.join('')}
+          ${filledBoxes.length > 0 ? filledBoxes.join('') : `
+            <div style="grid-column: span 4; font-size: 12px; color: var(--color-text-muted); font-style: italic; padding: 6px 0;">
+              No batches on this shelf (20 bags available)
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -642,7 +710,20 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
   let detailsCardContent = '';
   if (selectedBatch) {
     const isPriorityBatch = fefoBatch && fefoBatch.id === selectedBatch.id;
-    const batchShelf = selectedBatch.freezer_shelf || shelves[0] || 'Shelf 1';
+    const loc = getBatchFreezerAndShelf(selectedBatch, freezers);
+
+    // Find all shelves where this batch is placed due to overflow
+    const shelvesWithBatch = [];
+    shelfAllocations.forEach(s => {
+      const match = s.items.find(it => it.batch.id === selectedBatch.id);
+      if (match) {
+        shelvesWithBatch.push(`${s.shelfName} (${match.bags} bags)`);
+      }
+    });
+
+    const locationText = shelvesWithBatch.length > 1
+      ? shelvesWithBatch.join(' · ')
+      : `${loc.freezerName} / ${loc.shelfName}`;
 
     detailsCardContent = `
       <div class="details-card-header">
@@ -663,8 +744,8 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
           <span class="details-field-val details-field-val--batch">${escapeHtml(selectedBatch.batch_number)}</span>
         </div>
         <div class="details-field-group">
-          <span class="details-field-label">Exact Location</span>
-          <span class="details-field-val">${escapeHtml(batchShelf)}</span>
+          <span class="details-field-label">Freezer & Location</span>
+          <span class="details-field-val" style="font-size:13.5px;">${escapeHtml(locationText)}</span>
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Quantity Available</span>
@@ -691,71 +772,73 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
         <button class="btn btn-outline-danger js-freezer-delete-batch" data-batch-id="${selectedBatch.id}" type="button">
           <span class="icon icon--sm">delete</span> Delete
         </button>
-        <button class="btn btn-primary js-freezer-dispense-batch" data-batch-id="${selectedBatch.id}" type="button"
+        <button class="btn btn-primary js-quick-dispense-btn" data-batch-id="${selectedBatch.id}" type="button"
                 style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
           <span class="icon icon--sm">volunteer_activism</span> Dispense Bags
         </button>
       </div>
     `;
-  } else if (selectedShelf) {
+  } else if (selectedShelfObj) {
+    const shelfItems = selectedShelfObj.items;
+
     detailsCardContent = `
       <div class="details-card-header">
         <div>
           <h2 class="details-card-title">Shelf Details</h2>
-          <p class="details-card-subtitle">Storage occupancy and batches for ${escapeHtml(selectedShelf)}.</p>
+          <p class="details-card-subtitle">Storage occupancy and batches for ${escapeHtml(selectedShelfObj.shelfName)}.</p>
         </div>
       </div>
 
       <div class="details-inner-card">
         <div class="details-field-group">
           <span class="details-field-label">Selected Shelf</span>
-          <span class="details-field-val details-field-val--batch">${escapeHtml(selectedShelf)}</span>
+          <span class="details-field-val details-field-val--batch">${escapeHtml(selectedShelfObj.shelfName)}</span>
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Freezer Cabinet</span>
           <span class="details-field-val">${escapeHtml(activeFreezer.name)}</span>
         </div>
         <div class="details-field-group">
-          <span class="details-field-label">Total Bags Stored</span>
-          <span class="details-field-val details-field-val--qty">${selectedShelfBags} Bags</span>
+          <span class="details-field-label">Total Bags on Shelf</span>
+          <span class="details-field-val details-field-val--qty">${selectedShelfBags} / 20 Bags</span>
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Batches Count</span>
-          <span class="details-field-val">${selectedShelfBatches.length} active batches</span>
+          <span class="details-field-val">${shelfItems.length} active batch portions</span>
         </div>
         <div class="details-field-group" style="grid-column: span 2;">
           <span class="details-field-label">Capacity Utilization (Max 20 Bags)</span>
           <div style="background:#e2e8f0;border-radius:6px;height:10px;overflow:hidden;margin-top:6px;">
-            <div style="background:${selectedShelfBags > 18 ? '#dc2626' : (selectedShelfBags > 14 ? '#f59e0b' : '#0284c7')};width:${Math.min(100, Math.round(selectedShelfBags / 20 * 100))}%;height:100%;"></div>
+            <div style="background:${selectedShelfBags >= 20 ? '#dc2626' : (selectedShelfBags > 14 ? '#f59e0b' : '#0284c7')};width:${Math.min(100, Math.round(selectedShelfBags / 20 * 100))}%;height:100%;"></div>
           </div>
           <span style="font-size:11px;color:var(--color-text-muted);margin-top:4px;">${selectedShelfBags} of 20 bags used (${Math.min(100, Math.round(selectedShelfBags / 20 * 100))}%)</span>
         </div>
       </div>
 
-      ${selectedShelfBatches.length > 0 ? `
+      ${shelfItems.length > 0 ? `
         <div style="margin-top:8px;">
           <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:8px;">
             Batches on this shelf:
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            ${selectedShelfBatches.map(b => `
-              <button class="freezer-batch-pill js-freezer-batch-box" data-batch-id="${b.id}" style="cursor:pointer;border:1px solid #bae6fd;">
-                <strong style="color:#0369a1;font-family:monospace;">${escapeHtml(b.batch_number)}</strong>
+            ${shelfItems.map(it => `
+              <button class="freezer-batch-pill js-freezer-batch-box" data-batch-id="${it.batch.id}" style="cursor:pointer;border:1px solid #bae6fd;">
+                <strong style="color:#0369a1;font-family:monospace;">${escapeHtml(it.batch.batch_number)}</strong>
                 <span>·</span>
-                <span>${b.remaining_bags} bags</span>
+                <span>${it.bags} bags</span>
               </button>
             `).join('')}
           </div>
         </div>
       ` : `
         <div style="color:var(--color-text-muted);font-size:13px;padding:12px 0;">
-          No pasteurized batches currently assigned to this shelf.
+          No pasteurized batches currently stored on this shelf.
         </div>
       `}
 
       <div class="details-actions-row">
-        ${selectedShelfBatches.length > 0 ? `
-          <button class="btn btn-primary js-freezer-dispense-batch" data-batch-id="${selectedShelfBatches[0].id}" type="button"
+        ${shelfItems.length > 0 ? `
+          <button class="btn btn-primary js-quick-dispense-btn" data-batch-id="${shelfItems[0].batch.id}" type="button"
                   style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
             <span class="icon icon--sm">volunteer_activism</span> Dispense From Shelf
           </button>
@@ -778,7 +861,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
         </div>
         <div style="font-size:15px;font-weight:700;color:var(--color-text);">Select a shelf or batch box</div>
         <p style="font-size:13px;color:var(--color-text-muted);max-width:320px;margin:0;">
-          Click on any shelf to inspect total bag occupancy, or click a batch box to view expiration, edit details, or dispense pouches.
+          Click on any shelf to inspect bag occupancy, or click a batch box to view expiration, edit details, or dispense pouches.
         </p>
       </div>
     `;
@@ -815,9 +898,16 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
                 <span class="icon" style="font-size:22px;">kitchen</span>
                 <span>${escapeHtml(activeFreezer.name)}</span>
               </div>
-              <button class="digital-twin-rename-inline-btn js-rename-freezer" data-freezer-id="${activeFreezer.id}" type="button">
-                <span class="icon">edit</span> Rename
-              </button>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button class="digital-twin-rename-inline-btn js-rename-freezer" data-freezer-id="${activeFreezer.id}" type="button">
+                  <span class="icon">edit</span> Rename
+                </button>
+                ${freezers.length > 1 ? `
+                  <button class="digital-twin-rename-inline-btn js-delete-freezer" data-freezer-id="${activeFreezer.id}" style="color:#fca5a5;" type="button">
+                    <span class="icon">delete</span> Delete
+                  </button>
+                ` : ''}
+              </div>
             </div>
 
             <!-- System Status Box -->
@@ -827,7 +917,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
             </div>
           </div>
 
-          <!-- Vertical Scroll Pane for Shelves -->
+          <!-- Vertical Scroll Pane for Shelves (NO empty placeholder boxes) -->
           <div class="digital-twin-shelves-pane" id="digital-twin-shelves-pane">
             ${shelvesListHtml}
           </div>
@@ -840,7 +930,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
                 <span class="icon icon--sm">add</span> Add Shelf
               </button>
               <button id="btn-freezer-remove-shelf" class="btn btn-secondary btn-sm" type="button"
-                      ${shelves.length <= 2 ? 'disabled' : ''}>
+                      ${activeFreezer.shelves.length <= 2 ? 'disabled' : ''}>
                 <span class="icon icon--sm">remove</span> Remove Last
               </button>
             </div>
@@ -857,18 +947,14 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// SHEET 3: Dispensing Ledger Spreadsheet
-// Exactly 9 columns matching the 9 <th> elements
+// SHEET 3: Dispensing Ledger Spreadsheet (Clinical Indication REMOVED)
+// Exactly 8 columns: #, Date, Recipient, Barangay, Batch, Bags, Released By, Actions
 // ════════════════════════════════════════════════════════════════════════════
 export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null) {
   const pendingCount = draftRows.length;
 
   const brgyOptionsHtml = (selected) => (BARANGAYS || []).map(b => `
     <option value="${b}" ${selected === b ? 'selected' : ''}>${b}</option>
-  `).join('');
-
-  const indicationOptionsHtml = (selected) => DISPENSE_INDICATIONS.map(i => `
-    <option value="${i}" ${selected === i ? 'selected' : ''}>${i}</option>
   `).join('');
 
   const batchOptionsHtml = (selectedId) => {
@@ -909,11 +995,6 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
                value="${draft.bags_dispensed || 1}" aria-label="Bags Dispensed">
       </td>
       <td>
-        <select class="grid-cell-select js-dispense-indication" aria-label="Clinical Indication">
-          ${indicationOptionsHtml(draft.indication || DISPENSE_INDICATIONS[0])}
-        </select>
-      </td>
-      <td>
         <span class="text-muted text-xs">Self</span>
       </td>
       <td class="grid-actions-cell" style="text-align:center;">
@@ -945,9 +1026,6 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         </td>
         <td class="text-center">
           <span class="badge badge--info">${item.bags_dispensed} bags</span>
-        </td>
-        <td>
-          <span class="badge badge--secondary">${escapeHtml(item.indication)}</span>
         </td>
         <td class="text-sm text-muted">${escapeHtml(item.released_by_name || 'Staff')}</td>
         <td class="text-muted text-xs" style="text-align:center;">Issued</td>
@@ -988,7 +1066,6 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
             <th style="min-width:140px;">Barangay *</th>
             <th style="min-width:170px;">Batch Issued (FEFO) *</th>
             <th style="min-width:85px;text-align:center;">Bags *</th>
-            <th style="min-width:150px;">Indication *</th>
             <th style="min-width:120px;">Released By</th>
             <th style="min-width:90px;text-align:center;">Actions</th>
           </tr>
@@ -998,7 +1075,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${savedHtml}
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
-              <td colspan="9" style="text-align:center;padding:36px;color:var(--color-text-muted);">
+              <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
                 No milk dispatches logged yet. Click <strong>Record Dispense Row</strong> to issue milk.
               </td>
             </tr>
