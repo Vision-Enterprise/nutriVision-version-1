@@ -232,6 +232,7 @@ export async function createMilkBatch({
   profileName
 }) {
   try {
+    const numBags = parseInt(total_bags, 10) || 1;
     let { data, error } = await supabase
       .from('milk_batches')
       .insert({
