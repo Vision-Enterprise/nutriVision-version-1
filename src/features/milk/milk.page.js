@@ -434,45 +434,22 @@ function _bindBatchesSheetEvents() {
     _renderActiveSheet();
   });
 
-  // Dynamic dropdown pairing for draft rows
+  // Dynamic freezer selection for draft rows: auto-assign next available shelf in selected freezer
   document.querySelectorAll('.js-draft-freezer').forEach(sel => {
     sel.addEventListener('change', () => {
       const idx = parseInt(sel.dataset.draftIdx, 10);
       const chosenFreezerName = sel.value;
       const targetFreezer = _freezers.find(f => f.name.toLowerCase() === chosenFreezerName.toLowerCase()) || _freezers[0];
-      const shelfSel = sel.closest('tr')?.querySelector('.js-draft-shelf');
-      if (shelfSel && targetFreezer) {
-        const shelves = (targetFreezer.shelves && targetFreezer.shelves.length > 0)
-          ? targetFreezer.shelves
-          : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
-        const allocations = getFreezerShelfAllocations(targetFreezer.name, _batches, _freezers, null);
-        shelfSel.innerHTML = shelves.map(s => {
-          const alloc = allocations.find(a => a.shelfName.toLowerCase() === s.toLowerCase());
-          const used = alloc ? alloc.usedBags : 0;
-          let badge = `${used}/20 bags`;
-          if (used >= 20) badge = '20/20 Full';
-          else if (used === 0) badge = '0/20 Empty';
-          return `<option value="${escapeHtml(s)}">${escapeHtml(s)} (${badge})</option>`;
-        }).join('');
-        if (_draftBatches[idx]) {
-          _draftBatches[idx].freezer_shelf = formatFreezerShelf(targetFreezer.name, shelves[0]);
-        }
-      }
-    });
-  });
-
-  document.querySelectorAll('.js-draft-shelf').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const idx = parseInt(sel.dataset.draftIdx, 10);
-      const freezerSel = sel.closest('tr')?.querySelector('.js-draft-freezer');
-      const freezerName = freezerSel?.value || (_freezers[0]?.name || 'Upright Freezer A');
+      const allocations = getFreezerShelfAllocations(targetFreezer.name, _batches, _freezers, null);
+      const availableShelf = allocations.find(a => a.usedBags < 20);
+      const shelfName = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
       if (_draftBatches[idx]) {
-        _draftBatches[idx].freezer_shelf = formatFreezerShelf(freezerName, sel.value);
+        _draftBatches[idx].freezer_shelf = formatFreezerShelf(targetFreezer.name, shelfName);
       }
     });
   });
 
-  // Save single batch row with strict validation
+  // Save single batch row with strict validation & auto-assigned shelf (FIFO)
   document.querySelectorAll('.js-save-single-batch').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.draftIdx, 10);
@@ -484,28 +461,25 @@ function _bindBatchesSheetEvents() {
         return;
       }
 
-      // Check shelf capacity before saving new batch
-      const loc = getBatchFreezerAndShelf(data, _freezers);
-      const bagsNum = parseInt(data.total_bags, 10) || 0;
-      const targetLoad = getShelfLoad(loc.freezerName, loc.shelfName, _batches, _freezers, null);
+      const targetFreezer = _freezers.find(f => f.name.toLowerCase() === data.freezerName.toLowerCase()) || _freezers[0];
 
-      if (targetLoad >= 20 || targetLoad + bagsNum > 20) {
-        const msg = targetLoad >= 20
-          ? `"${loc.shelfName}" in ${loc.freezerName} is already full (${targetLoad}/20 bags).\n\nLogging batch "${data.batch_number}" (${bagsNum} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
-          : `"${loc.shelfName}" in ${loc.freezerName} currently has ${targetLoad}/20 bags.\n\nAdding batch "${data.batch_number}" (${bagsNum} bags) will exceed the 20-bag shelf limit by ${targetLoad + bagsNum - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
-        
-        const confirmed = await MilkModal.confirm(msg, 'Shelf Capacity Notice', 'Proceed & Save', false);
+      // If all configured shelves in freezer are completely full (20/20 each)
+      if (data.isFreezerFull) {
+        const nextShelfNum = (targetFreezer.shelves ? targetFreezer.shelves.length : 6) + 1;
+        const newShelfName = `Shelf ${nextShelfNum}`;
+        const confirmed = await MilkModal.confirm(
+          `"${data.freezerName}" is completely full (all shelves have 20 bags).\n\nWould you like to automatically add "${newShelfName}" to this freezer, or put this batch on another freezer?`,
+          'Freezer Full',
+          'Add Shelf & Save',
+          false
+        );
         if (!confirmed) {
           return;
         }
-
-        // If target shelf is already 100% full, assign to the first shelf that actually has space
-        if (targetLoad >= 20) {
-          const allocations = getFreezerShelfAllocations(loc.freezerName, _batches, _freezers, null);
-          const availableShelf = allocations.find(a => a.usedBags < 20);
-          const actualStartShelf = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
-          data.freezer_shelf = formatFreezerShelf(loc.freezerName, actualStartShelf);
-        }
+        addShelfToFreezer(targetFreezer.id, newShelfName);
+        _shelves = getFreezerShelves();
+        data.shelfName = newShelfName;
+        data.freezer_shelf = formatFreezerShelf(data.freezerName, newShelfName);
       }
 
       btn.disabled = true;
@@ -569,139 +543,42 @@ function _bindBatchesSheetEvents() {
     }
   });
 
-  // Dynamic Freezer select inline update on saved rows
+  // Dynamic Freezer select inline update on saved rows (auto-assigns to next available shelf in target freezer)
   document.querySelectorAll('.js-update-freezer').forEach(select => {
     select.addEventListener('change', async () => {
       const batchId = select.dataset.batchId;
       const newFreezerName = select.value;
-      const row = select.closest('tr');
-      const shelfSelect = row?.querySelector('.js-update-shelf');
-
       const batch = _batches.find(b => b.id === batchId);
       const prevLoc = getBatchFreezerAndShelf(batch, _freezers);
 
       const targetFreezer = _freezers.find(f => f.name.toLowerCase() === newFreezerName.toLowerCase()) || _freezers[0];
-      const shelves = (targetFreezer.shelves && targetFreezer.shelves.length > 0)
-        ? targetFreezer.shelves
-        : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
-
-      // Populate companion shelf dropdown with new freezer's shelves & occupancy
-      if (shelfSelect) {
-        const allocations = getFreezerShelfAllocations(targetFreezer.name, _batches, _freezers, batchId);
-        shelfSelect.innerHTML = shelves.map(s => {
-          const alloc = allocations.find(a => a.shelfName.toLowerCase() === s.toLowerCase());
-          const used = alloc ? alloc.usedBags : 0;
-          let badge = `${used}/20 bags`;
-          if (used >= 20) badge = '20/20 Full';
-          else if (used === 0) badge = '0/20 Empty';
-          return `<option value="${escapeHtml(s)}">${escapeHtml(s)} (${badge})</option>`;
-        }).join('');
-      }
-
-      const newShelf = (shelfSelect && shelfSelect.value) ? shelfSelect.value : shelves[0];
-      const batchBags = batch ? (batch.remaining_bags || 0) : 0;
-      const targetLoad = getShelfLoad(targetFreezer.name, newShelf, _batches, _freezers, batchId);
-
-      if (targetLoad >= 20 || targetLoad + batchBags > 20) {
-        const msg = targetLoad >= 20
-          ? `"${newShelf}" in ${targetFreezer.name} is already full (${targetLoad}/20 bags).\n\nMoving batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
-          : `"${newShelf}" in ${targetFreezer.name} currently has ${targetLoad}/20 bags.\n\nAdding batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) will exceed the 20-bag shelf limit by ${targetLoad + batchBags - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
-
-        const confirmed = await MilkModal.confirm(msg, 'Shelf Capacity Notice', 'Proceed & Roll Over', false);
-        if (!confirmed) {
-          select.value = prevLoc.freezerName;
-          _renderActiveSheet();
-          return;
-        }
-      }
+      const allocations = getFreezerShelfAllocations(targetFreezer.name, _batches, _freezers, batchId);
+      const availableShelf = allocations.find(a => a.usedBags < 20);
+      const newShelf = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
 
       const combinedLocation = formatFreezerShelf(newFreezerName, newShelf);
 
-      // Instantly update batch in memory so switching to Virtual Freezer reflects immediately with zero reload!
+      // Instantly update batch in memory so UI reflects immediately
       if (batch) {
         batch.freezer_shelf = combinedLocation;
       }
 
       select.disabled = true;
-      if (shelfSelect) shelfSelect.disabled = true;
-
       const { error } = await updateBatchShelf(batchId, combinedLocation, batch?.batch_number, _profile);
       select.disabled = false;
-      if (shelfSelect) shelfSelect.disabled = false;
 
       if (error) {
         await MilkModal.alert('Failed to update freezer location: ' + error, 'Freezer Update Failed');
+        if (batch) batch.freezer_shelf = `${prevLoc.freezerName} / ${prevLoc.shelfName}`;
       } else {
-        // Refresh audit logs in background and re-render sheet to update shelf badges
         fetchMilkAuditLogs().then(res => {
           if (res.data) {
             _auditLogs = res.data;
             _updateTabCounts();
           }
         });
-        _renderActiveSheet();
       }
-    });
-  });
-
-  // Shelf select inline update on saved rows
-  document.querySelectorAll('.js-update-shelf').forEach(select => {
-    select.addEventListener('change', async () => {
-      const batchId = select.dataset.batchId;
-      let effectiveShelf = select.value;
-      const row = select.closest('tr');
-      const freezerSelect = row?.querySelector('.js-update-freezer');
-      const currentFreezerName = freezerSelect?.value || (_freezers[0]?.name || 'Upright Freezer A');
-
-      const batch = _batches.find(b => b.id === batchId);
-      const prevLoc = getBatchFreezerAndShelf(batch, _freezers);
-
-      // Check capacity of target shelf
-      const batchBags = batch ? (batch.remaining_bags || 0) : 0;
-      const targetLoad = getShelfLoad(currentFreezerName, effectiveShelf, _batches, _freezers, batchId);
-
-      if (targetLoad >= 20 || targetLoad + batchBags > 20) {
-        const msg = targetLoad >= 20
-          ? `"${effectiveShelf}" in ${currentFreezerName} is already full (${targetLoad}/20 bags).\n\nMoving batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) here will automatically roll excess bags over to the next shelf.\n\nDo you want to proceed?`
-          : `"${effectiveShelf}" in ${currentFreezerName} currently has ${targetLoad}/20 bags.\n\nAdding batch "${batch?.batch_number || 'Batch'}" (${batchBags} bags) will exceed the 20-bag shelf limit by ${targetLoad + batchBags - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
-
-        const confirmed = await MilkModal.confirm(msg, 'Shelf Capacity Notice', 'Proceed & Roll Over', false);
-        if (!confirmed) {
-          select.value = prevLoc.shelfName;
-          return;
-        }
-
-        // If target shelf is already 100% full, move to first shelf that actually has space
-        if (targetLoad >= 20) {
-          const allocations = getFreezerShelfAllocations(currentFreezerName, _batches, _freezers, batchId);
-          const availableShelf = allocations.find(a => a.usedBags < 20);
-          effectiveShelf = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
-        }
-      }
-
-      const combinedLocation = formatFreezerShelf(currentFreezerName, effectiveShelf);
-
-      // Instantly update batch in memory so switching to Virtual Freezer reflects immediately with zero reload!
-      if (batch) {
-        batch.freezer_shelf = combinedLocation;
-      }
-
-      select.disabled = true;
-      const { error } = await updateBatchShelf(batchId, combinedLocation, batch?.batch_number, _profile);
-      select.disabled = false;
-
-      if (error) {
-        await MilkModal.alert('Failed to update shelf: ' + error, 'Shelf Update Failed');
-      } else {
-        // Refresh audit logs in background and re-render sheet to update shelf badges
-        fetchMilkAuditLogs().then(res => {
-          if (res.data) {
-            _auditLogs = res.data;
-            _updateTabCounts();
-          }
-        });
-        _renderActiveSheet();
-      }
+      _renderActiveSheet();
     });
   });
 
@@ -938,6 +815,89 @@ function _bindBatchesSheetEvents() {
       });
     });
 
+    // ── Drag and Drop: Rearrange batches across shelves in Virtual Freezer ──
+    document.querySelectorAll('.js-freezer-batch-box').forEach(boxEl => {
+      boxEl.addEventListener('dragstart', (e) => {
+        const batchId = boxEl.dataset.batchId;
+        e.dataTransfer.setData('text/plain', batchId);
+        e.dataTransfer.effectAllowed = 'move';
+        boxEl.classList.add('batch-box--dragging');
+      });
+
+      boxEl.addEventListener('dragend', () => {
+        boxEl.classList.remove('batch-box--dragging');
+        document.querySelectorAll('.js-freezer-shelf').forEach(s => s.classList.remove('digital-twin-shelf--drag-over'));
+      });
+    });
+
+    document.querySelectorAll('.js-freezer-shelf').forEach(shelfEl => {
+      shelfEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        shelfEl.classList.add('digital-twin-shelf--drag-over');
+      });
+
+      shelfEl.addEventListener('dragleave', (e) => {
+        if (!shelfEl.contains(e.relatedTarget)) {
+          shelfEl.classList.remove('digital-twin-shelf--drag-over');
+        }
+      });
+
+      shelfEl.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        shelfEl.classList.remove('digital-twin-shelf--drag-over');
+
+        const batchId = e.dataTransfer.getData('text/plain');
+        if (!batchId) return;
+
+        const targetShelfName = shelfEl.dataset.shelfName;
+        const targetBatch = _batches.find(b => b.id === batchId);
+        if (!targetBatch) return;
+
+        const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
+        const currentLoc = getBatchFreezerAndShelf(targetBatch, _freezers);
+
+        // If dropped onto the exact same starting shelf in the same freezer, do nothing
+        if (currentLoc.freezerName.toLowerCase() === activeFreezer.name.toLowerCase() &&
+            currentLoc.shelfName.toLowerCase() === targetShelfName.toLowerCase()) {
+          return;
+        }
+
+        const newLocation = formatFreezerShelf(activeFreezer.name, targetShelfName);
+
+        // Check if target shelf has capacity or will roll over
+        const targetLoad = getShelfLoad(activeFreezer.name, targetShelfName, _batches, _freezers, batchId);
+        const batchBags = targetBatch.remaining_bags || 0;
+
+        if (targetLoad >= 20 || targetLoad + batchBags > 20) {
+          const msg = targetLoad >= 20
+            ? `"${targetShelfName}" in ${activeFreezer.name} is full (${targetLoad}/20 bags).\n\nMoving batch "${targetBatch.batch_number}" (${batchBags} bags) here will roll excess bags over to adjacent shelves.\n\nDo you want to proceed?`
+            : `"${targetShelfName}" in ${activeFreezer.name} currently has ${targetLoad}/20 bags.\n\nAdding batch "${targetBatch.batch_number}" (${batchBags} bags) will exceed the 20-bag shelf limit by ${targetLoad + batchBags - 20} bag(s), rolling excess bags over to the next shelf.\n\nDo you want to proceed?`;
+
+          const confirmed = await MilkModal.confirm(msg, 'Shelf Reallocation', 'Move Batch', false);
+          if (!confirmed) return;
+        }
+
+        // Instantly update batch location in memory
+        targetBatch.freezer_shelf = newLocation;
+        _renderActiveSheet();
+
+        // Persist to Supabase and log audit trail
+        const { error } = await updateBatchShelf(batchId, newLocation, targetBatch.batch_number, _profile);
+        if (error) {
+          await MilkModal.alert('Failed to save batch move: ' + error, 'Move Failed');
+          await _loadData();
+        } else {
+          fetchMilkAuditLogs().then(res => {
+            if (res.data) {
+              _auditLogs = res.data;
+              _updateTabCounts();
+            }
+          });
+        }
+      });
+    });
+
     // Edit Batch (from Detail Card)
     document.querySelectorAll('.js-freezer-edit-batch').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1023,13 +983,20 @@ function _bindBatchesSheetEvents() {
 
 function _collectBatchRowData(row) {
   const freezerName = row.querySelector('.js-draft-freezer')?.value || (_freezers[0]?.name || 'Upright Freezer A');
-  const shelfName = row.querySelector('.js-draft-shelf')?.value || 'Shelf 1';
+  const targetFreezer = _freezers.find(f => f.name.toLowerCase() === freezerName.toLowerCase()) || _freezers[0];
+  const allocations = getFreezerShelfAllocations(targetFreezer?.name || freezerName, _batches, _freezers, null);
+  const availableShelf = allocations.find(a => a.usedBags < 20);
+  const shelfName = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
+
   return {
     batch_number:     row.querySelector('.js-batch-no')?.value?.trim() || '',
     date_pasteurized: row.querySelector('.js-batch-date-past')?.value || '',
     expiry_date:      row.querySelector('.js-batch-expiry')?.value || '',
     freezer_shelf:    formatFreezerShelf(freezerName, shelfName),
-    total_bags:       row.querySelector('.js-batch-bags')?.value?.trim() || ''
+    total_bags:       row.querySelector('.js-batch-bags')?.value?.trim() || '',
+    freezerName,
+    shelfName,
+    isFreezerFull:    !availableShelf
   };
 }
 

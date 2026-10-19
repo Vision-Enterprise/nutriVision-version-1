@@ -838,7 +838,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   border-radius: 8px;
   padding: 8px 4px;
   text-align: center;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.15s ease;
   display: flex;
   flex-direction: column;
@@ -846,6 +846,24 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   justify-content: center;
   gap: 2px;
   user-select: none;
+}
+
+.batch-box:active {
+  cursor: grabbing;
+}
+
+.batch-box--dragging {
+  opacity: 0.45;
+  transform: scale(0.96);
+  border: 2px dashed #0284c7 !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important;
+}
+
+.digital-twin-shelf--drag-over {
+  border-color: #0284c7 !important;
+  background: #f0f9ff !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35) !important;
+  transform: scale(1.01);
 }
 
 .batch-box:hover {

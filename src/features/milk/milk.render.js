@@ -367,27 +367,6 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     </option>
   `).join('');
 
-  const shelfOptionsForFreezerHtml = (freezerName, selectedShelfName, currentBatchId = null) => {
-    const f = activeFreezers.find(item => item.name.toLowerCase() === (freezerName || '').toLowerCase()) || activeFreezers[0];
-    const shelfList = (f && f.shelves && f.shelves.length > 0) ? f.shelves : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
-    const allocations = getFreezerShelfAllocations(f ? f.name : freezerName, batches, activeFreezers, currentBatchId);
-
-    return shelfList.map(s => {
-      const alloc = allocations.find(a => a.shelfName.toLowerCase() === s.toLowerCase());
-      const used = alloc ? alloc.usedBags : 0;
-      let badge = `${used}/20 bags`;
-      if (used >= 20) badge = '20/20 Full';
-      else if (used === 0) badge = '0/20 Empty';
-
-      const isSelected = s.toLowerCase() === (selectedShelfName || '').toLowerCase();
-      return `
-        <option value="${escapeHtml(s)}" ${isSelected ? 'selected' : ''} data-used-bags="${used}">
-          ${escapeHtml(s)} (${badge})
-        </option>
-      `;
-    }).join('');
-  };
-
   // Exactly 10 columns: #, Batch No., Date Past., Expiry, Freezer, Shelf, Initial, Remaining, Status, Actions
   const draftHtml = draftBatches.map((draft, idx) => {
     const draftLoc = getBatchFreezerAndShelf(draft, activeFreezers);
@@ -413,9 +392,9 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </select>
         </td>
         <td>
-          <select class="grid-cell-select js-draft-shelf" data-draft-idx="${idx}" aria-label="Shelf">
-            ${shelfOptionsForFreezerHtml(draftLoc.freezerName, draftLoc.shelfName)}
-          </select>
+          <span class="badge badge--neutral text-xs" style="color:var(--color-text-muted);font-weight:500;padding:4px 8px;background:var(--color-bg-subtle,#f1f5f9);border-radius:4px;display:inline-flex;align-items:center;gap:3px;" title="Shelf is automatically assigned to the first shelf with available capacity (FIFO)">
+            <span class="icon" style="font-size:13px;color:#0284c7;">auto_awesome</span> Auto (FIFO)
+          </span>
         </td>
         <td style="max-width:90px;text-align:center;">
           <input type="number" class="grid-cell-input js-batch-bags" min="1"
@@ -464,14 +443,17 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </select>
         </td>
         <td>
-          <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Shelf">
-            ${shelfOptionsForFreezerHtml(actualLoc.freezerName, actualLoc.startingShelf, b.id)}
-          </select>
-          ${actualLoc.shelves.length > 1 ? `
-            <div style="font-size:11px;color:#0284c7;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:3px;" title="Due to 20-bag shelf limit, this batch's bags span across ${actualLoc.shelfDisplay}">
-              <span class="icon icon--sm" style="font-size:12px;">layers</span> Spans ${escapeHtml(actualLoc.shelfDisplay)}
-            </div>
-          ` : ''}
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="badge badge--secondary" style="font-weight:600;font-size:12px;padding:3px 8px;width:fit-content;display:inline-flex;align-items:center;gap:4px;" title="Located on ${escapeHtml(actualLoc.startingShelf)} (Drag and drop in Virtual Freezer to rearrange)">
+              <span class="icon" style="font-size:13px;color:#0284c7;">kitchen</span>
+              ${escapeHtml(actualLoc.startingShelf)}
+            </span>
+            ${actualLoc.shelves.length > 1 ? `
+              <div style="font-size:11px;color:#0284c7;font-weight:600;display:flex;align-items:center;gap:3px;" title="Due to 20-bag shelf limit, this batch's bags span across ${actualLoc.shelfDisplay}">
+                <span class="icon icon--sm" style="font-size:12px;">layers</span> Spans ${escapeHtml(actualLoc.shelfDisplay)}
+              </div>
+            ` : ''}
+          </div>
         </td>
         <td class="text-center">${b.total_bags}</td>
         <td class="text-center">
@@ -688,10 +670,13 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
 
       return `
         <div class="batch-box ${variantClass} js-freezer-batch-box"
+             draggable="true"
              data-batch-id="${b.id}"
              data-shelf-name="${escapeHtml(shelfObj.shelfName)}"
-             title="${escapeHtml(b.batch_number)}: ${it.bags} bags on this shelf (${b.remaining_bags} bags total)">
-          <span class="batch-box__no">${escapeHtml(b.batch_number)}</span>
+             title="Drag and drop to move ${escapeHtml(b.batch_number)} to another shelf (${it.bags} bags on this shelf)">
+          <span class="batch-box__no" style="display:inline-flex;align-items:center;gap:2px;">
+            <span class="icon icon--sm" style="font-size:11px;opacity:0.5;cursor:grab;">drag_indicator</span>${escapeHtml(b.batch_number)}
+          </span>
           <span class="batch-box__bags">
             ${it.bags} ${it.bags === 1 ? 'bag' : 'bags'}
             ${it.isExcess ? '<span style="font-size:9.5px;color:#d97706;font-weight:700;">(excess)</span>' : ''}
