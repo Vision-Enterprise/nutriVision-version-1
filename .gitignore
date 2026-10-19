@@ -11,3 +11,6 @@ ocr_service/venv/
 .env.*
 *.env
 !.env.example
+
+# PyInstaller temporary build artifacts
+build/
