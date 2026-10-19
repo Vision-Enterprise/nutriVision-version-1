@@ -16,6 +16,8 @@
  * global.css here and the cascade handles the rest.
  */
 
+import './assets/fonts/inter.css';
+import './assets/fonts/material-symbols.css';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';

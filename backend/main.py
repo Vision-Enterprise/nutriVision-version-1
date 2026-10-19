@@ -3,7 +3,17 @@ import io
 import time
 import uuid
 import socket
+import mimetypes
 from typing import Dict, Any
+
+# Ensure standard web fonts (.woff2, .woff, .ttf) and assets have correct MIME types
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("font/woff", ".woff")
+mimetypes.add_type("font/ttf", ".ttf")
+mimetypes.add_type("font/otf", ".otf")
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

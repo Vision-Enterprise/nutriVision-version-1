@@ -14,3 +14,4 @@ ocr_service/venv/
 
 # PyInstaller temporary build artifacts
 build/
+*.log

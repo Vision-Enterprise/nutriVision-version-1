@@ -3,6 +3,16 @@ import os
 import time
 import socket
 import threading
+import mimetypes
+
+# Ensure font and asset MIME types are globally registered
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("font/woff", ".woff")
+mimetypes.add_type("font/ttf", ".ttf")
+mimetypes.add_type("font/otf", ".otf")
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 # Prevent 'NoneType' write errors when running without a console
 if sys.stdout is None:
