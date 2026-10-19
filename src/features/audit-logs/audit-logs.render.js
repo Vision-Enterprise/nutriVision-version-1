@@ -19,12 +19,32 @@ export const ACTION_META = {
   [AUDIT_ACTIONS.RELEASE_BATCH]:     { label: 'Distribute Batch',  icon: 'local_shipping',  cls: 'badge-active'     },
   [AUDIT_ACTIONS.FLAG_DEFECT]:        { label: 'Defect Logged',     icon: 'warning',         cls: 'badge-inactive'   },
   [AUDIT_ACTIONS.RESTORE_QUARANTINE]: { label: 'Restore Quarantine',icon: 'replay',          cls: 'badge-personnel'  },
+  [AUDIT_ACTIONS.CREATE_MILK_DONATION]: { label: 'Milk Intake',     icon: 'receipt_long',    cls: 'badge-admin'      },
+  [AUDIT_ACTIONS.CREATE_MILK_BATCH]:    { label: 'Pasteurized Batch',icon: 'kitchen',        cls: 'badge-admin'      },
+  [AUDIT_ACTIONS.UPDATE_MILK_BATCH]:    { label: 'Edit Milk Batch',  icon: 'edit',           cls: 'badge-personnel'  },
+  [AUDIT_ACTIONS.DELETE_MILK_BATCH]:    { label: 'Delete Milk Batch',icon: 'delete',         cls: 'badge-inactive'   },
+  [AUDIT_ACTIONS.MOVE_MILK_SHELF]:      { label: 'Relocate Shelf',   icon: 'swap_horiz',     cls: 'badge-personnel'  },
+  [AUDIT_ACTIONS.DISPENSE_MILK_BATCH]:  { label: 'Dispense Milk',    icon: 'volunteer_activism', cls: 'badge-active' },
+  [AUDIT_ACTIONS.CREATE_FREEZER_UNIT]:  { label: 'Add Freezer Unit', icon: 'kitchen',        cls: 'badge-admin'      },
+  [AUDIT_ACTIONS.UPDATE_FREEZER_UNIT]:  { label: 'Rename Freezer',   icon: 'edit_note',      cls: 'badge-personnel'  },
+  [AUDIT_ACTIONS.DELETE_FREEZER_UNIT]:  { label: 'Delete Freezer',   icon: 'delete_forever', cls: 'badge-inactive'   },
 };
 
 export const ACTION_GROUPS = {
   'commodity': [AUDIT_ACTIONS.CREATE_COMMODITY, AUDIT_ACTIONS.UPDATE_COMMODITY, AUDIT_ACTIONS.DELETE_COMMODITY],
   'batch':     [AUDIT_ACTIONS.CREATE_BATCH, AUDIT_ACTIONS.UPDATE_BATCH, AUDIT_ACTIONS.DELETE_BATCH, AUDIT_ACTIONS.RELEASE_BATCH],
   'defects':   [AUDIT_ACTIONS.FLAG_DEFECT, AUDIT_ACTIONS.RESTORE_QUARANTINE],
+  'milk':      [
+    AUDIT_ACTIONS.CREATE_MILK_DONATION,
+    AUDIT_ACTIONS.CREATE_MILK_BATCH,
+    AUDIT_ACTIONS.UPDATE_MILK_BATCH,
+    AUDIT_ACTIONS.DELETE_MILK_BATCH,
+    AUDIT_ACTIONS.MOVE_MILK_SHELF,
+    AUDIT_ACTIONS.DISPENSE_MILK_BATCH,
+    AUDIT_ACTIONS.CREATE_FREEZER_UNIT,
+    AUDIT_ACTIONS.UPDATE_FREEZER_UNIT,
+    AUDIT_ACTIONS.DELETE_FREEZER_UNIT
+  ],
 };
 
 export function escapeHtml(str) {
@@ -74,6 +94,7 @@ export function renderAuditLogsLayout({ totalLogs, tableHtml }) {
             <option value="commodity">Commodities</option>
             <option value="batch">Batches &amp; Distributions</option>
             <option value="defects">Defects &amp; Quarantine</option>
+            <option value="milk">Human Milk Bank &amp; Freezers</option>
           </select>
         </div>
       </div>

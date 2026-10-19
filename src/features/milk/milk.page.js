@@ -30,7 +30,8 @@ import {
   addShelfToFreezer,
   removeShelfFromFreezer,
   getBatchFreezerAndShelf,
-  formatFreezerShelf
+  formatFreezerShelf,
+  fetchMilkAuditLogs
 } from './milk.service.js';
 
 import {
@@ -43,7 +44,8 @@ import {
   renderMetrics,
   renderDonationsSheet,
   renderBatchesSheet,
-  renderDispatchesSheet
+  renderDispatchesSheet,
+  renderMilkAuditSheet
 } from './milk.render.js';
 
 import { showMilkIntakePrintPreview } from './milk.pdf.js';
@@ -61,12 +63,15 @@ const MilkModal = {
 
 // ── Controller State ──────────────────────────────────────────────────────────
 let _profile = null;
-let _activeTab = 'intake';         // 'intake' | 'batches' | 'dispense'
+let _activeTab = 'intake';         // 'intake' | 'batches' | 'dispense' | 'audit'
 let _batchesSubView = 'table';    // 'table' | 'freezer' (Option B)
 
 let _batches = [];
 let _donations = [];
 let _dispatches = [];
+let _auditLogs = [];
+let _auditFilter = '';
+let _auditSearch = '';
 let _metrics = null;
 let _shelves = [];
 let _freezers = [];
@@ -104,17 +109,19 @@ export async function renderMilkPage(profile) {
  * Fetch all records and re-render workspace
  */
 async function _loadData() {
-  const [batchesRes, donationsRes, dispatchesRes, metrics] = await Promise.all([
+  const [batchesRes, donationsRes, dispatchesRes, metrics, auditRes] = await Promise.all([
     fetchMilkBatches(),
     fetchMilkDonations(),
     fetchMilkDispatches(),
-    fetchMilkMetrics()
+    fetchMilkMetrics(),
+    fetchMilkAuditLogs()
   ]);
 
   _batches = batchesRes.data || [];
   _donations = donationsRes.data || [];
   _dispatches = dispatchesRes.data || [];
   _metrics = metrics;
+  _auditLogs = auditRes.data || [];
 
   _updateMetricsView();
   _updateTabCounts();
@@ -132,10 +139,12 @@ function _updateTabCounts() {
   const batchCountEl = document.getElementById('count-batches');
   const donCountEl = document.getElementById('count-donations');
   const dispCountEl = document.getElementById('count-dispatches');
+  const auditCountEl = document.getElementById('count-milk-audit');
 
   if (batchCountEl) batchCountEl.textContent = _batches.length;
   if (donCountEl) donCountEl.textContent = _donations.length;
   if (dispCountEl) dispCountEl.textContent = _dispatches.length;
+  if (auditCountEl) auditCountEl.textContent = _auditLogs.length;
 }
 
 /**
@@ -174,7 +183,30 @@ function _renderActiveSheet() {
     contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch);
     _bindDispatchesSheetEvents();
     _setupCellBarSync();
+  } else if (_activeTab === 'audit') {
+    contentArea.innerHTML = renderMilkAuditSheet(_auditLogs, _auditFilter, _auditSearch);
+    _bindAuditSheetEvents();
   }
+}
+
+function _bindAuditSheetEvents() {
+  const searchInp = document.getElementById('milk-audit-search');
+  const filterSel = document.getElementById('milk-audit-filter');
+
+  searchInp?.addEventListener('input', (e) => {
+    _auditSearch = e.target.value;
+    _renderActiveSheet();
+    const reSearchInp = document.getElementById('milk-audit-search');
+    if (reSearchInp) {
+      reSearchInp.focus();
+      reSearchInp.selectionStart = reSearchInp.selectionEnd = reSearchInp.value.length;
+    }
+  });
+
+  filterSel?.addEventListener('change', (e) => {
+    _auditFilter = e.target.value;
+    _renderActiveSheet();
+  });
 }
 
 /**
@@ -433,7 +465,8 @@ function _bindBatchesSheetEvents() {
 
       const { error } = await createMilkBatch({
         ...data,
-        profileId: _profile?.id
+        profileId: _profile?.id,
+        profileName: _profile?.full_name || 'Nutrition Staff'
       });
 
       if (error) {
@@ -477,7 +510,7 @@ function _bindBatchesSheetEvents() {
     btn.disabled = true;
     btn.textContent = 'Saving all…';
 
-    const { error } = await createMilkBatchesBulk(validRows, _profile?.id);
+    const { error } = await createMilkBatchesBulk(validRows, _profile?.id, _profile?.full_name || 'Nutrition Staff');
     if (error) {
       await MilkModal.alert('Bulk batch save error: ' + error, 'Bulk Save Failed');
       btn.disabled = false;
@@ -518,12 +551,20 @@ function _bindBatchesSheetEvents() {
       select.disabled = true;
       if (shelfSelect) shelfSelect.disabled = true;
 
-      const { error } = await updateBatchShelf(batchId, combinedLocation);
+      const { error } = await updateBatchShelf(batchId, combinedLocation, batch?.batch_number, _profile);
       select.disabled = false;
       if (shelfSelect) shelfSelect.disabled = false;
 
       if (error) {
         await MilkModal.alert('Failed to update freezer location: ' + error, 'Freezer Update Failed');
+      } else {
+        // Refresh audit logs in background
+        fetchMilkAuditLogs().then(res => {
+          if (res.data) {
+            _auditLogs = res.data;
+            _updateTabCounts();
+          }
+        });
       }
     });
   });
@@ -546,11 +587,19 @@ function _bindBatchesSheetEvents() {
       }
 
       select.disabled = true;
-      const { error } = await updateBatchShelf(batchId, combinedLocation);
+      const { error } = await updateBatchShelf(batchId, combinedLocation, batch?.batch_number, _profile);
       select.disabled = false;
 
       if (error) {
         await MilkModal.alert('Failed to update shelf: ' + error, 'Shelf Update Failed');
+      } else {
+        // Refresh audit logs in background
+        fetchMilkAuditLogs().then(res => {
+          if (res.data) {
+            _auditLogs = res.data;
+            _updateTabCounts();
+          }
+        });
       }
     });
   });
@@ -639,12 +688,12 @@ function _bindBatchesSheetEvents() {
         'Create Freezer'
       );
       if (name && name.trim()) {
-        _freezers = addFreezer(name.trim());
+        _freezers = addFreezer(name.trim(), _profile);
         _activeFreezerId = getActiveFreezerId();
         _shelves = getFreezerShelves();
         _selectedBatch = null;
         _selectedShelf = null;
-        _renderActiveSheet();
+        await _loadData();
       }
     });
 
@@ -661,8 +710,8 @@ function _bindBatchesSheetEvents() {
           'Save Name'
         );
         if (newName && newName.trim() && targetFreezer && newName.trim() !== targetFreezer.name) {
-          _freezers = renameFreezer(fId, newName.trim());
-          _renderActiveSheet();
+          _freezers = renameFreezer(fId, newName.trim(), _profile);
+          await _loadData();
         }
       });
     });
@@ -700,12 +749,12 @@ function _bindBatchesSheetEvents() {
         );
 
         if (confirmed) {
-          _freezers = deleteFreezer(fId);
+          _freezers = deleteFreezer(fId, _profile);
           _activeFreezerId = getActiveFreezerId();
           _shelves = getFreezerShelves();
           _selectedBatch = null;
           _selectedShelf = null;
-          _renderActiveSheet();
+          await _loadData();
         }
       });
     });

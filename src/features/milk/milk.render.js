@@ -5,7 +5,7 @@
  * Pasteurized Batches (BM-XXX), and the Option B Virtual Freezer Map.
  */
 
-import { BARANGAYS } from '../../shared/constants/app.constants.js';
+import { BARANGAYS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import { getBatchFreezerAndShelf } from './milk.service.js';
 
 /**
@@ -54,6 +54,11 @@ export function renderMilkPageSkeleton() {
               <span class="icon icon--sm" aria-hidden="true">volunteer_activism</span>
               Dispensing Ledger
               <span class="milk-tab__count" id="count-dispatches">0</span>
+            </button>
+            <button class="milk-tab" data-tab="audit" role="tab" aria-selected="false">
+              <span class="icon icon--sm" aria-hidden="true">history</span>
+              Audit Trail
+              <span class="milk-tab__count" id="count-milk-audit">0</span>
             </button>
           </div>
         </div>
@@ -1143,4 +1148,156 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Render Milk Bank In-Module Audit Trail Sheet
+ */
+export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQuery = '') {
+  let filtered = auditLogs || [];
+  if (filterAction) {
+    filtered = filtered.filter(l => l.action === filterAction);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(l =>
+      (l.description || '').toLowerCase().includes(q) ||
+      (l.action || '').toLowerCase().includes(q) ||
+      (l.profiles?.full_name || '').toLowerCase().includes(q)
+    );
+  }
+
+  const rowsHtml = filtered.map((log, idx) => {
+    const d = new Date(log.created_at);
+    const dateFormatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeFormatted = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    let actionBadgeCls = 'badge--secondary';
+    let actionIcon = 'info';
+    let actionLabel = log.action;
+
+    switch (log.action) {
+      case AUDIT_ACTIONS.CREATE_MILK_DONATION:
+        actionBadgeCls = 'badge--info';
+        actionIcon = 'receipt_long';
+        actionLabel = 'Milk Intake';
+        break;
+      case AUDIT_ACTIONS.CREATE_MILK_BATCH:
+        actionBadgeCls = 'badge--info';
+        actionIcon = 'kitchen';
+        actionLabel = 'Batch Created';
+        break;
+      case AUDIT_ACTIONS.UPDATE_MILK_BATCH:
+        actionBadgeCls = 'badge--warning';
+        actionIcon = 'edit';
+        actionLabel = 'Batch Edited';
+        break;
+      case AUDIT_ACTIONS.DELETE_MILK_BATCH:
+        actionBadgeCls = 'badge--danger';
+        actionIcon = 'delete';
+        actionLabel = 'Batch Deleted';
+        break;
+      case AUDIT_ACTIONS.MOVE_MILK_SHELF:
+        actionBadgeCls = 'badge--warning';
+        actionIcon = 'swap_horiz';
+        actionLabel = 'Shelf Relocated';
+        break;
+      case AUDIT_ACTIONS.DISPENSE_MILK_BATCH:
+        actionBadgeCls = 'badge--success';
+        actionIcon = 'volunteer_activism';
+        actionLabel = 'Milk Dispensed';
+        break;
+      case AUDIT_ACTIONS.CREATE_FREEZER_UNIT:
+        actionBadgeCls = 'badge--info';
+        actionIcon = 'add_box';
+        actionLabel = 'Freezer Created';
+        break;
+      case AUDIT_ACTIONS.UPDATE_FREEZER_UNIT:
+        actionBadgeCls = 'badge--warning';
+        actionIcon = 'edit_note';
+        actionLabel = 'Freezer Renamed';
+        break;
+      case AUDIT_ACTIONS.DELETE_FREEZER_UNIT:
+        actionBadgeCls = 'badge--danger';
+        actionIcon = 'delete_forever';
+        actionLabel = 'Freezer Deleted';
+        break;
+    }
+
+    return `
+      <tr>
+        <td class="text-muted text-xs" style="text-align:center;">${idx + 1}</td>
+        <td class="text-sm">
+          <div style="font-weight:600;">${dateFormatted}</div>
+          <div class="text-muted text-xs">${timeFormatted}</div>
+        </td>
+        <td>
+          <span class="badge ${actionBadgeCls}" style="display:inline-flex;align-items:center;gap:4px;">
+            <span class="icon" style="font-size:13px;">${actionIcon}</span>
+            ${actionLabel}
+          </span>
+        </td>
+        <td class="text-muted text-xs font-mono">${escapeHtml(log.entity_type || '—')}</td>
+        <td class="text-sm font-weight-medium" style="max-width:380px;">${escapeHtml(log.description || '—')}</td>
+        <td class="text-sm">
+          <span class="milk-staff-pill" style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;padding:3px 8px;border-radius:6px;font-size:12px;">
+            <span class="icon" style="font-size:13px;color:#64748b;">person</span>
+            ${escapeHtml(log.profiles?.full_name || 'Staff User')}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <div class="milk-sheet-toolbar">
+      <div class="milk-sheet-title">
+        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">history</span>
+        MILK BANK AUDIT TRAIL
+        <span class="milk-sheet-subtitle">Custody, Dispensing &amp; Cold-Chain Log (${filtered.length} entries)</span>
+      </div>
+      <div class="milk-sheet-actions">
+        <input type="text" id="milk-audit-search" class="form-input"
+               placeholder="Search audit descriptions, batches, staff..."
+               value="${escapeHtml(searchQuery)}"
+               style="width: 260px; font-size: 13px; padding: 5px 10px;">
+        <select id="milk-audit-filter" class="form-input" style="width: 170px; font-size: 13px; padding: 5px 8px;">
+          <option value="">All Milk Actions</option>
+          <option value="${AUDIT_ACTIONS.CREATE_MILK_DONATION}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_DONATION ? 'selected' : ''}>Intakes (FM.002.00)</option>
+          <option value="${AUDIT_ACTIONS.CREATE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_BATCH ? 'selected' : ''}>Batches Created</option>
+          <option value="${AUDIT_ACTIONS.MOVE_MILK_SHELF}" ${filterAction === AUDIT_ACTIONS.MOVE_MILK_SHELF ? 'selected' : ''}>Shelf Relocations</option>
+          <option value="${AUDIT_ACTIONS.DISPENSE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.DISPENSE_MILK_BATCH ? 'selected' : ''}>Milk Dispenses</option>
+          <option value="${AUDIT_ACTIONS.CREATE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.CREATE_FREEZER_UNIT ? 'selected' : ''}>Freezer Units Added</option>
+          <option value="${AUDIT_ACTIONS.UPDATE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.UPDATE_FREEZER_UNIT ? 'selected' : ''}>Freezers Renamed</option>
+          <option value="${AUDIT_ACTIONS.DELETE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.DELETE_FREEZER_UNIT ? 'selected' : ''}>Freezers Deleted</option>
+          <option value="${AUDIT_ACTIONS.DELETE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.DELETE_MILK_BATCH ? 'selected' : ''}>Batches Deleted</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="milk-sheet-table">
+        <thead>
+          <tr>
+            <th style="width:45px;text-align:center;">#</th>
+            <th style="min-width:130px;">Date &amp; Time</th>
+            <th style="min-width:140px;">Action Type</th>
+            <th style="min-width:100px;">Target Type</th>
+            <th style="min-width:320px;">Description of Activity</th>
+            <th style="min-width:150px;">Personnel</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `
+            <tr>
+              <td colspan="6" style="text-align:center;padding:48px 20px;color:var(--color-text-muted);">
+                <span class="icon" style="font-size:36px;color:#94a3b8;display:block;margin-bottom:8px;">history_toggle_off</span>
+                No audit activity records found matching this filter.
+              </td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    </div>
+  `;
 }

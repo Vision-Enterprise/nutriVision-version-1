@@ -173,6 +173,52 @@ export async function getNextBatchNumber() {
 }
 
 /**
+ * Write a Milk Bank activity entry to the central audit_logs table
+ */
+export async function logMilkAudit(action, entityType, entityId, description, profile) {
+  if (!profile?.id) return;
+  try {
+    await supabase.from('audit_logs').insert({
+      user_id:     profile.id,
+      action,
+      entity_type: entityType,
+      entity_id:   entityId || null,
+      description: `${profile.full_name || 'Staff'}: ${description}`
+    });
+  } catch (err) {
+    console.warn(`${MODULE} Audit log insert failed:`, err);
+  }
+}
+
+/**
+ * Fetch all Milk Bank activity logs for the in-module Audit Trail tab
+ */
+export async function fetchMilkAuditLogs() {
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select(`
+        id,
+        action,
+        entity_type,
+        entity_id,
+        description,
+        created_at,
+        profiles ( full_name )
+      `)
+      .in('entity_type', ['milk_batch', 'milk_donation', 'milk_dispatch', 'cold_chain'])
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    if (error) throw error;
+    return { data: data || [], error: null };
+  } catch (err) {
+    console.error(`${MODULE} fetchMilkAuditLogs error:`, err);
+    return { data: [], error: err.message || 'Failed to fetch audit logs.' };
+  }
+}
+
+/**
  * Create a new pasteurized batch (BM-XXX)
  */
 export async function createMilkBatch({
@@ -182,7 +228,8 @@ export async function createMilkBatch({
   total_bags,
   freezer_shelf,
   remarks,
-  profileId
+  profileId,
+  profileName
 }) {
   try {
     const numBags = parseInt(total_bags, 10);
@@ -203,6 +250,18 @@ export async function createMilkBatch({
       .single();
 
     if (error) throw error;
+
+    // Record audit trail
+    if (profileId) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.CREATE_MILK_BATCH,
+        'milk_batch',
+        data.id,
+        `Logged new pasteurized batch "${data.batch_number}" (${numBags} bags, ${freezer_shelf || 'Shelf 1'}).`,
+        { id: profileId, full_name: profileName }
+      );
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error(`${MODULE} createMilkBatch error:`, err);
@@ -253,6 +312,18 @@ export async function createMilkDonation({
       .single();
 
     if (error) throw error;
+
+    // Record audit trail
+    if (profileId) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.CREATE_MILK_DONATION,
+        'milk_donation',
+        data.id,
+        `Logged donor milk intake from "${donor_code.trim()}" (Form FM.002.00).`,
+        { id: profileId, full_name: profileName }
+      );
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error(`${MODULE} createMilkDonation error:`, err);
@@ -301,7 +372,7 @@ export async function dispenseMilk({
         recipient_name: recipient_name.trim(),
         barangay: barangay.trim(),
         bags_dispensed: qty,
-        indication: indication || 'Preterm / Low Birth Weight',
+        indication: indication || 'Standard Dispensing',
         dispensed_date: dispensed_date || new Date().toISOString().split('T')[0],
         remarks: remarks?.trim() || null,
         released_by: profileId || null,
@@ -323,6 +394,17 @@ export async function dispenseMilk({
       .eq('id', batch_id);
 
     if (updateError) throw updateError;
+
+    // Record audit trail
+    if (profileId) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.DISPENSE_MILK_BATCH,
+        'milk_dispatch',
+        dispatch.id,
+        `Dispensed ${qty} bag(s) of batch "${batch.batch_number}" to ${recipient_name.trim()} (${barangay.trim()}).`,
+        { id: profileId, full_name: profileName }
+      );
+    }
 
     return { data: dispatch, error: null };
   } catch (err) {
@@ -350,17 +432,13 @@ export async function updateBatchShelf(batchId, newShelf, batchNumber = '', prof
 
     // Log shelf movement to audit trail if profile provided
     if (profile?.id) {
-      try {
-        await supabase.from('audit_logs').insert({
-          user_id:     profile.id,
-          action:      AUDIT_ACTIONS.MOVE_MILK_SHELF,
-          entity_type: 'milk_batch',
-          entity_id:   batchId,
-          description: `${profile.full_name || 'User'} moved milk batch "${batchNumber || data.batch_number}" to ${newShelf}.`
-        });
-      } catch (auditErr) {
-        console.warn(`${MODULE} Audit log failed for move shelf:`, auditErr);
-      }
+      await logMilkAudit(
+        AUDIT_ACTIONS.MOVE_MILK_SHELF,
+        'milk_batch',
+        batchId,
+        `Relocated milk batch "${batchNumber || data.batch_number}" to location "${newShelf}".`,
+        profile
+      );
     }
 
     return { data, error: null };
@@ -504,7 +582,7 @@ export function setActiveFreezerId(id) {
   localStorage.setItem(ACTIVE_FREEZER_KEY, id);
 }
 
-export function addFreezer(name) {
+export function addFreezer(name, profile = null) {
   const freezers = getFreezers();
   const trimmedName = name?.trim() || `Freezer ${String.fromCharCode(65 + freezers.length)}`;
   const newFreezer = {
@@ -515,25 +593,57 @@ export function addFreezer(name) {
   freezers.push(newFreezer);
   saveFreezers(freezers);
   setActiveFreezerId(newFreezer.id);
-  return freezers;
-}
 
-export function renameFreezer(id, newName) {
-  const freezers = getFreezers();
-  const freezer = freezers.find(f => f.id === id);
-  if (freezer && newName?.trim()) {
-    freezer.name = newName.trim();
-    saveFreezers(freezers);
+  if (profile?.id) {
+    logMilkAudit(
+      AUDIT_ACTIONS.CREATE_FREEZER_UNIT,
+      'cold_chain',
+      newFreezer.id,
+      `Added new cold-chain freezer unit "${trimmedName}" (4 shelves).`,
+      profile
+    );
   }
   return freezers;
 }
 
-export function deleteFreezer(id) {
+export function renameFreezer(id, newName, profile = null) {
+  const freezers = getFreezers();
+  const freezer = freezers.find(f => f.id === id);
+  if (freezer && newName?.trim()) {
+    const oldName = freezer.name;
+    freezer.name = newName.trim();
+    saveFreezers(freezers);
+
+    if (profile?.id) {
+      logMilkAudit(
+        AUDIT_ACTIONS.UPDATE_FREEZER_UNIT,
+        'cold_chain',
+        id,
+        `Renamed freezer unit from "${oldName}" to "${freezer.name}".`,
+        profile
+      );
+    }
+  }
+  return freezers;
+}
+
+export function deleteFreezer(id, profile = null) {
   let freezers = getFreezers();
   if (freezers.length <= 1) return freezers; // Keep at least one freezer
+  const target = freezers.find(f => f.id === id);
   freezers = freezers.filter(f => f.id !== id);
   saveFreezers(freezers);
   setActiveFreezerId(freezers[0].id);
+
+  if (profile?.id && target) {
+    logMilkAudit(
+      AUDIT_ACTIONS.DELETE_FREEZER_UNIT,
+      'cold_chain',
+      id,
+      `Deleted cold-chain freezer unit "${target.name}".`,
+      profile
+    );
+  }
   return freezers;
 }
 
@@ -655,6 +765,18 @@ export async function createMilkDonationsBulk(donationList, profileId, profileNa
       .select();
 
     if (error) throw error;
+
+    // Record audit trail
+    if (profileId) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.CREATE_MILK_DONATION,
+        'milk_donation',
+        null,
+        `Bulk logged ${donationList.length} raw donor milk intake entries.`,
+        { id: profileId, full_name: profileName }
+      );
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error(`${MODULE} createMilkDonationsBulk error:`, err);
@@ -665,7 +787,7 @@ export async function createMilkDonationsBulk(donationList, profileId, profileNa
 /**
  * Bulk create multiple pasteurized batches at once
  */
-export async function createMilkBatchesBulk(batchList, profileId) {
+export async function createMilkBatchesBulk(batchList, profileId, profileName = null) {
   try {
     const formatted = batchList.map(b => {
       const numBags = parseInt(b.total_bags, 10);
@@ -688,6 +810,18 @@ export async function createMilkBatchesBulk(batchList, profileId) {
       .select();
 
     if (error) throw error;
+
+    // Record audit trail
+    if (profileId) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.CREATE_MILK_BATCH,
+        'milk_batch',
+        null,
+        `Bulk created ${batchList.length} pasteurized batch(es) in cold storage.`,
+        { id: profileId, full_name: profileName }
+      );
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error(`${MODULE} createMilkBatchesBulk error:`, err);
