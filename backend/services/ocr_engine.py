@@ -1,5 +1,3 @@
-from rapidocr import RapidOCR
-from rapid_table import RapidTable
 import os
 import traceback
 import cv2
@@ -10,9 +8,23 @@ class InventoryExtractor:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(InventoryExtractor, cls).__new__(cls)
-            cls._instance.ocr = RapidOCR()
-            cls._instance.table_engine = RapidTable()
+            cls._instance._ocr = None
+            cls._instance._table_engine = None
         return cls._instance
+
+    @property
+    def ocr(self):
+        if self._ocr is None:
+            from rapidocr import RapidOCR
+            self._ocr = RapidOCR()
+        return self._ocr
+
+    @property
+    def table_engine(self):
+        if self._table_engine is None:
+            from rapid_table import RapidTable
+            self._table_engine = RapidTable()
+        return self._table_engine
 
     def _normalize_text(self, text: str) -> str:
         if not text:
