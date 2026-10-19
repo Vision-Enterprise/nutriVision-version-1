@@ -22,14 +22,8 @@ export class ScannerComponent {
     this.init();
   }
 
-  async init() {
-    try {
-      const { commodities } = await fetchCommodities();
-      this.commodities = commodities || [];
-    } catch (e) {
-      console.warn("Could not fetch commodities for fuzzy matching", e);
-    }
-    
+  init() {
+    // Render UI immediately so tabs and dropzone appear with 0ms latency
     this.container.innerHTML = `
       <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:24px;">
         <!-- Tabs (MD3 Segmented Surface) -->
@@ -222,6 +216,15 @@ export class ScannerComponent {
     `;
 
     this.attachEvents();
+
+    // Asynchronously fetch commodities for fuzzy matching in background
+    fetchCommodities()
+      .then(({ commodities }) => {
+        this.commodities = commodities || [];
+      })
+      .catch((e) => {
+        console.warn("Could not fetch commodities for fuzzy matching", e);
+      });
   }
 
   attachEvents() {

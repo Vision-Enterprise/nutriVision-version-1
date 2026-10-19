@@ -75,7 +75,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,  # Set to True during testing so console logs can be seen; can be changed to False later
+    console=False,  # No console terminal window; clean native desktop GUI
     icon=os.path.join(root_dir, 'src', 'assets', 'logo-icon.png') if os.path.exists(os.path.join(root_dir, 'src', 'assets', 'logo-icon.png')) else None,
 )
 
