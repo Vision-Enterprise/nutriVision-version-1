@@ -678,8 +678,9 @@ def render_mobile_upload_page(session_id: str):
     </div>
   </header>
 
-  <!-- Native Hardware Camera & File Trigger -->
-  <input type="file" id="mobile-file-input" accept="image/*" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;" />
+  <!-- Native Hardware Camera & File Triggers -->
+  <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;" />
+  <input type="file" id="gallery-file-input" accept="image/*" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;" />
 
   <main class="main-container">
 
@@ -697,12 +698,24 @@ def render_mobile_upload_page(session_id: str):
         <p class="body-medium">
           Place delivery receipt on a flat surface with good lighting for clear table extraction.
         </p>
-        <label for="mobile-file-input" class="btn-filled" id="btn-open-camera" onclick="document.getElementById('mobile-file-input').click()">
+
+        <!-- Primary Action: Direct Camera -->
+        <label for="camera-file-input" class="btn-filled" id="btn-open-camera" style="margin-bottom: 12px; cursor: pointer;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
-          <span>Snap Receipt</span>
+          <span>Take Photo with Camera</span>
+        </label>
+
+        <!-- Secondary Action: Existing Photo / Gallery -->
+        <label for="gallery-file-input" class="btn-outlined" id="btn-open-gallery" style="width: 100%; margin-bottom: 24px; cursor: pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span>Choose from Photos / Gallery</span>
         </label>
         <div class="helper-tip">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--md-sys-color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -781,12 +794,20 @@ def render_mobile_upload_page(session_id: str):
         <div class="count-indicator" id="batch-counter-badge">
           1 Receipt Sent in this Session
         </div>
-        <label for="mobile-file-input" class="btn-filled" id="btn-scan-another" onclick="setStage('launchpad'); document.getElementById('mobile-file-input').click();">
+        <label for="camera-file-input" class="btn-filled" id="btn-scan-another-camera" onclick="setStage('launchpad');" style="margin-bottom: 10px; cursor: pointer;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
-          <span>Scan Another Receipt</span>
+          <span>Take Another Photo (Camera)</span>
+        </label>
+        <label for="gallery-file-input" class="btn-outlined" id="btn-scan-another-gallery" onclick="setStage('launchpad');" style="width: 100%; cursor: pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span>Pick Another from Gallery</span>
         </label>
       </div>
     </section>
@@ -797,9 +818,11 @@ def render_mobile_upload_page(session_id: str):
     const sessionId = "{session_id}";
     let cropperInstance = null;
     let uploadedCount = 0;
+    let activeFile = null;
 
     // Element references
-    const fileInput = document.getElementById('mobile-file-input');
+    const cameraInput = document.getElementById('camera-file-input');
+    const galleryInput = document.getElementById('gallery-file-input');
     const stageLaunchpad = document.getElementById('stage-launchpad');
     const stageCropping = document.getElementById('stage-cropping');
     const stageSuccess = document.getElementById('stage-success');
@@ -814,21 +837,21 @@ def render_mobile_upload_page(session_id: str):
       stageSuccess.style.display = stage === 'success' ? 'flex' : 'none';
     }}
 
-    // Trigger Camera
-    document.getElementById('btn-open-camera').addEventListener('click', () => {{
-      fileInput.click();
-    }});
-
-    // Capture Handler
-    fileInput.addEventListener('change', (e) => {{
-      const file = e.target.files && e.target.files[0];
+    function handleFileSelected(file) {{
       if (!file) return;
-
+      activeFile = file;
       const reader = new FileReader();
       reader.onload = (event) => {{
         initCropper(event.target.result);
       }};
       reader.readAsDataURL(file);
+    }}
+
+    cameraInput.addEventListener('change', (e) => {{
+      handleFileSelected(e.target.files && e.target.files[0]);
+    }});
+    galleryInput.addEventListener('change', (e) => {{
+      handleFileSelected(e.target.files && e.target.files[0]);
     }});
 
     // Initialize Cropper.js (Local 100% Offline Asset)
@@ -879,7 +902,9 @@ def render_mobile_upload_page(session_id: str):
         cropperInstance.destroy();
         cropperInstance = null;
       }}
-      fileInput.value = '';
+      activeFile = null;
+      cameraInput.value = '';
+      galleryInput.value = '';
       setStage('launchpad');
     }});
 
@@ -906,9 +931,9 @@ def render_mobile_upload_page(session_id: str):
         }}
       }}
 
-      // Fallback: If cropper wasn't available, use raw camera image directly
-      if (!blobToSend && fileInput.files && fileInput.files[0]) {{
-        blobToSend = fileInput.files[0];
+      // Fallback: If cropper wasn't available, use raw selected file directly
+      if (!blobToSend && activeFile) {{
+        blobToSend = activeFile;
       }}
 
       if (!blobToSend) {{
@@ -931,29 +956,23 @@ def render_mobile_upload_page(session_id: str):
         
         const result = await res.json();
         uploadedCount = result.image_count || (uploadedCount + 1);
-          batchBadge.textContent = uploadedCount + (uploadedCount === 1 ? ' Receipt Sent in this Session' : ' Receipts Sent in this Session');
+        batchBadge.textContent = uploadedCount + (uploadedCount === 1 ? ' Receipt Sent in this Session' : ' Receipts Sent in this Session');
 
-          if (cropperInstance) {{
-            cropperInstance.destroy();
-            cropperInstance = null;
-          }}
-          fileInput.value = '';
-          btnSend.disabled = false;
-          btnSend.innerHTML = '<span>Upload & Send</span>';
-          setStage('success');
-        }} catch (err) {{
-          console.error(err);
-          alert('Failed to transmit receipt. Check Wi-Fi connection to server.');
-          btnSend.disabled = false;
-          btnSend.innerHTML = '<span>Upload & Send</span>';
+        if (cropperInstance) {{
+          cropperInstance.destroy();
+          cropperInstance = null;
         }}
-      }}, 'image/jpeg', 0.92);
-    }});
-
-    // Continuous Batch Scanning Loop
-    document.getElementById('btn-scan-another').addEventListener('click', () => {{
-      setStage('launchpad');
-      fileInput.click();
+        cameraInput.value = '';
+        galleryInput.value = '';
+        btnSend.disabled = false;
+        btnSend.innerHTML = '<span>Upload & Send</span>';
+        setStage('success');
+      }} catch (err) {{
+        console.error(err);
+        alert('Failed to transmit receipt. Check Wi-Fi connection to server.');
+        btnSend.disabled = false;
+        btnSend.innerHTML = '<span>Upload & Send</span>';
+      }}
     }});
   </script>
 </body>
