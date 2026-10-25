@@ -1,7 +1,6 @@
 import sys
 import os
 import time
-import socket
 import threading
 import mimetypes
 
@@ -86,6 +85,30 @@ def launch():
 
     # 2. Launch native desktop window via pywebview (enforcing Edge WebView2)
     import webview
+
+    try:
+        import importlib
+        import webview.platforms.edgechromium as ec
+        wv2_core = importlib.import_module("Microsoft.Web.WebView2.Core")
+        allow_state = getattr(wv2_core.CoreWebView2PermissionState, "Allow", 1)
+
+        orig_on_webview_ready = ec.EdgeChrome.on_webview_ready
+
+        def custom_on_webview_ready(self, sender, args):
+            orig_on_webview_ready(self, sender, args)
+            if args.IsSuccess and sender.CoreWebView2:
+                try:
+                    def on_permission_requested(_, p_args):
+                        # Silently grant camera/microphone access in native desktop app
+                        p_args.set_State(allow_state)
+                    sender.CoreWebView2.PermissionRequested += on_permission_requested
+                    log_msg("WebView2 camera permissions handler registered successfully.")
+                except Exception as ex:
+                    log_msg(f"Failed to attach PermissionRequested handler: {ex}")
+
+        ec.EdgeChrome.on_webview_ready = custom_on_webview_ready
+    except Exception as e:
+        log_msg(f"Could not hook WebView2 permissions: {e}")
 
     window = webview.create_window(
         title="NutriVision — Commodity Inventory System",

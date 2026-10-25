@@ -18,6 +18,7 @@ export class ScannerComponent {
     this.mobileScanCount = 0;
     this.activeReceiptUrl = null;
     this.isReceiptZoomed = false;
+    this.stream = null;
     this.apiBase = window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin;
     this.init();
   }
@@ -84,11 +85,53 @@ export class ScannerComponent {
 
           <!-- 2. CAMERA TAB -->
           <div id="tab-camera" style="display:none; height:100%; flex-direction:column; background:#0A120B; border-radius:16px; overflow:hidden; border:1px solid var(--color-border, #D8E6DA);">
-            <div style="flex:1; position:relative;">
-               <video id="scanner-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+            <!-- Camera Device Selector Bar -->
+            <div id="scanner-camera-bar" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#141F16; border-bottom:1px solid rgba(255,255,255,0.1); gap:8px;">
+              <div style="display:flex; align-items:center; gap:6px; color:#ffffff; font-size:12px; font-weight:600; min-width:0; flex:1;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <select id="scanner-camera-select" style="background:#0F1811; color:#ffffff; border:1px solid rgba(255,255,255,0.25); border-radius:6px; padding:4px 8px; font-size:11px; outline:none; max-width:260px; cursor:pointer;">
+                  <option value="">Detecting cameras...</option>
+                </select>
+              </div>
+              <button id="scanner-camera-refresh" type="button" title="Refresh camera list" style="background:transparent; border:1px solid rgba(255,255,255,0.25); color:#ffffff; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                <span>Rescan</span>
+              </button>
             </div>
-            <div style="padding:16px; background:#111;">
-               <button class="btn" id="scanner-btn-capture" style="width:100%; background:var(--color-primary); color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+
+            <!-- Video Viewport & Overlays -->
+            <div style="flex:1; position:relative; display:flex; align-items:center; justify-content:center; background:#000000; overflow:hidden;">
+               <video id="scanner-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain;"></video>
+
+               <!-- Loading overlay -->
+               <div id="scanner-camera-loading" style="display:none; position:absolute; inset:0; background:rgba(10,18,11,0.92); flex-direction:column; align-items:center; justify-content:center; gap:10px; color:#ffffff; z-index:2;">
+                 <span class="spinner" style="display:inline-block; width:28px; height:28px; border:3px solid rgba(255,255,255,0.2); border-top:3px solid var(--color-primary, #1B7A3E); border-radius:50%; animation:spin 1s linear infinite;"></span>
+                 <span style="font-size:13px; font-weight:600;">Connecting to camera...</span>
+               </div>
+
+               <!-- Diagnostic Error Overlay -->
+               <div id="scanner-camera-error" style="display:none; position:absolute; inset:0; background:rgba(10,18,11,0.97); flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; z-index:3;">
+                 <div style="width:48px; height:48px; border-radius:50%; background:rgba(239, 68, 68, 0.15); border:1.5px solid #ef4444; display:flex; align-items:center; justify-content:center; color:#ef4444; margin-bottom:12px;">
+                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                 </div>
+                 <h4 id="scanner-cam-error-title" style="margin:0 0 8px 0; color:#ffffff; font-size:15px; font-weight:700;">Camera Unavailable</h4>
+                 <p id="scanner-cam-error-desc" style="margin:0 0 16px 0; color:#cbd5e1; font-size:12px; line-height:1.5; max-width:340px;">
+                   Unable to access video stream.
+                 </p>
+                 <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+                   <button type="button" id="scanner-cam-retry-btn" style="background:var(--color-primary, #1B7A3E); color:#ffffff; border:none; padding:8px 16px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                     Retry Connection
+                   </button>
+                   <button type="button" id="scanner-cam-fallback-btn" style="background:rgba(255,255,255,0.1); color:#ffffff; border:1px solid rgba(255,255,255,0.25); padding:8px 16px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                     Use File Import
+                   </button>
+                 </div>
+               </div>
+            </div>
+
+            <!-- Capture Bar -->
+            <div style="padding:14px; background:#111; border-top:1px solid rgba(255,255,255,0.1);">
+               <button class="btn" id="scanner-btn-capture" disabled style="width:100%; background:var(--color-primary); color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; opacity:0.5; transition:opacity 0.2s ease;">
                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                  <span>Capture Image</span>
                </button>
@@ -342,6 +385,41 @@ export class ScannerComponent {
         }
       });
     }
+
+    // Camera device selector
+    const cameraSelect = this.container.querySelector('#scanner-camera-select');
+    if (cameraSelect) {
+      cameraSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+          this.startCamera(e.target.value);
+        }
+      });
+    }
+
+    // Camera refresh button
+    const cameraRefresh = this.container.querySelector('#scanner-camera-refresh');
+    if (cameraRefresh) {
+      cameraRefresh.addEventListener('click', async () => {
+        await this.loadCameraDevices();
+        await this.startCamera();
+      });
+    }
+
+    // Camera error retry button
+    const camRetryBtn = this.container.querySelector('#scanner-cam-retry-btn');
+    if (camRetryBtn) {
+      camRetryBtn.addEventListener('click', () => {
+        this.startCamera();
+      });
+    }
+
+    // Camera fallback to File Import button
+    const camFallbackBtn = this.container.querySelector('#scanner-cam-fallback-btn');
+    if (camFallbackBtn) {
+      camFallbackBtn.addEventListener('click', () => {
+        this.switchTab('upload');
+      });
+    }
   }
 
   displayMobileReceipt(imageUrl, receiptCount) {
@@ -406,7 +484,10 @@ export class ScannerComponent {
       }
 
       if (tabId === 'upload') this.container.querySelector('#tab-upload').style.display = 'flex';
-      if (tabId === 'camera') this.container.querySelector('#tab-camera').style.display = 'flex';
+      if (tabId === 'camera') {
+        this.container.querySelector('#tab-camera').style.display = 'flex';
+        this.startCamera();
+      }
       if (tabId === 'mobile') {
         this.container.querySelector('#tab-mobile').style.display = 'flex';
         const connectView = this.container.querySelector('#mobile-view-connect');
@@ -560,27 +641,246 @@ export class ScannerComponent {
     reader.readAsDataURL(file);
   }
 
-  async startCamera() {
+  parseCameraError(err) {
+    const errorName = err?.name || '';
+
+    if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+      return {
+        title: 'Camera Permission Denied',
+        desc: 'Browser or Windows privacy settings blocked camera access. Please allow camera permissions in your browser address bar (click lock/camera icon) and Windows Privacy settings.',
+        alertMsg: 'Camera access denied by browser or operating system.\n\nPlease click the lock or camera icon in your browser address bar and set Camera to "Allow", then click "Retry".'
+      };
+    }
+
+    if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+      return {
+        title: 'No Camera Detected',
+        desc: 'No camera hardware found. Since the laptop webcam is unavailable, please ensure your USB webcam is plugged in and recognized in Windows Device Manager.',
+        alertMsg: 'No camera hardware detected.\n\nPlease check your USB webcam connection. Make sure it is securely plugged in, then click "Rescan" in the top bar.'
+      };
+    }
+
+    if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+      return {
+        title: 'Camera In Use / Hardware Error',
+        desc: 'The webcam could not be started. It might already be in use by another application (Zoom, Teams, Skype, or Windows Camera app) or the USB driver encountered an error.',
+        alertMsg: 'Your camera is busy or cannot start.\n\nAnother application (like Zoom, Teams, or the Camera app) may be using it. Please close other camera apps, reconnect your USB webcam, and click "Retry".'
+      };
+    }
+
+    if (errorName === 'OverconstrainedError') {
+      return {
+        title: 'Unsupported Resolution Mode',
+        desc: 'The requested resolution or settings are not supported by this webcam.',
+        alertMsg: 'The selected webcam does not support the requested video format.'
+      };
+    }
+
+    if (errorName === 'SecurityError') {
+      return {
+        title: 'Security Requirement',
+        desc: 'Camera access requires a secure connection (HTTPS or localhost).',
+        alertMsg: 'Live camera is only permitted on HTTPS or localhost.'
+      };
+    }
+
+    return {
+      title: 'Camera Unavailable',
+      desc: err?.message || 'An unexpected error occurred while accessing the webcam.',
+      alertMsg: `Camera error: ${err?.message || 'Unable to access video stream.'}`
+    };
+  }
+
+  showCameraError(err) {
+    const errorEl = this.container.querySelector('#scanner-camera-error');
+    const titleEl = this.container.querySelector('#scanner-cam-error-title');
+    const descEl = this.container.querySelector('#scanner-cam-error-desc');
+    const captureBtn = this.container.querySelector('#scanner-btn-capture');
+
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.style.opacity = '0.5';
+    }
+
+    const diag = this.parseCameraError(err);
+    if (titleEl) titleEl.textContent = diag.title;
+    if (descEl) descEl.textContent = diag.desc;
+    if (errorEl) errorEl.style.display = 'flex';
+
+    SystemDialog.alert(`${diag.title}\n\n${diag.alertMsg}`);
+  }
+
+  async loadCameraDevices() {
+    const select = this.container.querySelector('#scanner-camera-select');
+    if (!select || !navigator.mediaDevices?.enumerateDevices) return [];
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+      select.innerHTML = '';
+      if (videoDevices.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No cameras detected';
+        select.appendChild(opt);
+        return [];
+      }
+
+      const savedDeviceId = localStorage.getItem('nutrivision_preferred_camera');
+      let matchedSaved = false;
+
+      videoDevices.forEach((dev, idx) => {
+        const opt = document.createElement('option');
+        opt.value = dev.deviceId;
+        opt.textContent = dev.label || `Camera ${idx + 1}`;
+        if (savedDeviceId && dev.deviceId === savedDeviceId) {
+          opt.selected = true;
+          matchedSaved = true;
+        }
+        select.appendChild(opt);
+      });
+
+      // If user has not picked a device and there are multiple, prioritize USB webcam
+      if (!matchedSaved && videoDevices.length > 1) {
+        const usbCam = videoDevices.find(d => /usb|external|webcam|c920|brio/i.test(d.label));
+        if (usbCam) {
+          select.value = usbCam.deviceId;
+        }
+      }
+
+      return videoDevices;
+    } catch (e) {
+      console.warn('Error enumerating cameras:', e);
+      return [];
+    }
+  }
+
+  async startCamera(preferredDeviceId = null) {
     const video = this.container.querySelector('#scanner-video');
     const captureBtn = this.container.querySelector('#scanner-btn-capture');
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = stream;
+    const loadingEl = this.container.querySelector('#scanner-camera-loading');
+    const errorEl = this.container.querySelector('#scanner-camera-error');
+    const select = this.container.querySelector('#scanner-camera-select');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.showCameraError({
+        name: 'SecurityError',
+        message: 'Camera API (getUserMedia) is unavailable or blocked in this browser context.'
+      });
+      return;
+    }
+
+    this.stopCamera();
+
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (errorEl) errorEl.style.display = 'none';
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.style.opacity = '0.5';
+    }
+
+    const deviceId = preferredDeviceId || select?.value || localStorage.getItem('nutrivision_preferred_camera');
+
+    // Build constraints list to try in graceful sequence
+    const constraintAttempts = [];
+
+    // 1. If explicit deviceId available
+    if (deviceId) {
+      constraintAttempts.push({ video: { deviceId: { exact: deviceId } } });
+      constraintAttempts.push({ video: { deviceId: deviceId } });
+    }
+
+    // 2. Generic high-def video
+    constraintAttempts.push({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+
+    // 3. Permissive generic video
+    constraintAttempts.push({ video: true });
+
+    // 4. Mobile facingMode fallback
+    constraintAttempts.push({ video: { facingMode: 'environment' } });
+
+    let lastError = null;
+    let activeStream = null;
+
+    for (const constraints of constraintAttempts) {
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (activeStream) break;
+      } catch (err) {
+        lastError = err;
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          break;
+        }
+      }
+    }
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (!activeStream) {
+      this.showCameraError(lastError || new Error('No working camera stream could be established.'));
+      return;
+    }
+
+    this.stream = activeStream;
+    stream = activeStream;
+    if (video) {
+      video.srcObject = activeStream;
+      try {
+        await video.play();
+      } catch (e) {
+        console.warn('Video play warning:', e);
+      }
+    }
+
+    if (captureBtn) {
       captureBtn.disabled = false;
-    } catch (err) {
-      SystemDialog.alert("Camera access denied or unavailable.");
+      captureBtn.style.opacity = '1';
+    }
+
+    // Enumerate devices now that permissions have been granted (labels will now be visible)
+    await this.loadCameraDevices();
+
+    const currentTrack = activeStream.getVideoTracks()[0];
+    if (currentTrack) {
+      const settings = currentTrack.getSettings ? currentTrack.getSettings() : {};
+      if (settings.deviceId) {
+        localStorage.setItem('nutrivision_preferred_camera', settings.deviceId);
+        if (select) select.value = settings.deviceId;
+      }
     }
   }
 
   stopCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+      this.stream = null;
+    }
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
       stream = null;
+    }
+    const video = this.container?.querySelector('#scanner-video');
+    if (video) {
+      video.srcObject = null;
+    }
+    const captureBtn = this.container?.querySelector('#scanner-btn-capture');
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.style.opacity = '0.5';
     }
   }
 
   captureImage() {
     const video = this.container.querySelector('#scanner-video');
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      SystemDialog.alert("No live camera feed available to capture. Please ensure a camera is selected and streaming.");
+      return;
+    }
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
