@@ -249,7 +249,7 @@ body.sidebar--compressed .sidebar__nav-label {
   text-decoration: none;
   transition: all var(--transition-fast);
   cursor: pointer;
-  border: none;
+  border: 1.5px solid transparent;
   background: none;
   width: 100%;
   text-align: left;
@@ -292,39 +292,43 @@ body.sidebar--compressed .sidebar__logo-text {
 }
 
 .sidebar__nav-item--active {
-  background-color: #ffffff;
-  color: var(--color-primary);
+  background-color: transparent;
+  color: #ffffff;
+  border: 1.5px solid #ffffff;
   border-radius: 9999px;
   font-weight: var(--font-weight-bold, 700);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .sidebar__nav-item--active .icon {
   background: transparent;
-  color: var(--color-primary) !important;
+  color: #ffffff !important;
   box-shadow: none;
 }
 
 body.sidebar--compressed .sidebar__nav-item--active {
-  background-color: #ffffff;
-  color: var(--color-primary);
+  background-color: transparent;
+  color: #ffffff;
+  border: 1.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: none;
 }
 
 body.sidebar--compressed .sidebar__nav-item--active .icon {
   width: 34px;
   height: 34px;
   background: transparent;
-  color: var(--color-primary) !important;
+  color: #ffffff !important;
   box-shadow: none;
 }
 
 .sidebar__nav-item--active:hover {
-  background-color: #f0fdf4;
-  color: var(--color-primary-dark);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 body.sidebar--compressed .sidebar__nav-item--active:hover {
-  background-color: #f0fdf4;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar__nav-item svg {

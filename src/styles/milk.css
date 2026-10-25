@@ -14,29 +14,33 @@
 
 /* ── Sidebar Active Highlight for Milk Bank ────────────────────────── */
 #nav-milk.sidebar__nav-item--active {
-  background-color: #ffffff !important;
-  color: #0284c7 !important;
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: none !important;
 }
 
 #nav-milk.sidebar__nav-item--active .icon {
   background: transparent !important;
-  color: #0284c7 !important;
+  color: #ffffff !important;
   box-shadow: none !important;
 }
 
 #nav-milk.sidebar__nav-item--active:hover {
-  background-color: #f0f9ff !important;
-  color: #0369a1 !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
 }
 
 body.sidebar--compressed #nav-milk.sidebar__nav-item--active {
-  background-color: #ffffff !important;
-  color: #0284c7 !important;
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: none !important;
 }
 
 body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   background: transparent !important;
-  color: #0284c7 !important;
+  color: #ffffff !important;
   box-shadow: none !important;
 }
 
