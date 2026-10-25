@@ -63,30 +63,37 @@ body.sidebar--compressed .sidebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-4);
-  background-color: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
+  margin: var(--space-3) var(--space-3) var(--space-2);
+  padding: 0 8px 0 16px;
+  background-color: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-bottom: none;
   text-decoration: none;
   position: relative;
-  height: var(--header-height);
-  min-height: var(--header-height);
+  height: 48px;
+  min-height: 48px;
   box-sizing: border-box;
   overflow: hidden;
-  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.sidebar--compressed .sidebar__logo {
   justify-content: center;
+  margin: var(--space-3) auto var(--space-2);
   padding: 0;
-  height: var(--header-height);
-  min-height: var(--header-height);
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .sidebar__logo-content {
   display: flex;
   align-items: center;
   overflow: hidden;
-  max-width: 175px;
+  max-width: 165px;
   opacity: 1;
   transform: translateX(0);
   transition: opacity 0.25s ease, max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
@@ -94,7 +101,7 @@ body.sidebar--compressed .sidebar__logo {
 }
 
 .sidebar__logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
   display: block;
 }
@@ -113,6 +120,7 @@ body.sidebar--compressed .sidebar__logo-content {
   pointer-events: none;
   margin: 0;
   padding: 0;
+  display: none;
 }
 
 /* Sidebar toggle button (holds hamburger in expanded state, NV logo in compressed state) */
@@ -121,10 +129,10 @@ body.sidebar--compressed .sidebar__logo-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0 !important;
-  border-radius: var(--radius-md, 8px);
+  border-radius: 50%;
   cursor: pointer;
   background: transparent;
   border: none;
@@ -133,17 +141,26 @@ body.sidebar--compressed .sidebar__logo-content {
 }
 
 .sidebar__toggle-btn:hover {
-  background-color: #e6f4ea;
+  background-color: #f0fdf4;
 }
 
 body.sidebar--compressed .sidebar__toggle-btn {
-  margin: 0 auto;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.sidebar--compressed .sidebar__toggle-btn:hover {
+  background-color: transparent;
+  transform: scale(1.05);
 }
 
 /* Hamburger icon state */
 .sidebar__toggle-icon {
-  font-size: 24px;
-  color: #374151;
+  font-size: 22px;
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -161,8 +178,8 @@ body.sidebar--compressed .sidebar__toggle-icon {
 
 /* NV Logo icon mark state */
 .sidebar__toggle-logo {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   opacity: 0;
   transform: scale(0.4) rotate(-35deg);
@@ -179,7 +196,7 @@ body.sidebar--compressed .sidebar__toggle-logo {
 }
 
 body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__toggle-logo {
-  transform: scale(1.12) rotate(0deg);
+  transform: scale(1.08) rotate(0deg);
 }
 
 .sidebar__logo-icon {
