@@ -1332,27 +1332,28 @@
   flex-shrink: 0;
 }
 
-/* Bulk Release button — orange, system theme */
+/* Bulk Release button — solid orange, flat theme */
 #bulk-confirm-btn {
-  background: linear-gradient(135deg, #ea6b1a 0%, #f08030 100%);
+  background: #ea6b1a;
   border-color: #ea6b1a;
   color: #ffffff;
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-base);
   letter-spacing: 0.02em;
-  box-shadow: 0 2px 8px rgba(234, 107, 26, 0.3);
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  box-shadow: none;
+  transition: background-color 0.2s ease;
 }
 
 #bulk-confirm-btn:not(:disabled):hover {
-  background: linear-gradient(135deg, #d45e10 0%, #ea6b1a 100%);
-  box-shadow: 0 4px 16px rgba(234, 107, 26, 0.45);
-  transform: translateY(-1px);
+  background: #d45e10;
+  border-color: #d45e10;
+  box-shadow: none;
+  transform: none;
 }
 
 #bulk-confirm-btn:not(:disabled):active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(234, 107, 26, 0.3);
+  transform: none;
+  box-shadow: none;
 }
 
 #bulk-confirm-btn:disabled {
@@ -1403,23 +1404,23 @@
 
 /* ── Bulk Release trigger button (in Batches header) ────────────── */
 .btn-bulk-release {
-  background: linear-gradient(135deg, #ea6b1a 0%, #f08030 100%);
+  background: #ea6b1a;
   border-color: #ea6b1a;
   color: #ffffff;
   font-weight: var(--font-weight-semibold);
-  box-shadow: 0 2px 6px rgba(234, 107, 26, 0.28);
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  box-shadow: none;
+  transition: background-color 0.2s ease;
 }
 
 .btn-bulk-release:hover:not(:disabled) {
-  background: linear-gradient(135deg, #d45e10 0%, #ea6b1a 100%);
+  background: #d45e10;
   border-color: #d45e10;
-  box-shadow: 0 4px 14px rgba(234, 107, 26, 0.42);
-  transform: translateY(-1px);
+  box-shadow: none;
+  transform: none;
 }
 
 .btn-bulk-release:active:not(:disabled) {
-  transform: translateY(0);
+  transform: none;
 }
 
 /* ── Milk Bank trigger button (in Dashboard / Nav) ─────────────── */
