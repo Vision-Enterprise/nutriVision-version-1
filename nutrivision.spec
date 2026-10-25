@@ -43,6 +43,7 @@ hidden_imports = [
     'PIL',
     'webview',
     'webview.platforms.winforms',
+    'webview.platforms.edgechromium',
     'pythonnet',
     'clr_loader',
     'clr',
