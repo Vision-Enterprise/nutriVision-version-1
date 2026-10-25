@@ -13,25 +13,27 @@ export function renderLoginLayout() {
   return `
     <div class="auth-layout" role="main">
 
-      <!-- Left panel: brand identity -->
+      <!-- Left partition: light background, brand identity -->
       <div class="auth-brand" aria-hidden="true">
         <div class="auth-brand__inner">
 
           <div style="margin-bottom: var(--space-6);">
-            <img src="${logoUrl}" alt="NutriVision Logo" style="height: 56px; width: auto; max-width: 100%; display: block;" />
+            <img src="${logoUrl}" alt="NutriVision Logo" style="height: 52px; width: auto; max-width: 100%; display: block;" />
           </div>
-          <p class="auth-brand__description">
+
+          <h1 class="auth-brand__title">
             Nutrition Commodity<br>Inventory System
-          </p>
+          </h1>
 
-          <div class="auth-brand__divider"></div>
-
-          <p class="auth-brand__org">${APP_ORGANIZATION}</p>
+          <div class="auth-brand__org-container">
+            <div class="auth-brand__org-logo-slot" title="Municipal Nutrition Action Office Logo Slot" aria-label="MNAO Logo"></div>
+            <p class="auth-brand__org">${APP_ORGANIZATION}</p>
+          </div>
 
         </div>
       </div>
 
-      <!-- Right panel: login form -->
+      <!-- Right partition: green background, login form card -->
       <div class="auth-form-panel">
         <div class="auth-form-wrapper">
 

@@ -1,115 +1,99 @@
-﻿/*
+/*
  * Authentication Page Styles
  *
- * The login page uses its own layout â€” it does NOT use the sidebar/header
- * layout from layout.css. It takes up the full viewport.
+ * Split-screen partitioned login page.
  *
- * Desktop: two-column (brand panel left, form panel right)
- * Mobile:  single column (compact header, full-width form)
+ * Palette:
+ * - Left Partition: Gentle mint pastel background (var(--color-background) / #edfbf4) — pleasant to the eyes
+ * - Right Partition: Forest green background (var(--color-primary) / #1B7A3E)
+ * - Login Card: Matching soft mint background (var(--color-background) / #edfbf4) with asymmetric curves (56px 0 56px 0)
+ * - Inputs: Clean #ffffff surface on top of the soft mint card
  */
 
-/* â”€â”€ Two-column Auth Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Split-Screen Partition Layout ─────────────────────────────────── */
 .auth-layout {
   display: grid;
-  grid-template-columns: 420px 1fr;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ── Left Partition (Soothing Mint / Brand Showcase) ───────────────── */
+.auth-brand {
+  background-color: var(--color-background); /* #edfbf4 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-10);
   min-height: 100vh;
 }
 
-/* â”€â”€ Brand Panel (left side, desktop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.auth-brand {
-  background-color: #f0fdf4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-8);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Subtle geometric background pattern */
-.auth-brand::before {
-  content: '';
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 280px;
-  height: 280px;
-  border-radius: 50%;
-  background-color: rgba(16, 185, 129, 0.08);
-  pointer-events: none;
-}
-
-.auth-brand::after {
-  content: '';
-  position: absolute;
-  bottom: -80px;
-  left: -40px;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background-color: rgba(16, 185, 129, 0.06);
-  pointer-events: none;
-}
-
 .auth-brand__inner {
-  position: relative;
-  z-index: 1;
-  max-width: 280px;
+  max-width: 440px;
+  width: 100%;
 }
 
-.auth-brand__logo {
-  width: 64px;
-  height: 64px;
-  background-color: rgba(16, 185, 129, 0.15);
-  border-radius: var(--radius-xl);
+.auth-brand__title {
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-10);
+}
+
+/* Municipal Nutrition Office + Circular Logo Slot */
+.auth-brand__org-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding-top: var(--space-8);
+  border-top: 1px solid rgba(27, 122, 62, 0.15);
+}
+
+.auth-brand__org-logo-slot {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 50%; /* Circle */
+  border: 2px dashed rgba(27, 122, 62, 0.45);
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--space-6);
-}
-
-.auth-brand__name {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: #064e3b;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  margin-bottom: var(--space-3);
-}
-
-.auth-brand__description {
-  font-size: var(--font-size-base);
-  color: #374151;
-  line-height: var(--line-height-relaxed);
-}
-
-.auth-brand__divider {
-  width: 40px;
-  height: 2px;
-  background-color: #6ee7b7;
-  margin: var(--space-6) 0;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .auth-brand__org {
   font-size: var(--font-size-xs);
-  color: #6b7280;
+  color: var(--color-text-muted);
   line-height: var(--line-height-relaxed);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  font-weight: var(--font-weight-semibold);
 }
 
-/* â”€â”€ Form Panel (right side) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Right Partition (Green Background / Form Panel) ───────────────── */
 .auth-form-panel {
+  background-color: var(--color-primary); /* #1B7A3E */
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8) var(--space-6);
-  background-color: var(--color-background);
+  padding: var(--space-12) var(--space-8);
+  min-height: 100vh;
 }
 
+/* Container with asymmetric rounded corners */
 .auth-form-wrapper {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  background-color: var(--color-background); /* #edfbf4 - soft mint, pleasant to the eyes */
+  border-radius: 56px 0 56px 0;
+  padding: var(--space-10) var(--space-8);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.35);
 }
 
 .auth-form-header {
@@ -129,7 +113,18 @@
   margin-top: var(--space-1);
 }
 
-/* â”€â”€ Password field with toggle button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Form Inputs inside the soft mint card */
+.auth-form-wrapper .form-input {
+  background-color: #ffffff;
+  border-color: var(--color-border);
+}
+
+.auth-form-wrapper .form-input:focus {
+  background-color: #ffffff;
+  border-color: var(--color-primary);
+}
+
+/* ── Password field with toggle button ────────────────────────────── */
 .auth-password-wrapper {
   position: relative;
 }
@@ -159,72 +154,60 @@
   color: var(--color-text-muted);
 }
 
-/* â”€â”€ Footer note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Footer note ─────────────────────────────────────────────────── */
 .auth-footer-note {
   margin-top: var(--space-6);
   font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
+  color: var(--color-text-muted);
   text-align: center;
   line-height: var(--line-height-relaxed);
 }
 
-/* â”€â”€ Mobile logo (visible only on mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Mobile logo (hidden on desktop) ─────────────────────────────── */
 .auth-mobile-logo {
   display: none;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
 }
 
-.auth-mobile-logo__icon {
-  width: 40px;
-  height: 40px;
-  background-color: var(--color-primary);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.auth-mobile-logo__name {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-}
-
-/* â”€â”€ Mobile Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-@media (max-width: 768px) {
-  /* Switch to single column */
+/* ── Responsive Viewports ────────────────────────────────────────── */
+@media (max-width: 860px) {
   .auth-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
   }
 
-  /* Brand panel hides on mobile */
   .auth-brand {
-    display: none;
-  }
-
-  /* Form panel takes full screen */
-  .auth-form-panel {
-    align-items: flex-start;
+    min-height: auto;
     padding: var(--space-8) var(--space-6);
   }
 
-  /* Show mobile logo */
-  .auth-mobile-logo {
-    display: flex;
+  .auth-form-panel {
+    min-height: auto;
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .auth-form-wrapper {
+    border-radius: 44px 0 44px 0;
+    padding: var(--space-8) var(--space-6);
   }
 }
 
 @media (max-width: 480px) {
-  .auth-form-panel {
+  .auth-form-wrapper {
+    border-radius: 36px 0 36px 0;
     padding: var(--space-6) var(--space-4);
+  }
+
+  .auth-brand__org-logo-slot {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
   }
 }
 
-/* â”€â”€ Post-login placeholder (Phase 2 only, replaced in Phase 3) â”€â”€â”€â”€â”€ */
+/* ── Post-login placeholder (Phase 2 legacy) ─────────────────────── */
 .auth-success-placeholder {
   min-height: 100vh;
   display: flex;
@@ -269,4 +252,3 @@
   color: var(--color-text-muted);
   margin-bottom: var(--space-1);
 }
-
