@@ -55,7 +55,10 @@ def start_backend():
     """Starts the FastAPI backend inside an isolated thread."""
     try:
         import uvicorn
-        from main import app
+        try:
+            from backend.main import app
+        except ImportError:
+            from main import app  # type: ignore
         log_msg("Starting uvicorn server on port 8000...")
         uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
     except Exception as e:
@@ -84,11 +87,11 @@ def launch():
         log_msg("Existing NutriVision server detected on port 8000. Connecting...")
 
     # 2. Launch native desktop window via pywebview (enforcing Edge WebView2)
-    import webview
+    import webview  # type: ignore
 
     try:
         import importlib
-        import webview.platforms.edgechromium as ec
+        import webview.platforms.edgechromium as ec  # type: ignore
         wv2_core = importlib.import_module("Microsoft.Web.WebView2.Core")
         allow_state = getattr(wv2_core.CoreWebView2PermissionState, "Allow", 1)
 
