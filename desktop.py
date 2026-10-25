@@ -54,9 +54,9 @@ def is_nutrivision_running(port: int = 8000, host: str = "127.0.0.1") -> bool:
 def start_backend():
     """Starts the FastAPI backend inside an isolated thread."""
     try:
-        import uvicorn
+        import uvicorn  # type: ignore
         try:
-            from backend.main import app
+            from backend.main import app  # type: ignore
         except ImportError:
             from main import app  # type: ignore
         log_msg("Starting uvicorn server on port 8000...")
