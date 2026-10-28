@@ -21,8 +21,8 @@ export async function renderAdvisorPage(profile) {
 
   content.innerHTML = `
     <div class="page-header">
-      <h1 class="page-title">Inventory Advisor</h1>
-      <p style="color: var(--color-text-muted);">Action Center & Inventory Health Analysis</p>
+      <h1 class="page-header__title">Inventory Advisor</h1>
+      <p class="page-header__subtitle">Action Center &amp; Inventory Health Analysis</p>
     </div>
     
     <div class="loading-state" id="advisor-loading">

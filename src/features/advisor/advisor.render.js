@@ -56,78 +56,74 @@ export function renderAdvisorLayout(data) {
   `).join('') : '<p style="color: var(--color-text-muted);">No batches expiring within 90 days.</p>';
 
   return `
-    <!-- AI Summary -->
-    <div class="advisor-summary">
-      ${summaryText}
+    <!-- Top KPI Stat Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+      <div class="stat-card">
+        <div class="stat-card__label">Total Active Items</div>
+        <div class="stat-card__value stat-card__value--primary">${data.totalActiveItems}</div>
+        <div class="stat-card__footer">Commodities in stock</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Low Stock Alerts</div>
+        <div class="stat-card__value stat-card__value--warning">${data.lowStockCount}</div>
+        <div class="stat-card__footer">Requires replenishment</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Critical Expiring</div>
+        <div class="stat-card__value stat-card__value--danger">${data.criticalExpiringCount}</div>
+        <div class="stat-card__footer">Immediate action needed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Upcoming Events (30d)</div>
+        <div class="stat-card__value">${data.events.length}</div>
+        <div class="stat-card__footer">Last audit: ${new Date().toLocaleDateString()}</div>
+      </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--space-4); margin-top: var(--space-4); align-items: start; width: 100%; min-width: 0;">
-      <!-- Left Column -->
-      <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0;">
-        
-        <!-- Inventory Health -->
-        <div class="card" style="min-width: 0; overflow: hidden;">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="card-title" style="display: flex; align-items: center; gap: var(--space-2); margin: 0;">
-               Inventory by Commodity
-            </h3>
-            <button class="btn btn-outline btn-sm" onclick="window.location.hash='#/commodities'">View All</button>
-          </div>
-          <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
-            <div class="advisor-commodity-list">
-              ${healthList}
-            </div>
+    <!-- System Summary Card -->
+    <div class="card" style="margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5);">
+      <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); color: var(--color-text-muted);">
+        <span class="icon icon--sm">fact_check</span>
+        <span style="font-weight: 700; font-size: var(--font-size-xs); letter-spacing: 0.08em; text-transform: uppercase;">Advisor Summary</span>
+      </div>
+      <div style="border-left: 4px solid var(--color-primary); padding-left: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text); line-height: 1.6;">
+        ${summaryText}
+      </div>
+    </div>
+
+    <!-- Health, Expiry & Actions Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); align-items: stretch; width: 100%; min-width: 0;">
+      <!-- Inventory Health -->
+      <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
+          <h3 class="card-title" style="margin: 0;">Inventory by Commodity</h3>
+          <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/commodities'">View All</button>
+        </div>
+        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
+          <div class="advisor-commodity-list">
+            ${healthList}
           </div>
         </div>
-
-        <!-- Expiring Soon -->
-        <div class="card" style="min-width: 0; overflow: hidden;">
-          <div class="card-header"><h3 class="card-title">Expiring Soon (90 Days)</h3></div>
-          <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
-            ${expiringList}
-          </div>
-        </div>
-
       </div>
 
-      <!-- Right Column -->
-      <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0;">
-        
-        <!-- Current Status -->
-        <div class="card" style="min-width: 0; overflow: hidden;">
-          <div class="card-header"><h3 class="card-title">Current Status</h3></div>
-          <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
-            <div class="advisor-stat-row">
-              <span class="advisor-stat-label">Total Active Items</span>
-              <span class="advisor-stat-value">${data.totalActiveItems}</span>
-            </div>
-            <div class="advisor-stat-row">
-              <span class="advisor-stat-label">Low Stock Alerts</span>
-              <span class="advisor-stat-value" style="color: var(--color-warning);">${data.lowStockCount}</span>
-            </div>
-            <div class="advisor-stat-row">
-              <span class="advisor-stat-label">Critical Expiring</span>
-              <span class="advisor-stat-value" style="color: var(--color-danger);">${data.criticalExpiringCount}</span>
-            </div>
-            <div class="advisor-stat-row">
-              <span class="advisor-stat-label">Upcoming Events (30d)</span>
-              <span class="advisor-stat-value">${data.events.length}</span>
-            </div>
-            <div class="advisor-stat-row">
-              <span class="advisor-stat-label">Last Audit Date</span>
-              <span class="advisor-stat-value">${new Date().toLocaleDateString()}</span>
-            </div>
-          </div>
+      <!-- Expiring Soon -->
+      <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
+          <h3 class="card-title" style="margin: 0;">Expiring Soon (90 Days)</h3>
         </div>
-
-        <!-- Suggested Actions -->
-        <div class="card" style="min-width: 0; overflow: hidden;">
-          <div class="card-header"><h3 class="card-title">Suggested Actions</h3></div>
-          <div class="card-body" style="padding: var(--space-2) var(--space-3); overflow-y: auto; max-height: 220px;">
-            ${actionsList}
-          </div>
+        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
+          ${expiringList}
         </div>
+      </div>
 
+      <!-- Suggested Actions -->
+      <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="card-header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
+          <h3 class="card-title" style="margin: 0;">Suggested Actions</h3>
+        </div>
+        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
+          ${actionsList}
+        </div>
       </div>
     </div>
     

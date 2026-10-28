@@ -10,6 +10,16 @@
 
 export function renderCalendarLayout() {
   return `
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4);">
+      <div>
+        <h1 class="page-header__title">Program Calendar</h1>
+        <p class="page-header__subtitle">Schedule nutrition program events and monitor batch expiration timelines.</p>
+      </div>
+      <button class="btn btn-primary" id="cal-add-btn" type="button">
+        + Add Event
+      </button>
+    </div>
+
     <div class="cal-page" id="cal-page">
       <!-- Offline Banner -->
       <div class="cal-offline-banner" id="cal-offline-banner" style="display:none;">
@@ -27,9 +37,6 @@ export function renderCalendarLayout() {
           <span class="cal-chip cal-chip-expired"><span class="icon icon--sm">error</span> Expired</span>
           <span class="cal-chip cal-chip-custom"><span class="icon icon--sm">event</span> Program Event</span>
         </div>
-        <button class="btn btn-primary" id="cal-add-btn" type="button">
-          + Add Event
-        </button>
       </div>
 
       <!-- Calendar Mount -->

@@ -16,6 +16,11 @@ import { getLocalDateString } from '../../shared/utils/date.utils.js';
  */
 export function renderMilkPageSkeleton() {
   return `
+    <div class="page-header">
+      <h1 class="page-header__title">Milk Bank</h1>
+      <p class="page-header__subtitle">Track donor milk intake, pasteurized batches (BM-XXX), and infant dispensing ledger.</p>
+    </div>
+
     <div class="milk-page">
       <!-- ── SECTION 1: Top Metrics Stat Cards ───────────────────── -->
       <div class="milk-metrics" id="milk-metrics-container">
