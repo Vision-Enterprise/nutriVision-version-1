@@ -17,6 +17,7 @@ import {
 } from './calendar.service.js';
 import { renderCalendarLayout } from './calendar.render.js';
 import { showDetailModal, attachModalListeners } from './calendar.modals.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 let _calendar      = null;
 let _profile       = null;
@@ -179,7 +180,7 @@ export async function renderCalendarPage(profile) {
       info.el.style.borderRadius = 'var(--radius-sm)';
     },
     dayCellDidMount: info => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       if (info.dateStr === today) {
         info.el.classList.add('fc-today-custom');
       }

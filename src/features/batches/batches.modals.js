@@ -12,6 +12,7 @@ import { updateBatch, voidBatch, releaseBatch } from './batches.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 let _activeBatchModalEscHandler = null;
 
@@ -99,7 +100,8 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
               <label for="field-delivery-date" class="form-label form-label--required">Delivery Date</label>
               <input type="date" id="field-delivery-date" name="delivery_date"
                 class="form-input"
-                value="${batch?.delivery_date ?? ''}" required />
+                min="${getLocalDateString()}"
+                value="${batch?.delivery_date ?? getLocalDateString()}" required />
               <span class="form-error" id="error-delivery-date" role="alert"></span>
             </div>
             <div class="form-group">
@@ -194,6 +196,9 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     }
     if (!formData.delivery_date) {
       setFieldError('field-delivery-date', 'error-delivery-date', 'Delivery date is required.');
+      valid = false;
+    } else if (formData.delivery_date < getLocalDateString()) {
+      setFieldError('field-delivery-date', 'error-delivery-date', 'Delivery date cannot be in the past.');
       valid = false;
     }
     if (!formData.expiration_date) {

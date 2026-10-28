@@ -5,6 +5,7 @@
 
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 const MODULE = '[MilkBankService]';
 
@@ -328,7 +329,7 @@ export async function createMilkDonation({
         transport_date: transport_date?.trim() || null,
         transport_time: transport_time || '12:00 PM',
         condition_at_collection: condition_at_collection || 'ok',
-        arrival_date: arrival_date || new Date().toISOString().split('T')[0],
+        arrival_date: arrival_date || getLocalDateString(),
         arrival_time: arrival_time || '12:30 PM',
         condition_at_arrival: condition_at_arrival || 'ok',
         transport_condition: transport_condition?.trim() || null,
@@ -405,7 +406,7 @@ export async function dispenseMilk({
         barangay: barangay.trim(),
         bags_dispensed: qty,
         indication: validIndication,
-        dispensed_date: dispensed_date || new Date().toISOString().split('T')[0],
+        dispensed_date: dispensed_date || getLocalDateString(),
         remarks: remarks?.trim() || null,
         released_by: profileId || null,
         released_by_name: profileName || null
@@ -423,7 +424,7 @@ export async function dispenseMilk({
           barangay: barangay.trim(),
           bags_dispensed: qty,
           indication: 'Preterm / Low Birth Weight',
-          dispensed_date: dispensed_date || new Date().toISOString().split('T')[0],
+          dispensed_date: dispensed_date || getLocalDateString(),
           remarks: remarks?.trim() || null,
           released_by: profileId || null,
           released_by_name: profileName || null
@@ -949,7 +950,7 @@ export async function createMilkDonationsBulk(donationList, profileId, profileNa
       transport_date: d.transport_date?.trim() || null,
       transport_time: d.transport_time || '12:00 PM',
       condition_at_collection: d.condition_at_collection || 'ok',
-      arrival_date: d.arrival_date || new Date().toISOString().split('T')[0],
+      arrival_date: d.arrival_date || getLocalDateString(),
       arrival_time: d.arrival_time || '12:30 PM',
       condition_at_arrival: d.condition_at_arrival || 'ok',
       transport_condition: d.transport_condition?.trim() || null,

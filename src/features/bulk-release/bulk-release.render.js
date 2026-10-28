@@ -5,7 +5,7 @@
  * Zero side-effects, no DB calls — pure render functions only.
  */
 
-import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { getExpirationStatus, getDaysRemaining, getLocalDateString } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 
 export function escapeHtml(str) {
@@ -31,7 +31,7 @@ export function statusBadgeClass(status) {
  * Full-screen Bulk Release workspace shell.
  */
 export function renderBulkReleaseShell() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   return `
     <div class="bulk-release-workspace" id="bulk-release-workspace" role="dialog"
          aria-modal="true" aria-label="Bulk Release Manifest">

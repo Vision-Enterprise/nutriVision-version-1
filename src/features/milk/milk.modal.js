@@ -21,6 +21,7 @@ import {
 } from './milk.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 const ICE_BLUE_BG   = '#e0f2fe';
@@ -121,10 +122,10 @@ function _shell(width, headerHtml, bodyHtml, footerHtml) {
 // ════════════════════════════════════════════════════════════════════════════
 export async function openNewBatchModal({ onSave }) {
   const nextBatch  = await getNextBatchNumber();
-  const today      = new Date().toISOString().split('T')[0];
+  const today      = getLocalDateString();
   const sixMonths  = new Date();
   sixMonths.setMonth(sixMonths.getMonth() + 6);
-  const expiryStr  = sixMonths.toISOString().split('T')[0];
+  const expiryStr  = getLocalDateString(sixMonths);
 
   const shelfOptions = SHELF_LOCATIONS.map(s =>
     `<option value="${s}">${s}</option>`
@@ -258,7 +259,7 @@ export async function openNewBatchModal({ onSave }) {
 // MODAL 2: Log Donation Intake (Form MH.MNAO.FM.002.00)
 // ════════════════════════════════════════════════════════════════════════════
 export function openNewDonationModal({ onSave }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   const header = `
     <div style="display:flex;align-items:flex-start;gap:var(--space-4);">
@@ -440,7 +441,7 @@ export async function openDispenseModal({ preselectedBatchId = null, onSave }) {
     return;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   const batchOptions = available.map(b =>
     `<option value="${b.id}" data-max="${b.remaining_bags}"

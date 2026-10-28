@@ -23,6 +23,7 @@ import {
   generateDuplicateSignature,
   extractExpYYMM 
 } from '../../shared/utils/code-generator.util.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 let bulkRows = [];
 let availableCommodities = [];
@@ -33,7 +34,7 @@ let fxBadge = null;
 let isSyncingFx = false;
 
 function getToday() {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDateString();
 }
 
 function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
@@ -260,7 +261,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   const scannerInstance = new ScannerComponent({
     container: document.getElementById('bulk-scanner-container'),
     onComplete: (parsedRows) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getToday();
       parsedRows.forEach(r => {
         let matched = null;
         if (r.commodityId) {
@@ -279,13 +280,15 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
           unit = '';
         }
 
+        const finalDeliveryDate = (r.deliveryDate && r.deliveryDate >= today) ? r.deliveryDate : today;
+
         bulkRows.push({
           id: Date.now() + Math.random(),
           commodityId: commId,
           commodityName: commName,
           unit: unit,
           qty: r.qty || '',
-          deliveryDate: r.deliveryDate || today,
+          deliveryDate: finalDeliveryDate,
           expDate: r.expDate || '',
           supplier: r.supplier || '',
           notes: ''
@@ -418,7 +421,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       commodityName: '',
       unit: '',
       qty: '',
-      deliveryDate: new Date().toISOString().split('T')[0],
+      deliveryDate: getToday(),
       expDate: '',
       supplier: '',
       notes: ''
@@ -934,6 +937,17 @@ export function validateTableRows() {
       qtyInput?.classList.remove('cell-invalid');
     }
 
+    // 5. Strict Delivery Date Check (cannot be empty, cannot be in the past)
+    const delInput = tr.querySelector('.ws-input-del');
+    const todayStr = getToday();
+    const isDelValid = row.deliveryDate && row.deliveryDate >= todayStr;
+    if (!isDelValid) {
+      delInput?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      delInput?.classList.remove('cell-invalid');
+    }
+
     if (!rowValid) {
       allValid = false;
       invalidCount++;
@@ -950,7 +964,7 @@ export function validateTableRows() {
       if (statusPill) {
         statusPill.textContent = rows.length === 0 
           ? 'No batch rows available.'
-          : `${invalidCount} row(s) require attention (Unit and Expiration Date are mandatory).`;
+          : `${invalidCount} row(s) require attention (Delivery Date cannot be in the past; Unit and Expiration Date are mandatory).`;
         statusPill.style.color = '#ef4444';
       }
     } else {
@@ -979,7 +993,7 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
   syncBulkState();
 
   if (!validateTableRows()) {
-    return SystemDialog.alert('Cannot register batches: One or more rows have missing or invalid Expiration Dates, Units, or Quantities.');
+    return SystemDialog.alert('Cannot register batches: One or more rows have invalid Delivery Dates (cannot be in the past), missing Expiration Dates, Units, or Quantities.');
   }
 
   // Duplicate signature fingerprint detection

@@ -57,6 +57,7 @@ import {
   showMilkDispensingPrintPreview
 } from './milk.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 // ── Themed Modal Helper with Blue Accents for Milk Bank Module ────────────────
 const MilkModal = {
@@ -283,7 +284,7 @@ function _scrollToBottomDraft() {
 // SHEET 1: Log of Milk Received (FM.002.00) Events
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDonationsSheetEvents() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   // Add new draft row at bottom of ledger (physical ledger style)
   document.getElementById('btn-add-donation-row')?.addEventListener('click', () => {
@@ -386,7 +387,7 @@ function _bindDonationsSheetEvents() {
 }
 
 function _collectDonationRowData(row) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   return {
     donor_code:              row.querySelector('.js-donor-code')?.value?.trim() || '',
     expression_date_notes:   row.querySelector('.js-donor-exp-date')?.value || today,
@@ -457,7 +458,7 @@ function _bindBatchesSheetEvents() {
   // Table View: Add batch row at bottom of ledger
   document.getElementById('btn-add-batch-row')?.addEventListener('click', async () => {
     const nextBatch = await getNextBatchNumber();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const sixMonths = new Date();
     sixMonths.setMonth(sixMonths.getMonth() + 6);
 
@@ -467,7 +468,7 @@ function _bindBatchesSheetEvents() {
     _draftBatches.push({
       batch_number: nextBatch,
       date_pasteurized: today,
-      expiry_date: sixMonths.toISOString().split('T')[0],
+      expiry_date: getLocalDateString(sixMonths),
       freezer_shelf: formatFreezerShelf(activeFreezer ? activeFreezer.name : 'Upright Freezer A', defaultShelf),
       total_bags: ''
     });
@@ -629,7 +630,7 @@ function _bindBatchesSheetEvents() {
     const targetBatch = _batches.find(b => b.id === batchId);
     const defaultQty = targetBatch ? (targetBatch.remaining_bags || 1) : 1;
     _draftDispatches.push({
-      dispensed_date: new Date().toISOString().split('T')[0],
+      dispensed_date: getLocalDateString(),
       recipient_name: '',
       barangay: '',
       batch_id: batchId || '',
@@ -659,7 +660,7 @@ function _bindBatchesSheetEvents() {
     }
 
     _activeTab = 'dispense';
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     // Push rows sequentially in shelf order at bottom of ledger
     const validBatches = targetShelf.batches.filter(item => item.batch && item.bags > 0);
@@ -702,7 +703,7 @@ function _bindBatchesSheetEvents() {
     document.getElementById('btn-freezer-add-batch')?.addEventListener('click', async () => {
       _batchesSubView = 'table';
       const nextBatch = await getNextBatchNumber();
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const sixMonths = new Date();
       sixMonths.setMonth(sixMonths.getMonth() + 6);
 
@@ -712,7 +713,7 @@ function _bindBatchesSheetEvents() {
       _draftBatches.push({
         batch_number: nextBatch,
         date_pasteurized: today,
-        expiry_date: sixMonths.toISOString().split('T')[0],
+        expiry_date: getLocalDateString(sixMonths),
         freezer_shelf: formatFreezerShelf(activeFreezer ? activeFreezer.name : 'Upright Freezer A', defaultShelf),
         total_bags: ''
       });
@@ -1087,7 +1088,7 @@ function _bindDispatchesSheetEvents() {
     const fefo = getFefoPriorityBatch(_batches) || available[0];
     const defaultQty = fefo ? (fefo.remaining_bags || 1) : 1;
     _draftDispatches.push({
-      dispensed_date: new Date().toISOString().split('T')[0],
+      dispensed_date: getLocalDateString(),
       recipient_name: '',
       barangay: '',
       batch_id: fefo ? fefo.id : '',
@@ -1179,7 +1180,7 @@ function _bindDispatchesSheetEvents() {
 
 function _collectDispatchRowData(row) {
   return {
-    dispensed_date: row.querySelector('.js-dispense-date')?.value || new Date().toISOString().split('T')[0],
+    dispensed_date: row.querySelector('.js-dispense-date')?.value || getLocalDateString(),
     recipient_name: row.querySelector('.js-dispense-recipient')?.value?.trim() || '',
     barangay:       row.querySelector('.js-dispense-brgy')?.value || '',
     batch_id:       row.querySelector('.js-dispense-batch')?.value || '',

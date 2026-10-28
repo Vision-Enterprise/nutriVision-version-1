@@ -12,6 +12,7 @@ import {
   renderCustomEventDetailBody,
 } from './calendar.render.js';
 import { createCustomEvent, deleteCustomEvent } from './calendar.service.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 export function showDetailModal(info, calendarRef) {
   const { type, batch, event: customEv } = info.event.extendedProps;
@@ -63,7 +64,7 @@ export function showAddEventModal() {
     form.reset();
     const dateInput = form.querySelector('#cal-field-date');
     if (dateInput) {
-      dateInput.value = new Date().toISOString().split('T')[0];
+      dateInput.value = getLocalDateString();
     }
   }
 }

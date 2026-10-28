@@ -1,4 +1,5 @@
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 /**
  * Converts JSON data array to CSV format and triggers download.
@@ -11,7 +12,7 @@ export function exportToCSV(data, modelId, filters) {
 
   let csvContent = '';
   let filename = 'NutriVision_Report.csv';
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   if (modelId === 'distribution') {
     filename = `Distribution_Ledger_${today}.csv`;

@@ -7,6 +7,7 @@
 
 import { BARANGAYS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import { getBatchFreezerAndShelf, getFreezerShelfAllocations, getBatchActualShelfInfo } from './milk.service.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 /**
  * 2-Section Page Skeleton:
@@ -145,7 +146,7 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
 // ════════════════════════════════════════════════════════════════════════════
 export function renderDonationsSheet(donations = [], draftRows = []) {
   const pendingCount = draftRows.length;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   const draftHtml = draftRows.map((draft, idx) => `
     <tr class="grid-row--draft" data-draft-idx="${idx}">
@@ -392,7 +393,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td>
           <input type="date" class="grid-cell-input js-batch-date-past"
-                 value="${draft.date_pasteurized || new Date().toISOString().split('T')[0]}" aria-label="Date Pasteurized">
+                 value="${draft.date_pasteurized || getLocalDateString()}" aria-label="Date Pasteurized">
         </td>
         <td>
           <input type="date" class="grid-cell-input js-batch-expiry"
@@ -1010,7 +1011,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         <td style="color:#0284c7;font-weight:700;text-align:center;">+ Issue</td>
         <td>
           <input type="date" class="grid-cell-input js-dispense-date"
-                 value="${draft.dispensed_date || new Date().toISOString().split('T')[0]}" aria-label="Date Dispensed">
+                 value="${draft.dispensed_date || getLocalDateString()}" aria-label="Date Dispensed">
         </td>
         <td>
           <input type="text" class="grid-cell-input js-dispense-recipient"
