@@ -16,7 +16,7 @@ import { ScannerComponent } from '../scanner/scanner.component.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { createCommodity } from '../commodities/commodities.service.js';
 import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
-import { getDynamicUnits } from '../commodities/commodities.render.js';
+import { getDynamicCategories, getDynamicUnits } from '../commodities/commodities.render.js';
 import { 
   generateCommoditySKU, 
   generateBatchCode, 
@@ -45,6 +45,23 @@ function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
                    (commodityName && b.commodities?.name && b.commodities.name.toLowerCase() === commodityName.toLowerCase());
     return cMatch && b.batch_number?.trim().toUpperCase() === upperCode;
   });
+}
+
+const KNOWN_CATEGORIES = [
+  { regex: /\b(?:vitamin|retinol|ascorbic|cholecalciferol|tocopherol)\b/i, category: 'Vitamins' },
+  { regex: /\b(?:iron|zinc|calcium|folic|ferrous|iodine|potassium|magnesium)\b/i, category: 'Minerals' },
+  { regex: /\b(?:rutf|rusf|paste|eezeepaste|f-75|f-100|therapeutic|rehydration)\b/i, category: 'Therapeutics' },
+  { regex: /\b(?:powder|supplement|porridge|champorado|micronutrient|mnp)\b/i, category: 'Supplementary Food' },
+  { regex: /\b(?:scale|height|tape|muac|strip|salter|board|caliper|equipment)\b/i, category: 'Equipment' },
+  { regex: /\b(?:maternal|mms|mum|iron-folic)\b/i, category: 'Maternal Health' },
+];
+
+function extractCategoryFromName(name) {
+  if (!name) return null;
+  for (const item of KNOWN_CATEGORIES) {
+    if (item.regex.test(name)) return item.category;
+  }
+  return null;
 }
 
 /**
@@ -218,6 +235,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
               <thead>
                  <tr>
                     <th style="min-width:200px;">Commodity</th>
+                    <th style="min-width:145px;">Category</th>
                     <th style="min-width:110px;">Unit</th>
                     <th style="min-width:250px;">Batch Code</th>
                     <th style="min-width:85px;">Qty</th>
@@ -273,6 +291,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
 
         const commName = matched ? matched.name : (r.productName || '');
         const commId = matched ? matched.id : '';
+        const cat = matched ? (matched.category || '') : (r.category || extractCategoryFromName(commName) || '');
         
         let unit = matched?.unit || r.unit || '';
         const upperUnit = unit.trim().toUpperCase();
@@ -286,6 +305,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
           id: Date.now() + Math.random(),
           commodityId: commId,
           commodityName: commName,
+          category: cat,
           unit: unit,
           qty: r.qty || '',
           deliveryDate: finalDeliveryDate,
@@ -419,6 +439,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       id: Date.now() + Math.random(),
       commodityId: '',
       commodityName: '',
+      category: '',
       unit: '',
       qty: '',
       deliveryDate: getToday(),
@@ -602,6 +623,18 @@ function renderBulkTable() {
             />
          </td>
          <td>
+            <input 
+              type="text" 
+              class="headless-input form-input ws-input-category" 
+              id="ws-cat-${rowKey}" 
+              name="category_${rowKey}" 
+              aria-label="Category" 
+              placeholder="Select/Add Category..." 
+              value="${escapeHtml(row.category || '')}" 
+              autocomplete="off" 
+            />
+         </td>
+         <td>
             <input type="text" class="headless-input form-input ws-input-unit" id="ws-unit-${rowKey}" name="unit_${rowKey}" aria-label="Unit" placeholder="Unit (Req.)" value="${escapeHtml(row.unit || '')}" />
          </td>
          <td>
@@ -661,6 +694,7 @@ function bindRowEvents() {
     if (!row) return;
 
     const commInput = tr.querySelector('.ws-input-commodity');
+    const catInput = tr.querySelector('.ws-input-category');
     const newCommBtn = tr.querySelector('.ws-new-comm-btn');
     const unitInput = tr.querySelector('.ws-input-unit');
     const expInput = tr.querySelector('.ws-input-exp');
@@ -687,6 +721,13 @@ function bindRowEvents() {
       if (matched) {
         row.commodityId = matched.id;
         row.commodityName = matched.name;
+        if (!row.category || row.category === '') {
+          row.category = matched.category || '';
+          if (catInput) {
+            catInput.value = row.category;
+            catCombo?.addOption(row.category);
+          }
+        }
         if (!row.unit || row.unit === '') {
           row.unit = matched.unit || '';
           if (unitInput) {
@@ -697,6 +738,14 @@ function bindRowEvents() {
         }
       } else {
         row.commodityId = '';
+        if (!row.category || row.category === '') {
+          const guessedCat = extractCategoryFromName(typed);
+          if (guessedCat && catInput) {
+            row.category = guessedCat;
+            catInput.value = guessedCat;
+            catCombo?.addOption(guessedCat);
+          }
+        }
       }
       updateRowLiveCode(tr, row);
       updateFooters();
@@ -707,7 +756,28 @@ function bindRowEvents() {
     commInput?.addEventListener('input', () => handleCommInput());
     commInput?.addEventListener('change', () => handleCommInput());
 
-    // 1a. Unit Combobox
+    // 1a. Category Combobox (Creatable dropdown with dynamic categories)
+    const categoryNames = getDynamicCategories(availableCommodities);
+    const catCombo = setupCreatableCombobox({
+      inputEl: catInput,
+      options: categoryNames,
+      itemTypeLabel: 'category',
+      onSelect: (val) => {
+        row.category = val;
+        validateTableRows();
+      }
+    });
+
+    catInput?.addEventListener('input', () => {
+      row.category = catInput.value;
+      validateTableRows();
+    });
+    catInput?.addEventListener('change', () => {
+      row.category = catInput.value;
+      validateTableRows();
+    });
+
+    // 1b. Unit Combobox
     const unitNames = getDynamicUnits(availableCommodities);
     const unitCombo = setupCreatableCombobox({
       inputEl: unitInput,
@@ -838,6 +908,8 @@ function syncBulkState() {
         bulkRows[i].commodityId = '';
       }
     }
+    const catInput = tr.querySelector('.ws-input-category');
+    if (catInput) bulkRows[i].category = catInput.value;
     if (unitInput) bulkRows[i].unit = unitInput.value;
     if (qtyInput) bulkRows[i].qty = qtyInput.value;
     if (delInput) bulkRows[i].deliveryDate = delInput.value;
@@ -899,6 +971,17 @@ export function validateTableRows() {
       rowValid = false;
     } else {
       commInput?.classList.remove('cell-invalid');
+    }
+
+    // 1b. Category Check (required for newly typed commodities)
+    const catInput = tr.querySelector('.ws-input-category');
+    const isNewComm = !row.commodityId && Boolean(cleanComm);
+    const cleanCat = (row.category || '').trim();
+    if (isNewComm && !cleanCat) {
+      catInput?.classList.add('cell-invalid');
+      rowValid = false;
+    } else {
+      catInput?.classList.remove('cell-invalid');
     }
 
     // 2. Strict Unit Check (reject null, empty, UNT, TBD)
@@ -964,7 +1047,7 @@ export function validateTableRows() {
       if (statusPill) {
         statusPill.textContent = rows.length === 0 
           ? 'No batch rows available.'
-          : `${invalidCount} row(s) require attention (Delivery Date cannot be in the past; Unit and Expiration Date are mandatory).`;
+          : `${invalidCount} row(s) require attention (Category, Unit, and Expiration Date are mandatory).`;
         statusPill.style.color = '#ef4444';
       }
     } else {
@@ -1039,7 +1122,7 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
         const newCommRes = await createCommodity({
           commodity_code: sku,
           name: row.commodityName,
-          category: 'General',
+          category: (row.category || '').trim() || 'General',
           unit: row.unit || 'Piece',
           description: 'Auto-registered from bulk intake'
         }, profile);
