@@ -28,6 +28,7 @@
 import { router }           from '../../core/router.js';
 import logoUrl              from '../../assets/logo.png';
 import logoIconUrl          from '../../assets/logo-icon.png';
+import mnaoLogoUrl          from '../../assets/mnao-logo.jpg';
 import { logout }           from '../../features/auth/auth.service.js';
 import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
 
@@ -241,16 +242,25 @@ export function renderShell(profile, onLogout) {
 
         <!-- Sticky top header -->
         <header class="app-header" id="app-header" role="banner">
-          <span id="page-title" class="app-header__title">Dashboard</span>
+          <div class="app-header__org">
+            <img src="${mnaoLogoUrl}" alt="MNAO Logo" class="app-header__org-logo" />
+            <div class="app-header__org-text">
+              <span class="app-header__org-name">Municipal Nutrition Action Office</span>
+              <span class="app-header__org-sub">Manolo Fortich, Bukidnon</span>
+            </div>
+          </div>
 
           <div class="app-header__user">
-            <span style="color: var(--color-text);">${profile.full_name}</span>
-            <span class="badge ${isAdmin ? 'badge-admin' : 'badge-personnel'}">
-              ${getRoleLabel(profile)}
-            </span>
+            <div class="app-header__user-info">
+              <span class="app-header__user-name">${profile.full_name}</span>
+              <span class="badge ${isAdmin ? 'badge-admin' : 'badge-personnel'}">
+                ${getRoleLabel(profile)}
+              </span>
+            </div>
+            <span class="app-header__divider" aria-hidden="true"></span>
             <button
               id="header-logout-btn"
-              class="btn btn-ghost btn-sm"
+              class="btn btn-sm app-header__logout-btn"
               type="button"
               aria-label="Sign out of NutriVision"
             >

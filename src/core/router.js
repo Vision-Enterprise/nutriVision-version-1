@@ -191,25 +191,34 @@ class Router {
   }
 
   /**
-   * Update the page title text in the header.
+   * Update the document/page title when the route changes.
    * @private
    */
   _syncPageTitle(path) {
-    const titleEl = document.getElementById('page-title');
-    if (!titleEl) return;
-
     const pageTitles = {
-      'dashboard':   'Dashboard',
-      'commodities': 'Commodity Management',
-      'batches':     'Batch Management',
-      'users':       'User Management',
-      'audit-logs':  'Audit Logs',
-      'calendar':   'Program Calendar',
-      'advisor':    'Inventory Advisor',
-      'account':     'Account Settings',
+      'dashboard':    'Dashboard',
+      'commodities':  'Commodity Management',
+      'batches':      'Batch Management',
+      'archive':      'Data Archive',
+      'releases':     'Releases Ledger',
+      'bulk-release': 'Bulk Release',
+      'milk':         'Milk Bank',
+      'calendar':     'Program Calendar',
+      'reports':      'Analytics & Reporting',
+      'defects':      'Defect Log',
+      'users':        'User Management',
+      'audit-logs':   'Audit Logs',
+      'advisor':      'Inventory Advisor',
+      'account':      'Account Settings',
     };
 
-    titleEl.textContent = pageTitles[path] ?? 'NutriVision';
+    const label = pageTitles[path];
+    document.title = label ? `${label} — NutriVision` : 'NutriVision';
+
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) {
+      titleEl.textContent = label ?? 'NutriVision';
+    }
   }
 }
 
