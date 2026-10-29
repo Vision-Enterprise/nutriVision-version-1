@@ -393,10 +393,13 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(htmlContent);
-  doc.close();
+  iframe.srcdoc = htmlContent;
+  try {
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+  } catch (e) {}
 
   const cleanup = () => {
     document.title = originalTitle;
@@ -415,9 +418,7 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
 
-    const restore = () => { document.title = originalTitle; };
-    window.addEventListener('afterprint', restore, { once: true });
-    setTimeout(restore, 3000);
+    // Retain file title until preview modal is closed or cleaned up
 
     if (typeof onConfirm === 'function') onConfirm();
   };
