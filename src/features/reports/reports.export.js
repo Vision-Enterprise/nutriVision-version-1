@@ -19,7 +19,7 @@ export function exportToCSV(data, modelId, filters) {
     csvContent += 'Date Released,Barangay,Recipient,Commodity,Batch Code,Quantity,Unit,Released By\n';
     
     data.forEach(r => {
-      const date = new Date(r.released_at).toLocaleDateString();
+      const date = `="${new Date(r.released_at).toLocaleDateString()}"`;
       const brgy = `"${r.barangay}"`;
       const recip = `"${r.recipient_name}"`;
       const comm = `"${r.batches?.commodities?.name}"`;
@@ -39,7 +39,7 @@ export function exportToCSV(data, modelId, filters) {
       const comm = `"${b.commodities?.name}"`;
       const batch = `"${b.batch_number}"`;
       const qty = b.quantity;
-      const expDate = b.expiration_date ? new Date(b.expiration_date).toLocaleDateString() : 'N/A';
+      const expDate = b.expiration_date ? `="${new Date(b.expiration_date).toLocaleDateString()}"` : 'N/A';
       
       let daysLeft = 'N/A';
       if (b.expiration_date) {
@@ -58,14 +58,14 @@ export function exportToCSV(data, modelId, filters) {
       const comm = `"${row.commodity.name}"`;
       const qty = row.totalQuantity;
       const batches = row.batchCount;
-      const oldest = row.oldestExpiry ? new Date(row.oldestExpiry).toLocaleDateString() : 'N/A';
+      const oldest = row.oldestExpiry ? `="${new Date(row.oldestExpiry).toLocaleDateString()}"` : 'N/A';
       
       csvContent += `${comm},${qty},${batches},${oldest}\n`;
     });
   }
 
-  // Trigger download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Trigger download (with UTF-8 BOM for Excel)
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);

@@ -482,7 +482,17 @@ function escapeHtml(str) {
 
 function _csvCell(val) {
   if (val === null || val === undefined) return '""';
-  return `"${String(val).replace(/"/g, '""')}"`;
+  const str = String(val);
+  // Prevent Excel from converting dates, timestamps, times, or hyphenated codes into numeric cells that show "########"
+  if (
+    /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(str) ||
+    /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/.test(str) ||
+    /^\d{1,2}:\d{2}/.test(str) ||
+    /^\d{2,4}-\d+/.test(str)
+  ) {
+    return `="${str.replace(/"/g, '""')}"`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
 }
 
 function _downloadCsvFile(filename, rows) {
