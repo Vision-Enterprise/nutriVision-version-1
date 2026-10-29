@@ -5,8 +5,17 @@
  * Zero database calls.
  */
 
-import { formatDate } from '../../shared/utils/date.utils.js';
 import { COMMODITY_CATEGORIES, COMMODITY_UNITS } from '../../shared/constants/app.constants.js';
+
+function formatShortDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -117,47 +126,45 @@ export function renderTable(commodities) {
           ${commodities.map(c => `
             <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description">
               <td>
-                <code style="font-size: var(--font-size-xs);
-                             background: var(--color-surface-alt);
-                             color: var(--color-primary);
-                             padding: 2px 8px;
-                             border-radius: var(--radius-sm);
-                             font-weight: var(--font-weight-medium);
-                             letter-spacing: 0.05em;">
-                  ${escapeHtml(c.commodity_code)}
-                </code>
+                <code class="code-badge">${escapeHtml(c.commodity_code)}</code>
               </td>
               <td style="font-weight: var(--font-weight-medium);">${escapeHtml(c.name)}</td>
               <td>${escapeHtml(c.category)}</td>
               <td>${escapeHtml(c.unit)}</td>
-              <td style="color: var(--color-text-muted); font-size: var(--font-size-sm);">
-                ${formatDate(c.created_at)}
+              <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; white-space: nowrap;">
+                ${formatShortDate(c.created_at)}
               </td>
               <td style="text-align: right; white-space: nowrap;">
-                <button
-                  class="btn btn-ghost btn-sm graph-commodity-btn"
-                  data-id="${c.id}"
-                  aria-label="View lineage graph for ${escapeHtml(c.name)}"
-                  type="button"
-                  title="View Batch Lineage & Traceability Graph"
-                  style="color: var(--color-primary); display: inline-flex; align-items: center; gap: 4px;"
-                >
-                  <span class="icon icon--sm" style="font-size: 16px;">account_tree</span>
-                  Graph
-                </button>
-                <button
-                  class="btn btn-ghost btn-sm edit-commodity-btn"
-                  data-id="${c.id}"
-                  aria-label="Edit ${escapeHtml(c.name)}"
-                  type="button"
-                >Edit</button>
-                <button
-                  class="btn btn-ghost btn-sm delete-commodity-btn"
-                  data-id="${c.id}"
-                  style="color: var(--color-danger);"
-                  aria-label="Delete ${escapeHtml(c.name)}"
-                  type="button"
-                >Delete</button>
+                <div class="table-actions">
+                  <button
+                    class="btn-table-action graph-commodity-btn"
+                    data-id="${c.id}"
+                    aria-label="View lineage graph for ${escapeHtml(c.name)}"
+                    type="button"
+                    title="View Batch Lineage & Traceability Graph"
+                  >
+                    <span class="icon icon--sm" style="font-size: 16px;">account_tree</span>
+                    Graph
+                  </button>
+                  <button
+                    class="btn-table-icon edit-commodity-btn"
+                    data-id="${c.id}"
+                    aria-label="Edit ${escapeHtml(c.name)}"
+                    title="Edit ${escapeHtml(c.name)}"
+                    type="button"
+                  >
+                    <span class="icon" aria-hidden="true">edit</span>
+                  </button>
+                  <button
+                    class="btn-table-icon btn-table-icon--danger delete-commodity-btn"
+                    data-id="${c.id}"
+                    aria-label="Delete ${escapeHtml(c.name)}"
+                    title="Delete ${escapeHtml(c.name)}"
+                    type="button"
+                  >
+                    <span class="icon" aria-hidden="true">delete</span>
+                  </button>
+                </div>
               </td>
             </tr>
             <tr class="commodity-desc-row" id="desc-${c.id}" style="display: none; background: var(--color-surface-alt);">
