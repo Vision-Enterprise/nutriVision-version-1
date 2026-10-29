@@ -59,8 +59,8 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   gap: 16px;
 }
 
-.milk-stat-card--blue {
-  border-top-color: var(--color-milk-primary) !important;
+.milk-stat-card--blue .stat-card__label::before {
+  background-color: var(--color-milk-primary);
 }
 
 .milk-icon--ice {

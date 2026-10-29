@@ -161,12 +161,11 @@
   margin-top: var(--space-1);
 }
 
-/* â”€â”€ Stat Card â€” used on Dashboard summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Stat Card — used on Dashboard summary ──────────────────────── */
 .stat-card {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-top: 3px solid #ea6b1a;
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 28px 0 28px 0;
   padding: var(--space-5) var(--space-6);
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-md3), box-shadow var(--transition-md3), border-color var(--transition-md3);
@@ -174,15 +173,27 @@
 .stat-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: var(--color-border-strong);
+  border-color: var(--color-primary);
 }
 
 .stat-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.stat-card__label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ea6b1a;
+  flex-shrink: 0;
 }
 
 .stat-card__value {

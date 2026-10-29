@@ -57,7 +57,6 @@ export async function renderAdvisorPage(profile) {
   loadingEl.style.display = 'none';
   const contentContainer = document.getElementById('advisor-content');
   if (!contentContainer) return;
-  contentContainer.style.overflowX = 'hidden';
   contentContainer.innerHTML = renderAdvisorLayout(data);
   contentContainer.style.display = 'block';
 
