@@ -15,7 +15,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
@@ -192,14 +192,19 @@ async def process_ocr(file: UploadFile = File(...)):
 # ---------------------------------------------------------------------------
 
 @app.get('/api/mobile/create-session')
-def create_mobile_session():
+def create_mobile_session(request: Request):
     """Generates a unique session_id, creates a dedicated temp directory, and returns the upload URL."""
     session_id = uuid.uuid4().hex[:8]
     session_dir = os.path.join(get_temp_dir(), session_id)
     os.makedirs(session_dir, exist_ok=True)
 
     local_ip = get_local_ip()
-    upload_url = f"http://{local_ip}:8000/api/mobile/upload-page/{session_id}"
+    host = request.headers.get("host", "")
+    if host and not host.startswith("localhost") and not host.startswith("127.0.0.1") and not host.startswith(local_ip):
+        scheme = request.headers.get("x-forwarded-proto", request.url.scheme or "https")
+        upload_url = f"{scheme}://{host}/api/mobile/upload-page/{session_id}"
+    else:
+        upload_url = f"http://{local_ip}:8000/api/mobile/upload-page/{session_id}"
 
     mobile_sessions[session_id] = {
         "status": "waiting",
@@ -676,7 +681,7 @@ def render_mobile_upload_page(session_id: str):
   <!-- Top App Bar with NutriVision Logo & Title -->
   <header class="top-app-bar">
     <div class="brand-section">
-      <img src="/assets/logo.png" alt="NutriVision" class="brand-logo-img" onerror="this.style.display='none';" />
+      <img src="/src/assets/logo.png" alt="NutriVision" class="brand-logo-img" onerror="this.style.display='none';" />
       <div class="brand-title-wrap">
         <span class="brand-title">NutriVision Scanner</span>
         <span class="brand-subtitle">Mobile Receipt Intake</span>
