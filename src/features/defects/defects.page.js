@@ -262,6 +262,7 @@ async function _saveToArchive(incident, batch, incidentData) {
   const trimmed = archive.slice(0, 20);
   const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
   localStorage.setItem(userArchiveKey, JSON.stringify(trimmed));
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(trimmed));
 }
 
 function _getArchive() {

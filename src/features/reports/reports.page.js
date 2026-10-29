@@ -232,22 +232,21 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
     if (format === 'CSV') {
       exportToCSV(dataRes.data, modelId, filters);
       if (!isReplay) {
-        _saveToArchive(modelId, reportTitle, filters, 'CSV');
-        _refreshArchiveTable();
+        await _saveToArchive(modelId, reportTitle, filters, 'CSV');
+        await _refreshArchiveTable();
       }
     } else {
+      if (!isReplay) {
+        await _saveToArchive(modelId, reportTitle, filters, 'PDF');
+        await _refreshArchiveTable();
+      }
       showPrintPreview(
         reportTitle,
         dataRes.data,
         modelId,
         filters,
         _profile,
-        () => {
-          if (!isReplay) {
-            _saveToArchive(modelId, reportTitle, filters, 'PDF');
-            _refreshArchiveTable();
-          }
-        },
+        null,
         replayGeneratedOn
       );
     }

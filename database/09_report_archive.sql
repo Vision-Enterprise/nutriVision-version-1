@@ -124,3 +124,4 @@ CREATE POLICY "Users can delete own defect archives"
   USING (auth.uid() = user_id OR EXISTS (
     SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'Admin'
   ));
+
