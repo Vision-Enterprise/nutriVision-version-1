@@ -252,8 +252,7 @@ async function _saveToArchive(incident, batch, incidentData) {
         incident_id:  incident?.id || null,
         file_name:    fileName,
         batch_number: batch?.batch_number || '—',
-        action_taken: actionTaken,
-        evidence_img: evidenceImg
+        action_taken: actionTaken
       });
     } catch (dbErr) {
       console.warn(`${MODULE} Supabase defect archive write error:`, dbErr);

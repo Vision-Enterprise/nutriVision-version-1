@@ -107,7 +107,7 @@ export async function fetchDefectIncidents(filter = 'all') {
  * @returns {Promise<{ data: Object|null, error: string|null }>}
  */
 export async function logDefectIncident(incidentData, profile) {
-  const { batchId, classification, quantityAffected, actionTaken, remarks } = incidentData;
+  const { batchId, classification, quantityAffected, actionTaken, remarks, imageData } = incidentData;
 
   const dbActionTaken = actionTaken.includes('Dispose') ? 'Disposed' : 'Quarantined';
   const scope = actionTaken.includes('Entire Batch') ? 'entire_batch' : 'partial';
@@ -125,6 +125,7 @@ export async function logDefectIncident(incidentData, profile) {
         scope,
         remaining_quarantined: remainingQuarantined,
         remarks:           remarks || null,
+        evidence_url:      imageData || null,
         reported_by:       profile.id,
         reported_at:       new Date().toISOString(),
       })
