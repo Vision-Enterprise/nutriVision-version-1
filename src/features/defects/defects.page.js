@@ -179,7 +179,7 @@ function _refreshPdfArchive() {
 async function _handleReplayDefectPdf(item) {
   // 1. Check if complete snapshot exists
   if (item.incidentData && item.batch) {
-    showDefectPrintPreview(item.incidentData, item.batch, _profile, null);
+    showDefectPrintPreview(item.incidentData, item.batch, _profile, null, item.generatedOn);
     return;
   }
 
@@ -221,7 +221,7 @@ async function _handleReplayDefectPdf(item) {
     imageData: null
   };
 
-  showDefectPrintPreview(effectiveIncident, effectiveBatch, _profile, null);
+  showDefectPrintPreview(effectiveIncident, effectiveBatch, _profile, null, item.generatedOn || incident?.reported_at);
 }
 
 function _saveToArchive(incident, batch, incidentData) {

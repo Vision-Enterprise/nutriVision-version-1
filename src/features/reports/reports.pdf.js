@@ -19,8 +19,9 @@ function _fmtShortDate(dateStr) {
 /**
  * Generates the HTML string for the printable report.
  */
-function generateReportHTML(title, data, modelId, filters = {}, profile) {
-  const generatedDate = new Date().toLocaleString();
+function generateReportHTML(title, data, modelId, filters = {}, profile, originalDate = null) {
+  const genDateObj = originalDate ? new Date(originalDate) : new Date();
+  const generatedDate = isNaN(genDateObj.getTime()) ? (originalDate || new Date().toLocaleString()) : genDateObj.toLocaleString();
   const userName = profile?.full_name || 'Authorized Staff';
 
   let filterText = '';
@@ -306,13 +307,13 @@ function generateReportHTML(title, data, modelId, filters = {}, profile) {
 /**
  * Shows the Print Preview Modal and handles actual printing
  */
-export function showPrintPreview(title, data, modelId, filters, profile, onConfirm) {
+export function showPrintPreview(title, data, modelId, filters, profile, onConfirm, originalDate = null) {
   const fileTitle = buildReportFileName(modelId, filters, 'PDF').replace(/\.pdf$/i, '');
 
   const originalTitle = document.title;
   document.title = fileTitle;
 
-  const htmlContent = generateReportHTML(title, data, modelId, filters, profile);
+  const htmlContent = generateReportHTML(title, data, modelId, filters, profile, originalDate);
 
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';

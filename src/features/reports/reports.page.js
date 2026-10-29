@@ -151,7 +151,7 @@ function _handleModelChange(e) {
 
 // ─── Generate ───────────────────────────────────────────────────────────────
 
-async function _handleGenerate(format, isReplay = false, overrideModelId = null, overrideFilters = null) {
+async function _handleGenerate(format, isReplay = false, overrideModelId = null, overrideFilters = null, replayGeneratedOn = null) {
   const checkedRadio = _el.querySelector('input[name="report_model"]:checked');
   const rawModelId = overrideModelId || checkedRadio?.value;
   if (!rawModelId) {
@@ -246,7 +246,8 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
             _saveToArchive(modelId, reportTitle, filters, 'PDF');
             _refreshArchiveTable();
           }
-        }
+        },
+        replayGeneratedOn
       );
     }
   } catch (err) {
@@ -382,7 +383,7 @@ async function _replayReport(item) {
       if (defSel    && item.filters.defectAction)           defSel.value    = item.filters.defectAction;
     }
 
-    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, item.modelId, item.filters);
+    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, item.modelId, item.filters, item.generatedOn);
   } catch (err) {
     console.error(`${MODULE} _replayReport error:`, err);
   }

@@ -16,7 +16,7 @@ const ORG_ADDRESS = 'Manolo Fortich, Bukidnon';
  * @param {Object} profile       - logged-in user
  * @param {Function} onConfirm   - called only when user clicks Print/Save
  */
-export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
+export function showDefectPrintPreview(incident, batch, profile, onConfirm, originalDate = null) {
   const isDispose  = (incident.actionTaken || incident.action_taken || '').toLowerCase().includes('dispos');
   const prefix     = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
   const cleanBatch = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -27,7 +27,7 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
   // Set top-level document title so browser print dialog pre-fills exact file name
   document.title = pdfTitle;
 
-  const html = _generateIncidentReportHTML(incident, batch, profile);
+  const html = _generateIncidentReportHTML(incident, batch, profile, originalDate);
 
   // ── Overlay ────────────────────────────────────────────────────────────────
   const overlay = document.createElement('div');
@@ -113,8 +113,8 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm) {
 
 // ─── HTML Generation ──────────────────────────────────────────────────────────
 
-function _generateIncidentReportHTML(incident, batch, profile) {
-  const now          = new Date();
+function _generateIncidentReportHTML(incident, batch, profile, originalDate = null) {
+  const now          = originalDate ? new Date(originalDate) : (incident.reported_at ? new Date(incident.reported_at) : new Date());
   const dateStr      = now.toISOString().split('T')[0];
   const generatedStr = now.toLocaleString('en-PH', { dateStyle: 'long', timeStyle: 'short' });
   const comm         = batch?.commodities;
