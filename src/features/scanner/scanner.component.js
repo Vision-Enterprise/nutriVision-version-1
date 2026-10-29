@@ -531,60 +531,20 @@ export class ScannerComponent {
 
     // If session already exists and active, do NOT regenerate!
     if (this.mobileSessionId && !forceNew) {
-      if (navigator.onLine === false) {
-        this.startMobilePolling();
-      }
       return;
     }
 
     try {
       await this.ensureQRCodeLib();
 
-      // Online Mode (Default): Instant QR via Vercel + Supabase Realtime (works across any Wi-Fi or Mobile Data)
-      if (navigator.onLine !== false) {
-        this.mobileSessionId = Math.random().toString(36).slice(2, 10);
-        this.lastProcessedImageUrl = null;
-        this.isProcessingMobile = false;
-        this.mobileScanCount = 0;
-        this.chunkBuffer = {};
-
-        const uploadUrl = `${this.cloudScannerBase}/mobile-scan.html?s=${this.mobileSessionId}`;
-
-        if (linkInput) linkInput.value = uploadUrl;
-        if (statusPill) {
-          statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
-        }
-
-        if (qrContainer) {
-          qrContainer.innerHTML = '';
-          new window.QRCode(qrContainer, {
-            text: uploadUrl,
-            width: 200,
-            height: 200,
-            colorDark: '#0f172a',
-            colorLight: '#ffffff',
-            correctLevel: window.QRCode.CorrectLevel.M
-          });
-        }
-
-        this.startMobileRealtime();
-        return;
-      }
-
-      // Offline Fallback Mode: Local Wi-Fi Session
-      if (statusPill) {
-        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to local backend...</span>`;
-      }
-
-      const res = await fetch(`${this.apiBase}/api/mobile/create-session`);
-      if (!res.ok) throw new Error('Failed to create mobile session');
-      const data = await res.json();
-
-      this.mobileSessionId = data.session_id;
+      // Always use Instant Cross-Network QR via Vercel + Supabase Realtime (works across any Wi-Fi or Mobile Data)
+      this.mobileSessionId = Math.random().toString(36).slice(2, 10);
       this.lastProcessedImageUrl = null;
       this.isProcessingMobile = false;
       this.mobileScanCount = 0;
-      const uploadUrl = data.upload_url;
+      this.chunkBuffer = {};
+
+      const uploadUrl = `${this.cloudScannerBase}/mobile-scan.html?s=${this.mobileSessionId}`;
 
       if (linkInput) linkInput.value = uploadUrl;
       if (statusPill) {
@@ -603,7 +563,7 @@ export class ScannerComponent {
         });
       }
 
-      this.startMobilePolling();
+      this.startMobileRealtime();
     } catch (err) {
       console.error(err);
       if (qrContainer) {
