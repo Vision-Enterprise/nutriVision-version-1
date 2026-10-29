@@ -1,6 +1,7 @@
 import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import { upgradeLegacyBatchCodes } from '../batches/batches.service.js';
+import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
 
 /**
  * Fetch profile ID -> full_name mapping for display in archives & audit views.
@@ -18,7 +19,7 @@ async function _getProfileMap() {
 }
 
 /**
- * Fetch depleted batches for the Historical Inventory tab.
+ * Fetch depleted batches for the Depleted Batches tab.
  */
 export async function fetchDepletedBatches() {
   try {
@@ -31,6 +32,7 @@ export async function fetchDepletedBatches() {
           quantity,
           updated_at,
           created_at,
+          created_by,
           supplier,
           delivery_date,
           expiration_date,
@@ -58,11 +60,12 @@ export async function fetchDepletedBatches() {
 
       const releases = (batch.releases || []).map(r => ({
         ...r,
-        released_by_name: profileMap[r.released_by] || 'Unknown Staff'
+        released_by_name: profileMap[r.released_by] || 'Staff'
       }));
 
       return {
         ...batch,
+        created_by_name: profileMap[batch.created_by] || 'Authorized Staff',
         totalDistributed,
         releases
       };
@@ -76,7 +79,7 @@ export async function fetchDepletedBatches() {
 }
 
 /**
- * Fetch voided batches for the Audit Trail tab.
+ * Fetch voided batches for the Voided Records tab.
  */
 export async function fetchVoidedBatches() {
   try {
@@ -153,20 +156,55 @@ export async function restoreBatch(batchId, profile) {
 }
 
 /**
- * Fetch soft-deleted/archived commodities.
+ * Fetch soft-deleted/archived commodities and standardize legacy SKU codes.
  */
 export async function fetchArchivedCommodities() {
   try {
-    const [commsRes, profileMap] = await Promise.all([
+    const [commsRes, allCodesRes, profileMap] = await Promise.all([
       supabase
         .from('commodities')
         .select('id, commodity_code, name, description, category, unit, deleted_at, updated_by')
         .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false }),
+      supabase
+        .from('commodities')
+        .select('id, commodity_code'),
       _getProfileMap()
     ]);
 
     if (commsRes.error) throw commsRes.error;
+
+    const usedCodes = new Set(
+      (allCodesRes.data || []).map(c => String(c.commodity_code || '').trim().toUpperCase())
+    );
+    const updates = [];
+
+    for (const c of (commsRes.data || [])) {
+      if (!c?.name || !c?.unit) continue;
+      const current = String(c.commodity_code || '').trim().toUpperCase();
+      try {
+        const baseSku = generateCommoditySKU(c.name, c.unit);
+        const unitSuffix = `-${String(c.unit).trim().toUpperCase()}`;
+        const isNonStandard = !current.endsWith(unitSuffix) || !current.startsWith(baseSku.split('-')[0]);
+        if (baseSku && isNonStandard && current !== baseSku) {
+          usedCodes.delete(current);
+          let finalSku = baseSku;
+          let suffix = 2;
+          while (usedCodes.has(finalSku)) {
+            finalSku = `${baseSku}-${suffix++}`;
+          }
+          usedCodes.add(finalSku);
+          c.commodity_code = finalSku;
+          updates.push(
+            supabase.from('commodities').update({ commodity_code: finalSku }).eq('id', c.id)
+          );
+        }
+      } catch {}
+    }
+
+    if (updates.length > 0) {
+      await Promise.allSettled(updates);
+    }
 
     const formatted = (commsRes.data || []).map(c => ({
       ...c,
