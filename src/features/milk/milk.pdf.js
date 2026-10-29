@@ -475,3 +475,148 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXCEL / CSV EXPORT HELPERS FOR MILK BANK MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _csvCell(val) {
+  if (val === null || val === undefined) return '""';
+  return `"${String(val).replace(/"/g, '""')}"`;
+}
+
+function _downloadCsvFile(filename, rows) {
+  const csvContent = '\uFEFF' + rows.map(r => r.map(_csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function exportMilkIntakeCSV(donations = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const rows = [
+    [
+      '#',
+      'Donor Name / Code',
+      'Expression Date',
+      'Expression Time',
+      'Transport Date',
+      'Transport Time',
+      'Condition @ Donor',
+      'Arrival Date',
+      'Arrival Time',
+      'Condition @ Arrival',
+      'Conditions of Transport',
+      'Receiving Personnel',
+      'Status'
+    ],
+    ...donations.map((d, idx) => [
+      idx + 1,
+      d.donor_code || '',
+      d.expression_date_notes || '',
+      d.expression_time || '',
+      d.transport_date || '',
+      d.transport_time || '',
+      d.condition_at_collection || 'ok',
+      d.arrival_date || '',
+      d.arrival_time || '',
+      d.condition_at_arrival || 'ok',
+      d.transport_condition || '',
+      d.received_by_name || 'Staff',
+      d.status === 'pasteurized' ? 'Pasteurized' : 'Stored Raw'
+    ])
+  ];
+  _downloadCsvFile(`LOG_OF_MILK_RECEIVED_FM_002_00_${dateStr}.csv`, rows);
+}
+
+export function exportMilkBatchesCSV(batches = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const rows = [
+    [
+      '#',
+      'Batch No.',
+      'Date Pasteurized',
+      'Expiration Date',
+      'Freezer & Shelf Location',
+      'Initial Bags',
+      'Remaining Bags',
+      'Status',
+      'Remarks'
+    ],
+    ...batches.map((b, idx) => {
+      const rem = Number(b.remaining_bags || 0);
+      const status = rem <= 0 ? 'Depleted' : (rem <= 3 ? 'Low Stock' : 'Available');
+      return [
+        idx + 1,
+        b.batch_number || '',
+        b.date_pasteurized || '',
+        b.expiry_date || '',
+        b.freezer_shelf || '',
+        b.total_bags ?? 0,
+        rem,
+        status,
+        b.remarks || ''
+      ];
+    })
+  ];
+  _downloadCsvFile(`MILK_PASTEURIZED_BATCHES_${dateStr}.csv`, rows);
+}
+
+export function exportMilkDispensingCSV(dispatches = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const rows = [
+    [
+      '#',
+      'Date Dispensed',
+      'Recipient Infant / Mother',
+      'Barangay',
+      'Batch Issued (FEFO)',
+      'Freezer Location',
+      'Bags Dispensed',
+      'Released By',
+      'Status'
+    ],
+    ...dispatches.map((item, idx) => [
+      idx + 1,
+      item.dispensed_date || '',
+      item.recipient_name || '',
+      item.barangay || '',
+      item.milk_batches?.batch_number || 'Unknown Batch',
+      item.milk_batches?.freezer_shelf || 'Freezer',
+      item.bags_dispensed ?? 0,
+      item.released_by_name || 'Staff',
+      'Issued'
+    ])
+  ];
+  _downloadCsvFile(`MILK_DISPENSING_LEDGER_${dateStr}.csv`, rows);
+}
+
+export function exportMilkAuditCSV(auditLogs = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const rows = [
+    [
+      '#',
+      'Date & Time',
+      'Action Type',
+      'Target Type',
+      'Description of Activity',
+      'Personnel'
+    ],
+    ...auditLogs.map((log, idx) => [
+      idx + 1,
+      log.created_at ? new Date(log.created_at).toLocaleString() : '',
+      log.action || '',
+      log.entity_type || '',
+      log.description || '',
+      log.profiles?.full_name || 'Staff User'
+    ])
+  ];
+  _downloadCsvFile(`MILK_BANK_AUDIT_TRAIL_${dateStr}.csv`, rows);
+}

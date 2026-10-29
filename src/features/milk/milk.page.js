@@ -54,7 +54,11 @@ import {
 import {
   showMilkIntakePrintPreview,
   showMilkBatchesPrintPreview,
-  showMilkDispensingPrintPreview
+  showMilkDispensingPrintPreview,
+  exportMilkIntakeCSV,
+  exportMilkBatchesCSV,
+  exportMilkDispensingCSV,
+  exportMilkAuditCSV
 } from './milk.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
@@ -240,6 +244,22 @@ function _bindAuditSheetEvents() {
     _auditFilter = e.target.value;
     _renderActiveSheet();
   });
+
+  document.getElementById('btn-export-milk-audit-csv')?.addEventListener('click', () => {
+    let filtered = _auditLogs || [];
+    if (_auditFilter) {
+      filtered = filtered.filter(l => l.action === _auditFilter);
+    }
+    if (_auditSearch) {
+      const q = _auditSearch.toLowerCase();
+      filtered = filtered.filter(l =>
+        (l.description || '').toLowerCase().includes(q) ||
+        (l.action || '').toLowerCase().includes(q) ||
+        (l.profiles?.full_name || '').toLowerCase().includes(q)
+      );
+    }
+    exportMilkAuditCSV(filtered);
+  });
 }
 
 /**
@@ -310,7 +330,10 @@ function _bindDonationsSheetEvents() {
     el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
-  // Export PDF preview
+  // Export Excel / CSV and PDF preview
+  document.getElementById('btn-export-intake-csv')?.addEventListener('click', () => {
+    exportMilkIntakeCSV(_donations);
+  });
   document.getElementById('btn-export-intake-pdf')?.addEventListener('click', () => {
     showMilkIntakePrintPreview(_donations);
   });
@@ -450,7 +473,10 @@ function _bindBatchesSheetEvents() {
     el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
-  // Table View: Export Batches PDF
+  // Table View: Export Batches Excel / CSV and PDF
+  document.getElementById('btn-export-batches-csv')?.addEventListener('click', () => {
+    exportMilkBatchesCSV(_batches);
+  });
   document.getElementById('btn-export-batches-pdf')?.addEventListener('click', () => {
     showMilkBatchesPrintPreview(_batches);
   });
@@ -1078,7 +1104,10 @@ function _bindDispatchesSheetEvents() {
     el.addEventListener('change', () => el.classList.remove('cell-invalid'));
   });
 
-  // Export Dispensing Ledger PDF
+  // Export Dispensing Ledger Excel / CSV and PDF
+  document.getElementById('btn-export-dispenses-csv')?.addEventListener('click', () => {
+    exportMilkDispensingCSV(_dispatches);
+  });
   document.getElementById('btn-export-dispenses-pdf')?.addEventListener('click', () => {
     showMilkDispensingPrintPreview(_dispatches, _batches);
   });

@@ -250,6 +250,10 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         <span class="milk-sheet-subtitle">Form MH.MNAO.FM.002.00</span>
       </div>
       <div class="milk-sheet-actions">
+        <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
+          <span class="icon icon--sm" aria-hidden="true">table_view</span>
+          Export Excel (CSV)
+        </button>
         <button id="btn-export-intake-pdf" class="btn btn-secondary btn-sm" type="button">
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
           Export Form (PDF)
@@ -345,6 +349,10 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
           </span>
         </div>
         <div class="milk-sheet-actions">
+          <button id="btn-export-batches-csv" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches as Excel / CSV">
+            <span class="icon icon--sm" aria-hidden="true">table_view</span>
+            Export Excel (CSV)
+          </button>
           <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button">
             <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
             Export Batches (PDF)
@@ -1085,6 +1093,10 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         <span class="milk-sheet-subtitle">Release of Pasteurized Milk to Infants</span>
       </div>
       <div class="milk-sheet-actions">
+        <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">
+          <span class="icon icon--sm" aria-hidden="true">table_view</span>
+          Export Excel (CSV)
+        </button>
         <button id="btn-export-dispenses-pdf" class="btn btn-secondary btn-sm" type="button">
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
           Export Ledger (PDF)
@@ -1300,6 +1312,10 @@ export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQu
         <span class="milk-sheet-subtitle">Custody, Dispensing &amp; Cold-Chain Log (${filtered.length} entries)</span>
       </div>
       <div class="milk-sheet-actions">
+        <button id="btn-export-milk-audit-csv" class="btn btn-secondary btn-sm" type="button" title="Export Milk Bank Audit Trail as Excel / CSV">
+          <span class="icon icon--sm" aria-hidden="true">table_view</span>
+          Export Excel (CSV)
+        </button>
         <input type="text" id="milk-audit-search" class="form-input"
                placeholder="Search audit descriptions, batches, staff..."
                value="${escapeHtml(searchQuery)}"

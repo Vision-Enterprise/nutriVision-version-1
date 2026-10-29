@@ -78,7 +78,7 @@ export function renderShell(profile, onLogout) {
 
         <!-- Brand logo & Toggle -->
         <div class="sidebar__logo">
-          <div class="sidebar__logo-content">
+          <div class="sidebar__logo-content" data-route="dashboard" role="button" tabindex="0" title="Go to Dashboard" style="cursor: pointer;">
             <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" />
           </div>
           <button id="sidebar-toggle-btn" class="sidebar__toggle-btn btn btn-ghost" aria-label="Toggle Sidebar" title="${isCompressed ? 'Expand Sidebar' : 'Collapse Sidebar'}">
@@ -242,7 +242,7 @@ export function renderShell(profile, onLogout) {
 
         <!-- Sticky top header -->
         <header class="app-header" id="app-header" role="banner">
-          <div class="app-header__org">
+          <div class="app-header__org" id="header-org-home" data-route="dashboard" role="button" tabindex="0" title="Go to Dashboard" style="cursor: pointer;">
             <img src="${mnaoLogoUrl}" alt="MNAO Logo" class="app-header__org-logo" />
             <div class="app-header__org-text">
               <span class="app-header__org-name">Municipal Nutrition Action Office</span>
@@ -329,6 +329,14 @@ export function renderShell(profile, onLogout) {
     btn.addEventListener('click', () => {
       router.navigate(`#/${btn.dataset.route}`);
     });
+    if (btn.getAttribute('role') === 'button') {
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          router.navigate(`#/${btn.dataset.route}`);
+        }
+      });
+    }
   });
 
   // Logout button
