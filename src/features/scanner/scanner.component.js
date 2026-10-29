@@ -19,7 +19,7 @@ export class ScannerComponent {
     this.activeReceiptUrl = null;
     this.isReceiptZoomed = false;
     this.stream = null;
-    this.apiBase = window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin;
+    this.apiBase = (import.meta.env.VITE_OCR_API_URL || (window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin)).replace(/\/$/, '');
     this.init();
   }
 
