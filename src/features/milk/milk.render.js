@@ -393,6 +393,23 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     </option>
   `).join('');
 
+  const shelfOptionsHtml = (freezerName, selectedShelfName, excludeBatchId = null, isDraft = false) => {
+    const allocations = getFreezerShelfAllocations(freezerName, batches, activeFreezers, excludeBatchId);
+    const recommendedShelf = allocations.find(a => a.usedBags < 20)?.shelfName || allocations[0]?.shelfName || 'Shelf 1';
+    const targetSel = (selectedShelfName || recommendedShelf).toLowerCase();
+
+    return allocations.map(a => {
+      const free = Math.max(0, 20 - a.usedBags);
+      const isSel = a.shelfName.toLowerCase() === targetSel;
+      const isRec = isDraft && a.shelfName.toLowerCase() === recommendedShelf.toLowerCase() && free > 0;
+      const capLabel = isDraft
+        ? (a.usedBags >= 20 ? ' (20/20 · Full)' : (a.usedBags === 0 ? ' (0/20 · Empty)' : ` (${a.usedBags}/20 · ${free} free)`))
+        : '';
+      const recTag = isRec ? ' ★ Recommended' : '';
+      return `<option value="${escapeHtml(a.shelfName)}" ${isSel ? 'selected' : ''}>${escapeHtml(a.shelfName)}${capLabel}${recTag}</option>`;
+    }).join('');
+  };
+
   // Exactly 10 columns: #, Batch No., Date Past., Expiry, Freezer, Shelf, Initial, Remaining, Status, Actions
   const draftHtml = draftBatches.map((draft, idx) => {
     const draftLoc = getBatchFreezerAndShelf(draft, activeFreezers);
@@ -418,9 +435,9 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </select>
         </td>
         <td>
-          <span class="badge badge--neutral text-xs" style="color:var(--color-text-muted);font-weight:500;padding:4px 8px;background:var(--color-bg-subtle,#f1f5f9);border-radius:4px;display:inline-flex;align-items:center;gap:3px;" title="Shelf is automatically assigned to the first shelf with available capacity (FIFO)">
-            <span class="icon" style="font-size:13px;color:#0284c7;">auto_awesome</span> Auto (FIFO)
-          </span>
+          <select class="grid-cell-select js-draft-shelf" data-draft-idx="${idx}" aria-label="Shelf" title="Choose a shelf (★ indicates recommended shelf with available bag space)">
+            ${shelfOptionsHtml(draftLoc.freezerName, draftLoc.shelfName, null, true)}
+          </select>
         </td>
         <td style="max-width:90px;text-align:center;">
           <input type="number" class="grid-cell-input js-batch-bags" min="1"
@@ -448,6 +465,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
     const daysLeft = calculateDaysRemaining(b.expiry_date);
     const expiryClass = daysLeft <= 0 ? 'text-danger fw-bold' : (daysLeft <= 30 ? 'text-warning fw-bold' : '');
     const actualLoc = getBatchActualShelfInfo(b, batches, activeFreezers);
+    const savedLoc = getBatchFreezerAndShelf(b, activeFreezers);
 
     return `
       <tr data-batch-id="${b.id}">
@@ -465,15 +483,14 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td>
           <select class="milk-shelf-select js-update-freezer" data-batch-id="${b.id}" aria-label="Freezer">
-            ${freezerOptionsHtml(actualLoc.freezerName)}
+            ${freezerOptionsHtml(savedLoc.freezerName)}
           </select>
         </td>
         <td>
           <div style="display:flex;flex-direction:column;gap:2px;">
-            <span class="badge badge--secondary" style="font-weight:600;font-size:12px;padding:3px 8px;width:fit-content;display:inline-flex;align-items:center;gap:4px;" title="Located on ${escapeHtml(actualLoc.startingShelf)} (Drag and drop in Virtual Freezer to rearrange)">
-              <span class="icon" style="font-size:13px;color:#0284c7;">kitchen</span>
-              ${escapeHtml(actualLoc.startingShelf)}
-            </span>
+            <select class="milk-shelf-select js-update-shelf" data-batch-id="${b.id}" aria-label="Shelf" title="Change shelf for ${escapeHtml(b.batch_number)}">
+              ${shelfOptionsHtml(savedLoc.freezerName, savedLoc.shelfName, b.id, false)}
+            </select>
             ${actualLoc.shelves.length > 1 ? `
               <div style="font-size:11px;color:#0284c7;font-weight:600;display:flex;align-items:center;gap:3px;" title="Due to 20-bag shelf limit, this batch's bags span across ${actualLoc.shelfDisplay}">
                 <span class="icon icon--sm" style="font-size:12px;">layers</span> Spans ${escapeHtml(actualLoc.shelfDisplay)}

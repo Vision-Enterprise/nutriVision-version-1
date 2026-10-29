@@ -135,19 +135,6 @@ async function _loadData() {
   _metrics = metrics;
   _auditLogs = auditRes.data || [];
 
-  // Auto-reconcile batches whose physical starting shelf drifted from saved shelf (e.g. target shelf was full)
-  for (const b of _batches) {
-    if ((b.remaining_bags || 0) > 0) {
-      const actual = getBatchActualShelfInfo(b, _batches, _freezers);
-      const parsed = getBatchFreezerAndShelf(b, _freezers);
-      if (actual.startingShelf && actual.startingShelf.toLowerCase() !== parsed.shelfName.toLowerCase()) {
-        const updatedCombined = formatFreezerShelf(actual.freezerName, actual.startingShelf);
-        b.freezer_shelf = updatedCombined;
-        updateBatchShelf(b.id, updatedCombined, b.batch_number, _profile).catch(console.error);
-      }
-    }
-  }
-
   _updateMetricsView();
   _updateTabCounts();
   _renderActiveSheet();
@@ -481,7 +468,7 @@ function _bindBatchesSheetEvents() {
     showMilkBatchesPrintPreview(_batches);
   });
 
-  // Table View: Add batch row at bottom of ledger
+  // Table View: Add batch row at bottom of ledger (pre-selects recommended shelf, user can change anytime)
   document.getElementById('btn-add-batch-row')?.addEventListener('click', async () => {
     const nextBatch = await getNextBatchNumber();
     const today = getLocalDateString();
@@ -489,20 +476,24 @@ function _bindBatchesSheetEvents() {
     sixMonths.setMonth(sixMonths.getMonth() + 6);
 
     const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
-    const defaultShelf = (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0]) || 'Shelf 1';
+    const fName = activeFreezer ? activeFreezer.name : 'Upright Freezer A';
+    const allocations = getFreezerShelfAllocations(fName, _batches, _freezers, null);
+    const recShelf = allocations.find(a => a.usedBags < 20)?.shelfName
+      || (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0])
+      || 'Shelf 1';
 
     _draftBatches.push({
       batch_number: nextBatch,
       date_pasteurized: today,
       expiry_date: getLocalDateString(sixMonths),
-      freezer_shelf: formatFreezerShelf(activeFreezer ? activeFreezer.name : 'Upright Freezer A', defaultShelf),
+      freezer_shelf: formatFreezerShelf(fName, recShelf),
       total_bags: ''
     });
     _renderActiveSheet();
     _scrollToBottomDraft();
   });
 
-  // Dynamic freezer selection for draft rows: auto-assign next available shelf in selected freezer
+  // Dynamic freezer selection for draft rows: update Shelf dropdown options & recommend best shelf
   document.querySelectorAll('.js-draft-freezer').forEach(sel => {
     sel.addEventListener('change', () => {
       const idx = parseInt(sel.dataset.draftIdx, 10);
@@ -510,14 +501,39 @@ function _bindBatchesSheetEvents() {
       const targetFreezer = _freezers.find(f => f.name.toLowerCase() === chosenFreezerName.toLowerCase()) || _freezers[0];
       const allocations = getFreezerShelfAllocations(targetFreezer.name, _batches, _freezers, null);
       const availableShelf = allocations.find(a => a.usedBags < 20);
-      const shelfName = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
+      const recShelfName = availableShelf ? availableShelf.shelfName : (allocations[0]?.shelfName || 'Shelf 1');
       if (_draftBatches[idx]) {
-        _draftBatches[idx].freezer_shelf = formatFreezerShelf(targetFreezer.name, shelfName);
+        _draftBatches[idx].freezer_shelf = formatFreezerShelf(targetFreezer.name, recShelfName);
+      }
+      const row = sel.closest('tr');
+      const shelfSel = row?.querySelector('.js-draft-shelf');
+      if (shelfSel) {
+        shelfSel.innerHTML = allocations.map(a => {
+          const free = Math.max(0, 20 - a.usedBags);
+          const isSel = a.shelfName.toLowerCase() === recShelfName.toLowerCase();
+          const isRec = a.shelfName.toLowerCase() === recShelfName.toLowerCase() && free > 0;
+          const capLabel = a.usedBags >= 20 ? ' (20/20 · Full)' : (a.usedBags === 0 ? ' (0/20 · Empty)' : ` (${a.usedBags}/20 · ${free} free)`);
+          const recTag = isRec ? ' ★ Recommended' : '';
+          return `<option value="${a.shelfName}" ${isSel ? 'selected' : ''}>${a.shelfName}${capLabel}${recTag}</option>`;
+        }).join('');
       }
     });
   });
 
-  // Save single batch row with strict validation & auto-assigned shelf (FIFO)
+  // Dynamic shelf selection for draft rows: respect user's explicit shelf choice
+  document.querySelectorAll('.js-draft-shelf').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const idx = parseInt(sel.dataset.draftIdx, 10);
+      const row = sel.closest('tr');
+      const freezerName = row?.querySelector('.js-draft-freezer')?.value || (_freezers[0]?.name || 'Upright Freezer A');
+      const chosenShelfName = sel.value || 'Shelf 1';
+      if (_draftBatches[idx]) {
+        _draftBatches[idx].freezer_shelf = formatFreezerShelf(freezerName, chosenShelfName);
+      }
+    });
+  });
+
+  // Save single batch row with strict validation & user-chosen shelf (+ capacity guidance)
   document.querySelectorAll('.js-save-single-batch').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.draftIdx, 10);
@@ -530,6 +546,7 @@ function _bindBatchesSheetEvents() {
       }
 
       const targetFreezer = _freezers.find(f => f.name.toLowerCase() === data.freezerName.toLowerCase()) || _freezers[0];
+      const numBags = parseInt(data.total_bags, 10) || 0;
 
       // If all configured shelves in freezer are completely full (20/20 each)
       if (data.isFreezerFull) {
@@ -548,6 +565,21 @@ function _bindBatchesSheetEvents() {
         _shelves = getFreezerShelves();
         data.shelfName = newShelfName;
         data.freezer_shelf = formatFreezerShelf(data.freezerName, newShelfName);
+      } else if (data.chosenShelfUsed + numBags > 20) {
+        const freeOnChosen = Math.max(0, 20 - data.chosenShelfUsed);
+        const overflow = (data.chosenShelfUsed + numBags) - 20;
+        const recHint = (data.recommendedShelf && data.recommendedShelf.toLowerCase() !== data.shelfName.toLowerCase())
+          ? `\n\nTip: "${data.recommendedShelf}" is recommended (${data.recommendedShelfFree} bag slots free).`
+          : '';
+        const confirmed = await MilkModal.confirm(
+          `"${data.shelfName}" in ${data.freezerName} currently has ${data.chosenShelfUsed}/20 bags (${freeOnChosen} free).\n\nPlacing ${numBags} bag(s) on "${data.shelfName}" will roll ${overflow} excess bag(s) onto the next shelf.${recHint}\n\nProceed with "${data.shelfName}"?`,
+          'Shelf Capacity Guidance',
+          `Save on ${data.shelfName}`,
+          false
+        );
+        if (!confirmed) {
+          return;
+        }
       }
 
       btn.disabled = true;
@@ -650,6 +682,36 @@ function _bindBatchesSheetEvents() {
     });
   });
 
+  // Dynamic Shelf select inline update on saved rows (user-chosen shelf)
+  document.querySelectorAll('.js-update-shelf').forEach(select => {
+    select.addEventListener('change', async () => {
+      const batchId = select.dataset.batchId;
+      const newShelfName = select.value;
+      const batch = _batches.find(b => b.id === batchId);
+      if (!batch) return;
+      const prevLoc = getBatchFreezerAndShelf(batch, _freezers);
+      const combinedLocation = formatFreezerShelf(prevLoc.freezerName, newShelfName);
+
+      batch.freezer_shelf = combinedLocation;
+      select.disabled = true;
+      const { error } = await updateBatchShelf(batchId, combinedLocation, batch?.batch_number, _profile);
+      select.disabled = false;
+
+      if (error) {
+        await MilkModal.alert('Failed to update shelf location: ' + error, 'Shelf Update Failed');
+        batch.freezer_shelf = `${prevLoc.freezerName} / ${prevLoc.shelfName}`;
+      } else {
+        fetchMilkAuditLogs().then(res => {
+          if (res.data) {
+            _auditLogs = res.data;
+            _updateTabCounts();
+          }
+        });
+      }
+      _renderActiveSheet();
+    });
+  });
+
   // Quick Dispense: Jumps directly to Beneficiary Dispensing Ledger with batch preselected (NO MODAL)
   const jumpToDispense = (batchId) => {
     _activeTab = 'dispense';
@@ -734,13 +796,17 @@ function _bindBatchesSheetEvents() {
       sixMonths.setMonth(sixMonths.getMonth() + 6);
 
       const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
-      const defaultShelf = (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0]) || 'Shelf 1';
+      const fName = activeFreezer ? activeFreezer.name : 'Upright Freezer A';
+      const allocations = getFreezerShelfAllocations(fName, _batches, _freezers, null);
+      const recShelf = allocations.find(a => a.usedBags < 20)?.shelfName
+        || (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0])
+        || 'Shelf 1';
 
       _draftBatches.push({
         batch_number: nextBatch,
         date_pasteurized: today,
         expiry_date: getLocalDateString(sixMonths),
-        freezer_shelf: formatFreezerShelf(activeFreezer ? activeFreezer.name : 'Upright Freezer A', defaultShelf),
+        freezer_shelf: formatFreezerShelf(fName, recShelf),
         total_bags: ''
       });
       _renderActiveSheet();
@@ -1044,17 +1110,22 @@ function _collectBatchRowData(row) {
   const targetFreezer = _freezers.find(f => f.name.toLowerCase() === freezerName.toLowerCase()) || _freezers[0];
   const allocations = getFreezerShelfAllocations(targetFreezer?.name || freezerName, _batches, _freezers, null);
   const availableShelf = allocations.find(a => a.usedBags < 20);
-  const shelfName = availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`;
+  const chosenShelf = row.querySelector('.js-draft-shelf')?.value;
+  const shelfName = chosenShelf || (availableShelf ? availableShelf.shelfName : `Shelf ${allocations.length + 1}`);
+  const chosenAlloc = allocations.find(a => a.shelfName.toLowerCase() === shelfName.toLowerCase());
 
   return {
-    batch_number:     row.querySelector('.js-batch-no')?.value?.trim() || '',
-    date_pasteurized: row.querySelector('.js-batch-date-past')?.value || '',
-    expiry_date:      row.querySelector('.js-batch-expiry')?.value || '',
-    freezer_shelf:    formatFreezerShelf(freezerName, shelfName),
-    total_bags:       row.querySelector('.js-batch-bags')?.value?.trim() || '',
+    batch_number:         row.querySelector('.js-batch-no')?.value?.trim() || '',
+    date_pasteurized:     row.querySelector('.js-batch-date-past')?.value || '',
+    expiry_date:          row.querySelector('.js-batch-expiry')?.value || '',
+    freezer_shelf:        formatFreezerShelf(freezerName, shelfName),
+    total_bags:           row.querySelector('.js-batch-bags')?.value?.trim() || '',
     freezerName,
     shelfName,
-    isFreezerFull:    !availableShelf
+    chosenShelfUsed:      chosenAlloc ? chosenAlloc.usedBags : 0,
+    recommendedShelf:     availableShelf ? availableShelf.shelfName : null,
+    recommendedShelfFree: availableShelf ? Math.max(0, 20 - availableShelf.usedBags) : 0,
+    isFreezerFull:        !availableShelf
   };
 }
 
