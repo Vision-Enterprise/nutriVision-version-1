@@ -7,12 +7,14 @@
  *   .table, .badge
  */
 
+import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+
 export function renderReportsLayout() {
   return `
     <!-- Page Header -->
     <div class="page-header">
       <h1 class="page-header__title">Analytics &amp; Reporting</h1>
-      <p class="page-header__subtitle">Generate and export official LGU operational data.</p>
+      <p class="page-header__subtitle">Generate and export official MNAO inventory, distribution, stock summary, and wastage reports.</p>
     </div>
 
     <!-- Report Configuration Card -->
@@ -25,72 +27,80 @@ export function renderReportsLayout() {
         </div>
       </div>
 
-      <div style="padding: var(--space-6); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10); align-items: start;">
+      <div style="padding: var(--space-6); display: grid; grid-template-columns: 1.05fr 1fr; gap: var(--space-8); align-items: start;">
 
-        <!-- Left: Data Model Selection -->
+        <!-- Left: Report Type Selection -->
         <div>
-          <p class="form-label" style="text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-bottom: var(--space-3);">Select Data Model</p>
+          <p class="form-label" style="text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-bottom: var(--space-3);">Select Official Report</p>
 
-          <label class="report-model-option" data-model="distribution" style="
+          <!-- 1. Batch Inventory & Expiry Status Report -->
+          <label class="report-model-option" data-model="batches" style="
             display: flex; align-items: flex-start; gap: var(--space-3);
-            padding: var(--space-4); border-radius: var(--radius-lg);
+            padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
             border: 1px solid var(--color-primary); box-shadow: inset 3px 0 0 var(--color-primary); background: #f4fbf5;
             margin-bottom: var(--space-3); cursor: pointer;
             transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
           ">
-            <input type="radio" name="report_model" value="distribution" checked
+            <input type="radio" name="report_model" value="batches" checked
               style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Distribution &amp; Dispatch Ledger</div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Track items released to barangays.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Batch Inventory &amp; Expiry Status Report</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Complete ledger of available batches, suppliers, delivery dates, and FEFO expiry status.</div>
             </div>
           </label>
 
-          <label class="report-model-option" data-model="fefo" style="
+          <!-- 2. Barangay Distribution & Dispatch Report -->
+          <label class="report-model-option" data-model="distribution" style="
             display: flex; align-items: flex-start; gap: var(--space-3);
-            padding: var(--space-4); border-radius: var(--radius-lg);
+            padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
             border: 1px solid var(--color-border); box-shadow: none; background: transparent;
             margin-bottom: var(--space-3); cursor: pointer;
             transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
           ">
-            <input type="radio" name="report_model" value="fefo"
+            <input type="radio" name="report_model" value="distribution"
               style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">FEFO Wastage &amp; Expiry Risk</div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Audit items nearing critical expiry thresholds.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Barangay Distribution &amp; Dispatch Report</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Track commodities released to barangays, recipients, and releasing personnel.</div>
             </div>
           </label>
 
+          <!-- 3. Commodity Stock Summary Report -->
           <label class="report-model-option" data-model="allocation" style="
             display: flex; align-items: flex-start; gap: var(--space-3);
-            padding: var(--space-4); border-radius: var(--radius-lg);
+            padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
             border: 1px solid var(--color-border); box-shadow: none; background: transparent;
-            cursor: pointer;
+            margin-bottom: var(--space-3); cursor: pointer;
             transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
           ">
             <input type="radio" name="report_model" value="allocation"
               style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
             <div>
-              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Current Allocation Balances</div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Overall snapshot of active MNAO inventory.</div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Commodity Stock Summary Report</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Physical stock balance per commodity, active batch counts, and cumulative units released.</div>
+            </div>
+          </label>
+
+          <!-- 4. Defect, Quarantine & Wastage Report -->
+          <label class="report-model-option" data-model="defects" style="
+            display: flex; align-items: flex-start; gap: var(--space-3);
+            padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border); box-shadow: none; background: transparent;
+            cursor: pointer;
+            transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
+          ">
+            <input type="radio" name="report_model" value="defects"
+              style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
+            <div>
+              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Defect, Quarantine &amp; Wastage Report</div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Accountability audit of damaged, quarantined, or disposed stock incidents.</div>
             </div>
           </label>
         </div>
 
-        <!-- Right: Filters -->
+        <!-- Right: Contextual Filters -->
         <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-
-          <!-- Date range — only for Distribution -->
-          <div id="filter-group-dates" class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="report-date-start">Date Range Start</label>
-              <input type="date" id="report-date-start" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="report-date-end">Date Range End</label>
-              <input type="date" id="report-date-end" class="form-input">
-            </div>
-          </div>
+          <p class="form-label" style="text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-bottom: -4px;">Report Filters &amp; Scope</p>
 
           <!-- Commodity filter — all models -->
           <div class="form-group">
@@ -100,11 +110,57 @@ export function renderReportsLayout() {
             </select>
           </div>
 
+          <!-- Expiry Status filter — only for Batch Inventory & Expiry Report -->
+          <div id="filter-group-expiry-status" class="form-group">
+            <label class="form-label" for="report-filter-expiry-status">Filter by Expiry Status</label>
+            <select id="report-filter-expiry-status" class="form-select">
+              <option value="all">All Active Batches (Full Inventory)</option>
+              <option value="fefo_risk">Near Expiry &amp; Expired Only (FEFO Priority ≤ 90 Days)</option>
+              <option value="${EXPIRATION_STATUS.GOOD}">Good (&gt; 6 Months)</option>
+              <option value="${EXPIRATION_STATUS.MODERATE}">Moderate (3–6 Months)</option>
+              <option value="${EXPIRATION_STATUS.NEAR_EXPIRY}">Near Expiry (0–3 Months)</option>
+              <option value="${EXPIRATION_STATUS.EXPIRED}">Expired (&lt; 0 Days)</option>
+            </select>
+          </div>
+
+          <!-- Date range + Quick Presets — for Distribution & Defects -->
+          <div id="filter-group-dates" style="display: none; flex-direction: column; gap: var(--space-3);">
+            <div>
+              <label class="form-label" style="margin-bottom: 6px; display: block;">Quick Date Period</label>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="btn-table-action js-date-preset" data-preset="all" style="padding: 4px 10px; font-size: 12px;">All Time</button>
+                <button type="button" class="btn-table-action js-date-preset" data-preset="month" style="padding: 4px 10px; font-size: 12px;">This Month</button>
+                <button type="button" class="btn-table-action js-date-preset" data-preset="30d" style="padding: 4px 10px; font-size: 12px;">Last 30 Days</button>
+                <button type="button" class="btn-table-action js-date-preset" data-preset="year" style="padding: 4px 10px; font-size: 12px;">This Year</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="report-date-start">Date Range Start</label>
+                <input type="date" id="report-date-start" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="report-date-end">Date Range End</label>
+                <input type="date" id="report-date-end" class="form-input">
+              </div>
+            </div>
+          </div>
+
           <!-- Barangay filter — Distribution only -->
-          <div id="filter-group-destination" class="form-group">
-            <label class="form-label" for="report-filter-barangay">Filter by Destination <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+          <div id="filter-group-destination" class="form-group" style="display: none;">
+            <label class="form-label" for="report-filter-barangay">Filter by Destination Barangay <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
             <select id="report-filter-barangay" class="form-select">
               <option value="all">All Barangays</option>
+            </select>
+          </div>
+
+          <!-- Defect Action filter — Defects only -->
+          <div id="filter-group-defect-action" class="form-group" style="display: none;">
+            <label class="form-label" for="report-filter-defect-action">Filter by Disposition / Action</label>
+            <select id="report-filter-defect-action" class="form-select">
+              <option value="all">All Defect &amp; Wastage Incidents</option>
+              <option value="Quarantined">Quarantined Stock Only</option>
+              <option value="Disposed">Disposed / Written-Off Stock Only</option>
             </select>
           </div>
 
@@ -117,8 +173,9 @@ export function renderReportsLayout() {
         border-top: 1px solid var(--color-border);
         display: flex; justify-content: space-between; align-items: center;
         background: var(--color-surface-alt, #f8faf9);
+        flex-wrap: wrap; gap: var(--space-3);
       ">
-        <div style="display: flex; gap: var(--space-3);">
+        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
           <button id="btn-generate-pdf" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
             <span class="icon" style="font-size: 18px;">picture_as_pdf</span>
             Generate PDF
@@ -161,7 +218,7 @@ export function renderReportsLayout() {
               <th>Parameters</th>
               <th>Generated On</th>
               <th>Format</th>
-              <th style="text-align: right; min-width: 90px;">Actions</th>
+              <th style="text-align: right; min-width: 150px;">Actions</th>
             </tr>
           </thead>
           <tbody id="report-archive-tbody">
@@ -208,21 +265,23 @@ export function renderArchiveRows(historyArr = []) {
           </div>
         </td>
         <td style="color: var(--color-text-muted); font-size: var(--font-size-sm);">${item.parameters}</td>
-        <td style="font-size: var(--font-size-sm);">${item.generatedOn}</td>
+        <td style="font-size: var(--font-size-sm); white-space: nowrap;">${item.generatedOn}</td>
         <td><span class="${badgeClass}">${item.format}</span></td>
-        <td style="text-align: right;">
-          <div style="display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end;">
+        <td style="text-align: right; white-space: nowrap;">
+          <div class="table-actions">
             ${isPdf ? `
-              <button class="btn btn-icon btn-replay-report" data-id="${item.id}" title="View / Print report" aria-label="View report">
-                <span class="icon" style="font-size: 18px;">visibility</span>
+              <button class="btn-table-action btn-replay-report" data-id="${item.id}" type="button" title="View / Print report" aria-label="View report">
+                <span class="icon icon--sm" style="font-size: 15px;">visibility</span>
+                View
               </button>
             ` : `
-              <button class="btn btn-icon btn-replay-report" data-id="${item.id}" title="Download CSV" aria-label="Download CSV">
-                <span class="icon" style="font-size: 18px;">download</span>
+              <button class="btn-table-action btn-replay-report" data-id="${item.id}" type="button" title="Download CSV" aria-label="Download CSV">
+                <span class="icon icon--sm" style="font-size: 15px;">download</span>
+                Download
               </button>
             `}
-            <button class="btn btn-icon btn-delete-report" data-id="${item.id}" title="Delete from history" aria-label="Delete report" style="color: var(--color-danger);">
-              <span class="icon" style="font-size: 18px;">delete_outline</span>
+            <button class="btn-table-icon btn-table-icon--danger btn-delete-report" data-id="${item.id}" type="button" title="Delete from history" aria-label="Delete report">
+              <span class="icon">delete_outline</span>
             </button>
           </div>
         </td>

@@ -2,41 +2,35 @@ import { renderReportsLayout, renderArchiveRows } from './reports.render.js';
 import {
   fetchCommodityOptions,
   fetchBarangayOptions,
+  fetchBatchInventoryReport,
   fetchDistributionLedger,
-  fetchFefoRiskBatches,
-  fetchAllocationBalances
+  fetchAllocationBalances,
+  fetchDefectWastageReport
 } from './reports.service.js';
 import { exportToCSV } from './reports.export.js';
 import { showPrintPreview } from './reports.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 const MODULE = '[Reports]';
 const ARCHIVE_KEY = 'nv_report_archive';
 
 let _profile = null;
-let _el = null; // the page-content element
+let _el = null;
 
 // ─── Entry point ────────────────────────────────────────────────────────────
 
 export async function renderReportsPage(profile) {
-  console.log(`${MODULE} mount start`);
   try {
     _profile = profile;
     _el = document.getElementById('page-content');
-
-    if (!_el) {
-      console.error(`${MODULE} #page-content not found in DOM`);
-      return;
-    }
+    if (!_el) return;
 
     _el.innerHTML = renderReportsLayout();
-    console.log(`${MODULE} layout rendered`);
 
     await _loadFilterOptions();
     _refreshArchiveTable();
     _bindEvents();
-
-    console.log(`${MODULE} mount done`);
   } catch (err) {
     console.error(`${MODULE} mount error:`, err);
     if (_el) {
@@ -47,42 +41,61 @@ export async function renderReportsPage(profile) {
   }
 }
 
-// ─── Event binding ───────────────────────────────────────────────────────────
+// ─── Event binding ──────────────────────────────────────────────────────────
 
 function _bindEvents() {
-  // Radio model selection
   const radios = _el.querySelectorAll('input[name="report_model"]');
-  if (!radios.length) {
-    console.warn(`${MODULE} No radio buttons found — layout may be malformed`);
-  }
   radios.forEach(radio => radio.addEventListener('change', _handleModelChange));
 
-  // Action buttons — guard each one
+  // Quick date preset buttons
+  _el.querySelectorAll('.js-date-preset').forEach(btn => {
+    btn.addEventListener('click', () => _applyDatePreset(btn.dataset.preset));
+  });
+
   const btnCsv   = _el.querySelector('#btn-export-csv');
   const btnPdf   = _el.querySelector('#btn-generate-pdf');
   const btnPrint = _el.querySelector('#btn-print-preview');
-
-  if (!btnCsv || !btnPdf || !btnPrint) {
-    console.warn(`${MODULE} One or more action buttons missing from DOM`, { btnCsv, btnPdf, btnPrint });
-  }
 
   if (btnCsv)   btnCsv.addEventListener('click',   () => _handleGenerate('CSV'));
   if (btnPdf)   btnPdf.addEventListener('click',   () => _handleGenerate('PDF'));
   if (btnPrint) btnPrint.addEventListener('click', () => _handleGenerate('PRINT'));
 }
 
-// ─── Filter options ──────────────────────────────────────────────────────────
+function _applyDatePreset(preset) {
+  const startEl = _el.querySelector('#report-date-start');
+  const endEl   = _el.querySelector('#report-date-end');
+  if (!startEl || !endEl) return;
+
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+
+  if (preset === 'all') {
+    startEl.value = '';
+    endEl.value   = '';
+  } else if (preset === 'month') {
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    startEl.value = getLocalDateString(firstOfMonth);
+    endEl.value   = todayStr;
+  } else if (preset === '30d') {
+    const thirtyAgo = new Date(now);
+    thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+    startEl.value = getLocalDateString(thirtyAgo);
+    endEl.value   = todayStr;
+  } else if (preset === 'year') {
+    const firstOfYear = new Date(now.getFullYear(), 0, 1);
+    startEl.value = getLocalDateString(firstOfYear);
+    endEl.value   = todayStr;
+  }
+}
+
+// ─── Filter options ─────────────────────────────────────────────────────────
 
 async function _loadFilterOptions() {
-  console.log(`${MODULE} loading filter options`);
   try {
     const [commRes, brgyRes] = await Promise.all([
       fetchCommodityOptions(),
       fetchBarangayOptions()
     ]);
-
-    if (commRes.error) console.warn(`${MODULE} commodity options error:`, commRes.error);
-    if (brgyRes.error) console.warn(`${MODULE} barangay options error:`, brgyRes.error);
 
     const commSelect = _el.querySelector('#report-filter-commodity');
     if (commSelect && commRes.data) {
@@ -92,9 +105,6 @@ async function _loadFilterOptions() {
         opt.textContent = c.name;
         commSelect.appendChild(opt);
       });
-      console.log(`${MODULE} ${commRes.data.length} commodities loaded`);
-    } else {
-      console.warn(`${MODULE} commodity select not found or no data`);
     }
 
     const brgySelect = _el.querySelector('#report-filter-barangay');
@@ -105,22 +115,17 @@ async function _loadFilterOptions() {
         opt.textContent = b;
         brgySelect.appendChild(opt);
       });
-      console.log(`${MODULE} ${brgyRes.data.length} barangays loaded`);
-    } else {
-      console.warn(`${MODULE} barangay select not found or no data`);
     }
   } catch (err) {
     console.error(`${MODULE} _loadFilterOptions error:`, err);
   }
 }
 
-// ─── Model switch ────────────────────────────────────────────────────────────
+// ─── Model switch ───────────────────────────────────────────────────────────
 
 function _handleModelChange(e) {
   const model = e.target.value;
-  console.log(`${MODULE} model changed to:`, model);
 
-  // Update active card styling
   _el.querySelectorAll('.report-model-option').forEach(el => {
     el.style.border = '1px solid var(--color-border)';
     el.style.boxShadow = 'none';
@@ -133,57 +138,58 @@ function _handleModelChange(e) {
     parent.style.background = '#f4fbf5';
   }
 
-  // Show/hide contextual filters
-  const grpDates = _el.querySelector('#filter-group-dates');
-  const grpDest  = _el.querySelector('#filter-group-destination');
+  const grpExpiry = _el.querySelector('#filter-group-expiry-status');
+  const grpDates  = _el.querySelector('#filter-group-dates');
+  const grpDest   = _el.querySelector('#filter-group-destination');
+  const grpDefect = _el.querySelector('#filter-group-defect-action');
 
-  if (!grpDates || !grpDest) {
-    console.warn(`${MODULE} filter groups not found in DOM`);
-    return;
-  }
-
-  if (model === 'distribution') {
-    grpDates.style.display = 'grid';
-    grpDest.style.display  = 'block';
-  } else {
-    // fefo & allocation: no date range, no barangay filter
-    grpDates.style.display = 'none';
-    grpDest.style.display  = 'none';
-  }
+  if (grpExpiry) grpExpiry.style.display = (model === 'batches' || model === 'fefo') ? 'block' : 'none';
+  if (grpDates)  grpDates.style.display  = (model === 'distribution' || model === 'defects') ? 'flex' : 'none';
+  if (grpDest)   grpDest.style.display   = model === 'distribution' ? 'block' : 'none';
+  if (grpDefect) grpDefect.style.display = model === 'defects' ? 'block' : 'none';
 }
 
-// ─── Generate ────────────────────────────────────────────────────────────────
+// ─── Generate ───────────────────────────────────────────────────────────────
 
-async function _handleGenerate(format, isReplay = false) {
-  console.log(`${MODULE} generate triggered, format:`, format, 'isReplay:', isReplay);
-
+async function _handleGenerate(format, isReplay = false, overrideModelId = null, overrideFilters = null) {
   const checkedRadio = _el.querySelector('input[name="report_model"]:checked');
-  if (!checkedRadio) {
-    console.error(`${MODULE} No report model selected`);
-    await SystemDialog.alert('Please select a report model.', 'Select Model');
+  const rawModelId = overrideModelId || checkedRadio?.value;
+  if (!rawModelId) {
+    await SystemDialog.alert('Please select a report type.', 'Select Report');
     return;
   }
-  const modelId = checkedRadio.value;
 
-  // Collect filters
-  const filters = {};
-  if (modelId === 'distribution') {
-    filters.dateFrom  = _el.querySelector('#report-date-start')?.value || '';
-    filters.dateTo    = _el.querySelector('#report-date-end')?.value   || '';
-    filters.barangay  = _el.querySelector('#report-filter-barangay')?.value || 'all';
-  }
+  // Map legacy 'fefo' archive entries to 'batches'
+  const modelId = rawModelId === 'fefo' ? 'batches' : rawModelId;
 
-  const commSelect = _el.querySelector('#report-filter-commodity');
-  if (commSelect) {
-    filters.commodityId = commSelect.value;
-    if (commSelect.selectedIndex > 0) {
-      filters.commodityName = commSelect.options[commSelect.selectedIndex].text;
+  const filters = overrideFilters ? { ...overrideFilters } : {};
+  if (!overrideFilters) {
+    if (modelId === 'batches') {
+      const expSel = _el.querySelector('#report-filter-expiry-status');
+      filters.expiryStatus = expSel?.value || 'all';
+      filters.expiryStatusLabel = expSel?.options[expSel.selectedIndex]?.text || 'All Active Batches';
+    } else if (modelId === 'distribution') {
+      filters.dateFrom = _el.querySelector('#report-date-start')?.value || '';
+      filters.dateTo   = _el.querySelector('#report-date-end')?.value   || '';
+      filters.barangay = _el.querySelector('#report-filter-barangay')?.value || 'all';
+    } else if (modelId === 'defects') {
+      filters.dateFrom     = _el.querySelector('#report-date-start')?.value || '';
+      filters.dateTo       = _el.querySelector('#report-date-end')?.value   || '';
+      filters.defectAction = _el.querySelector('#report-filter-defect-action')?.value || 'all';
     }
+
+    const commSelect = _el.querySelector('#report-filter-commodity');
+    if (commSelect) {
+      filters.commodityId = commSelect.value;
+      if (commSelect.selectedIndex > 0) {
+        filters.commodityName = commSelect.options[commSelect.selectedIndex].text;
+      }
+    }
+  } else if (rawModelId === 'fefo' && !filters.expiryStatus) {
+    filters.expiryStatus = 'fefo_risk';
+    filters.expiryStatusLabel = 'Near Expiry & Expired Only (FEFO Priority)';
   }
 
-  console.log(`${MODULE} filters:`, filters);
-
-  // Disable buttons while loading
   const btns = ['#btn-generate-pdf', '#btn-export-csv', '#btn-print-preview']
     .map(id => _el.querySelector(id))
     .filter(Boolean);
@@ -193,22 +199,24 @@ async function _handleGenerate(format, isReplay = false) {
     let dataRes;
     let reportTitle = '';
 
-    if (modelId === 'distribution') {
-      reportTitle = 'Distribution & Dispatch Ledger';
+    if (modelId === 'batches') {
+      reportTitle = filters.expiryStatus === 'fefo_risk'
+        ? 'FEFO Near-Expiry & Expired Batch Report'
+        : 'Batch Inventory & Expiry Status Report';
+      dataRes = await fetchBatchInventoryReport(filters);
+    } else if (modelId === 'distribution') {
+      reportTitle = 'Barangay Distribution & Dispatch Report';
       dataRes = await fetchDistributionLedger(filters);
-    } else if (modelId === 'fefo') {
-      reportTitle = 'FEFO Wastage & Expiry Risk';
-      dataRes = await fetchFefoRiskBatches(filters);
     } else if (modelId === 'allocation') {
-      reportTitle = 'Current Allocation Balances';
+      reportTitle = 'Commodity Stock Summary Report';
       dataRes = await fetchAllocationBalances(filters);
+    } else if (modelId === 'defects') {
+      reportTitle = 'Defect, Quarantine & Wastage Report';
+      dataRes = await fetchDefectWastageReport(filters);
     } else {
-      console.error(`${MODULE} Unknown modelId:`, modelId);
-      await SystemDialog.alert('Unknown report model. Please select one.', 'Invalid Model');
+      await SystemDialog.alert('Unknown report model. Please select one.', 'Invalid Report');
       return;
     }
-
-    console.log(`${MODULE} data fetched, rows:`, dataRes?.data?.length ?? 'N/A', 'error:', dataRes?.error);
 
     if (dataRes.error) {
       await SystemDialog.alert('Error fetching report data: ' + dataRes.error, 'Query Error');
@@ -216,21 +224,17 @@ async function _handleGenerate(format, isReplay = false) {
     }
 
     if (!dataRes.data || dataRes.data.length === 0) {
-      await SystemDialog.alert('No data found for the selected filters.', 'No Records Found');
-      // Don't save to archive if empty
+      await SystemDialog.alert('No records match the selected report filters.', 'No Records Found');
       return;
     }
 
     if (format === 'CSV') {
-      // CSV: export immediately
       exportToCSV(dataRes.data, modelId, filters);
       if (!isReplay) {
         _saveToArchive(modelId, reportTitle, filters, 'CSV');
         _refreshArchiveTable();
       }
     } else {
-      // PDF/PRINT: only save to archive if user clicks "Print / Save PDF" in the modal
-      // Cancelled previews are NOT saved; replaying existing reports does NOT create copies
       showPrintPreview(
         reportTitle,
         dataRes.data,
@@ -238,7 +242,6 @@ async function _handleGenerate(format, isReplay = false) {
         filters,
         _profile,
         () => {
-          // onConfirm — called only when user clicks Print button
           if (!isReplay) {
             _saveToArchive(modelId, reportTitle, filters, 'PDF');
             _refreshArchiveTable();
@@ -246,26 +249,28 @@ async function _handleGenerate(format, isReplay = false) {
         }
       );
     }
-
   } catch (err) {
     console.error(`${MODULE} _handleGenerate error:`, err);
-    await SystemDialog.alert('Unexpected error while generating report. Check console.', 'Report Generation Error');
+    await SystemDialog.alert('Unexpected error while generating report.', 'Report Generation Error');
   } finally {
     btns.forEach(b => (b.disabled = false));
   }
 }
 
-// ─── Archive ─────────────────────────────────────────────────────────────────
+// ─── Archive ────────────────────────────────────────────────────────────────
 
 function _saveToArchive(modelId, title, filters, format) {
   let paramsStr = '';
   try {
-    if (modelId === 'distribution') {
-      paramsStr = `${filters.dateFrom || 'Any'} to ${filters.dateTo || 'Any'} | ${filters.barangay === 'all' ? 'All Brgy' : (filters.barangay || 'All Brgy')} | ${filters.commodityName || 'All Cmdty'}`;
-    } else if (modelId === 'fefo') {
-      paramsStr = `${filters.commodityName || 'All Cmdty'} | ≤90 Days`;
+    const commStr = filters.commodityName || 'All Commodities';
+    if (modelId === 'batches') {
+      paramsStr = `${commStr} | ${filters.expiryStatusLabel || 'All Active Batches'}`;
+    } else if (modelId === 'distribution') {
+      paramsStr = `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'Present'} | ${filters.barangay === 'all' ? 'All Barangays' : (filters.barangay || 'All Barangays')} | ${commStr}`;
+    } else if (modelId === 'defects') {
+      paramsStr = `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'Present'} | ${filters.defectAction === 'all' ? 'All Dispositions' : (filters.defectAction || 'All')} | ${commStr}`;
     } else {
-      paramsStr = `${filters.commodityName || 'All Cmdty'} (Snapshot)`;
+      paramsStr = `${commStr} (Stock Snapshot)`;
     }
 
     const entry = {
@@ -281,15 +286,13 @@ function _saveToArchive(modelId, title, filters, format) {
     let history = [];
     try {
       history = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-    } catch (parseErr) {
-      console.warn(`${MODULE} corrupted archive in localStorage, resetting`);
+    } catch {
       history = [];
     }
 
     history.unshift(entry);
     if (history.length > 20) history.pop();
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(history));
-    console.log(`${MODULE} archive saved, total entries:`, history.length);
   } catch (err) {
     console.error(`${MODULE} _saveToArchive error:`, err);
   }
@@ -297,21 +300,15 @@ function _saveToArchive(modelId, title, filters, format) {
 
 function _refreshArchiveTable() {
   const tbody = _el?.querySelector('#report-archive-tbody');
-  if (!tbody) {
-    console.warn(`${MODULE} #report-archive-tbody not found`);
-    return;
-  }
+  if (!tbody) return;
 
   let history = [];
   try {
     history = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-  } catch (e) {
-    console.warn(`${MODULE} archive parse error, using empty`);
-  }
+  } catch {}
 
   tbody.innerHTML = renderArchiveRows(history);
 
-  // Clear All button state & click handler
   const clearBtn = _el?.querySelector('#btn-clear-archive');
   if (clearBtn) {
     clearBtn.style.display = history.length > 0 ? 'inline-flex' : 'none';
@@ -328,21 +325,14 @@ function _refreshArchiveTable() {
     };
   }
 
-  // Re-bind view / download replay buttons
   tbody.querySelectorAll('.btn-replay-report').forEach(btn => {
     btn.addEventListener('click', () => {
       const id   = btn.getAttribute('data-id');
       const item = history.find(h => h.id === id);
-      if (item) {
-        console.log(`${MODULE} replaying archive entry:`, id);
-        _replayReport(item);
-      } else {
-        console.warn(`${MODULE} replay: entry not found for id`, id);
-      }
+      if (item) _replayReport(item);
     });
   });
 
-  // Re-bind delete individual report buttons
   tbody.querySelectorAll('.btn-delete-report').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -364,34 +354,34 @@ function _refreshArchiveTable() {
   });
 }
 
-// ─── Replay ──────────────────────────────────────────────────────────────────
+// ─── Replay ─────────────────────────────────────────────────────────────────
 
 async function _replayReport(item) {
   try {
-    // Restore model radio
-    const radio = _el.querySelector(`input[name="report_model"][value="${item.modelId}"]`);
+    const targetModel = item.modelId === 'fefo' ? 'batches' : item.modelId;
+    const radio = _el.querySelector(`input[name="report_model"][value="${targetModel}"]`);
     if (radio) {
       radio.checked = true;
       radio.dispatchEvent(new Event('change'));
-    } else {
-      console.warn(`${MODULE} replay: radio for modelId "${item.modelId}" not found`);
     }
 
-    // Restore filters to UI
     if (item.filters) {
       const dateStart = _el.querySelector('#report-date-start');
       const dateEnd   = _el.querySelector('#report-date-end');
       const commSel   = _el.querySelector('#report-filter-commodity');
       const brgySel   = _el.querySelector('#report-filter-barangay');
+      const expSel    = _el.querySelector('#report-filter-expiry-status');
+      const defSel    = _el.querySelector('#report-filter-defect-action');
 
       if (dateStart && item.filters.dateFrom !== undefined) dateStart.value = item.filters.dateFrom;
       if (dateEnd   && item.filters.dateTo   !== undefined) dateEnd.value   = item.filters.dateTo;
       if (commSel   && item.filters.commodityId)            commSel.value   = item.filters.commodityId;
       if (brgySel   && item.filters.barangay)               brgySel.value   = item.filters.barangay;
+      if (expSel    && item.filters.expiryStatus)           expSel.value    = item.filters.expiryStatus;
+      if (defSel    && item.filters.defectAction)           defSel.value    = item.filters.defectAction;
     }
 
-    // Trigger generation with isReplay=true so it never duplicates into the archive
-    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true);
+    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, item.modelId, item.filters);
   } catch (err) {
     console.error(`${MODULE} _replayReport error:`, err);
   }
