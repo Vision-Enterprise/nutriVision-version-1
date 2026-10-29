@@ -232,16 +232,19 @@ async function _saveToArchive(incident, batch, incidentData) {
   const actionTaken = isDispose ? 'Disposed' : 'Quarantined';
   const fileName = getDefectPdfFileName(batch?.batch_number, actionTaken);
 
+  const evidenceImg = incidentData?.imageData || incident?.evidence_url || null;
+
   const entry = {
     id:          `${Date.now()}`,
     incidentId:  incident?.id,
     generatedOn: new Date().toISOString(),
     fileName,
     batchNumber: batch?.batch_number || '—',
-    actionTaken
+    actionTaken,
+    evidenceImg
   };
 
-  // 1. Save lightweight reference to Supabase (max 20 enforced by DB trigger)
+  // 1. Save reference + compressed image to Supabase (max 20 enforced by DB trigger)
   if (_profile?.id) {
     try {
       await supabase.from('user_defect_archive').insert({
@@ -249,7 +252,8 @@ async function _saveToArchive(incident, batch, incidentData) {
         incident_id:  incident?.id || null,
         file_name:    fileName,
         batch_number: batch?.batch_number || '—',
-        action_taken: actionTaken
+        action_taken: actionTaken,
+        evidence_img: evidenceImg
       });
     } catch (dbErr) {
       console.warn(`${MODULE} Supabase defect archive write error:`, dbErr);

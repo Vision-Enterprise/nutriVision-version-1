@@ -54,8 +54,12 @@ CREATE TABLE IF NOT EXISTS public.user_defect_archive (
   file_name     TEXT        NOT NULL,
   batch_number  TEXT        NOT NULL,
   action_taken  TEXT        NOT NULL,
+  evidence_img  TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure column exists if table was already created
+ALTER TABLE public.user_defect_archive ADD COLUMN IF NOT EXISTS evidence_img TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_user_defect_archive_user ON public.user_defect_archive(user_id, created_at DESC);
 
@@ -124,4 +128,3 @@ CREATE POLICY "Users can delete own defect archives"
   USING (auth.uid() = user_id OR EXISTS (
     SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'Admin'
   ));
-

@@ -74,9 +74,12 @@ export function renderDefectsLayout() {
     <div class="card" style="padding: 0; overflow: hidden;">
 
       <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: var(--space-2);">
-          <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">picture_as_pdf</span>
-          <h2 class="card-title">Generated PDF Reports</h2>
+        <div>
+          <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">picture_as_pdf</span>
+            <h2 class="card-title">Generated PDF Reports</h2>
+          </div>
+          <p class="card-subtitle" style="margin: 0;">Last 20 generated reports. Click view to open or delete to remove from history.</p>
         </div>
         <button id="btn-clear-defect-archive" class="btn btn-ghost" style="display: none; font-size: var(--font-size-xs); color: var(--color-danger); gap: 4px; align-items: center;" title="Clear all PDF report history">
           <span class="icon" style="font-size: 16px;">delete_sweep</span>
