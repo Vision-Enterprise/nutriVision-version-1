@@ -11,7 +11,6 @@ import { exportToCSV, buildReportFileName } from './reports.export.js';
 import { showPrintPreview } from './reports.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
-import { supabase } from '../../core/supabase.js';
 
 const MODULE = '[Reports]';
 const ARCHIVE_KEY = 'nv_report_archive';
@@ -261,7 +260,7 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
 
 // ─── Archive ────────────────────────────────────────────────────────────────
 
-async function _saveToArchive(modelId, title, filters, format) {
+function _saveToArchive(modelId, title, filters, format) {
   let paramsStr = '';
   try {
     const commStr = filters.commodityName || 'All Commodities';
@@ -287,7 +286,7 @@ async function _saveToArchive(modelId, title, filters, format) {
       format
     };
 
-    // Save to user-specific localStorage key
+    // Save strictly to user-specific localStorage key
     const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
     let history = [];
     try {
@@ -298,29 +297,12 @@ async function _saveToArchive(modelId, title, filters, format) {
     history.unshift(entry);
     if (history.length > 20) history.pop();
     localStorage.setItem(userArchiveKey, JSON.stringify(history));
-
-    // Also persist into Supabase user_report_archive table if table exists
-    if (_profile?.id) {
-      try {
-        await supabase.from('user_report_archive').insert({
-          user_id: _profile.id,
-          report_name: title,
-          file_name: fileName,
-          model_id: modelId,
-          parameters: paramsStr,
-          filters: filters,
-          format: format
-        });
-      } catch (dbErr) {
-        console.warn(`${MODULE} remote archive insert skipped:`, dbErr);
-      }
-    }
   } catch (err) {
     console.error(`${MODULE} _saveToArchive error:`, err);
   }
 }
 
-async function _refreshArchiveTable() {
+function _refreshArchiveTable() {
   const tbody = _el?.querySelector('#report-archive-tbody');
   if (!tbody) return;
 
@@ -329,34 +311,6 @@ async function _refreshArchiveTable() {
   try {
     history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
   } catch {}
-
-  // Fetch from Supabase user_report_archive if user logged in
-  if (_profile?.id) {
-    try {
-      const { data, error } = await supabase
-        .from('user_report_archive')
-        .select('*')
-        .eq('user_id', _profile.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        history = data.map(d => ({
-          id: d.id,
-          name: d.report_name,
-          fileName: d.file_name,
-          modelId: d.model_id,
-          filters: d.filters,
-          parameters: d.parameters,
-          generatedOn: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          format: d.format
-        }));
-        localStorage.setItem(userArchiveKey, JSON.stringify(history));
-      }
-    } catch (e) {
-      console.warn(`${MODULE} remote archive fetch skipped:`, e);
-    }
-  }
 
   tbody.innerHTML = renderArchiveRows(history);
 
@@ -371,7 +325,7 @@ async function _refreshArchiveTable() {
         true
       );
       if (!confirmed) return;
-      if (_profile?.id) { try { await supabase.from('user_report_archive').delete().eq('user_id', _profile.id); } catch (_) {} } localStorage.removeItem(userArchiveKey); localStorage.removeItem(ARCHIVE_KEY);
+      localStorage.removeItem(userArchiveKey); localStorage.removeItem(ARCHIVE_KEY);
       _refreshArchiveTable();
     };
   }
@@ -399,7 +353,6 @@ async function _refreshArchiveTable() {
       if (!confirmed) return;
 
       const updated = history.filter(h => h.id !== id);
-      if (_profile?.id) { try { await supabase.from('user_report_archive').delete().eq('id', id); } catch (_) {} }
       localStorage.setItem(userArchiveKey, JSON.stringify(updated));
       _refreshArchiveTable();
     });
