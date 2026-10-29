@@ -7,6 +7,9 @@
 
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
+
+const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
 
 // ── Read ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +26,29 @@ export async function fetchCommodities() {
       .order('name');
 
     if (error) throw error;
-    return { commodities: data, error: null };
+
+    const commodities = data || [];
+    const usedCodes = new Set(commodities.map(c => (c.commodity_code || '').toUpperCase()));
+    const updates = [];
+    for (const c of commodities) {
+      if (!c?.name || !c?.unit) continue;
+      const current = (c.commodity_code || '').trim().toUpperCase();
+      if (!LEGACY_SKU_SUFFIX_RE.test(current)) continue;
+      try {
+        const targetSku = generateCommoditySKU(c.name, c.unit);
+        if (targetSku && targetSku !== current && !usedCodes.has(targetSku)) {
+          usedCodes.delete(current);
+          usedCodes.add(targetSku);
+          c.commodity_code = targetSku;
+          updates.push(
+            supabase.from('commodities').update({ commodity_code: targetSku }).eq('id', c.id)
+          );
+        }
+      } catch {}
+    }
+    if (updates.length > 0) await Promise.allSettled(updates);
+
+    return { commodities, error: null };
   } catch (err) {
     console.error('[CommoditiesService] fetchCommodities:', err);
     return { commodities: [], error: 'Failed to load commodities.' };

@@ -7,6 +7,96 @@
 
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { generateCommoditySKU, generateBatchCode } from '../../shared/utils/code-generator.util.js';
+
+const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
+const LEGACY_BATCH_SKU_RE  = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)-/i;
+
+async function _upgradeLegacyCommodityCodes(commodities) {
+  if (!Array.isArray(commodities) || commodities.length === 0) return;
+  const usedCodes = new Set(commodities.map(c => (c.commodity_code || '').toUpperCase()));
+  const updates = [];
+
+  for (const c of commodities) {
+    if (!c?.name || !c?.unit) continue;
+    const current = (c.commodity_code || '').trim().toUpperCase();
+    if (!LEGACY_SKU_SUFFIX_RE.test(current)) continue;
+    try {
+      const targetSku = generateCommoditySKU(c.name, c.unit);
+      if (targetSku && targetSku !== current && !usedCodes.has(targetSku)) {
+        usedCodes.delete(current);
+        usedCodes.add(targetSku);
+        c.commodity_code = targetSku;
+        updates.push(
+          supabase.from('commodities').update({ commodity_code: targetSku }).eq('id', c.id)
+        );
+      }
+    } catch {}
+  }
+
+  if (updates.length > 0) {
+    await Promise.allSettled(updates);
+  }
+}
+
+async function _upgradeLegacyBatchCodes(batches) {
+  if (!Array.isArray(batches) || batches.length === 0) return;
+
+  // First ensure embedded commodities have standardized SKUs
+  const commMap = new Map();
+  for (const b of batches) {
+    if (b.commodities?.id && !commMap.has(b.commodities.id)) {
+      commMap.set(b.commodities.id, b.commodities);
+    }
+  }
+  await _upgradeLegacyCommodityCodes(Array.from(commMap.values()));
+
+  // Track existing codes per commodity to avoid unique constraint collisions
+  const usedByComm = new Map();
+  for (const b of batches) {
+    const cId = b.commodity_id;
+    if (!usedByComm.has(cId)) usedByComm.set(cId, new Set());
+    usedByComm.get(cId).add((b.batch_number || '').trim().toUpperCase());
+  }
+
+  const updates = [];
+  for (const b of batches) {
+    if (!b.commodities?.name || !b.commodities?.unit || !b.expiration_date) continue;
+    const current = (b.batch_number || '').trim().toUpperCase();
+    const isLegacy = !current.includes('-DEL')
+      || /-(EX\d{4}|EXP\d{6})\b/i.test(current)
+      || LEGACY_BATCH_SKU_RE.test(current);
+
+    if (!isLegacy) continue;
+
+    try {
+      const sku = generateCommoditySKU(b.commodities.name, b.commodities.unit) || b.commodities.commodity_code;
+      const baseCode = generateBatchCode(sku, b.expiration_date, b.delivery_date, b.supplier);
+      const usedSet = usedByComm.get(b.commodity_id) || new Set();
+      usedSet.delete(current);
+
+      let finalCode = baseCode;
+      let suffix = 2;
+      while (usedSet.has(finalCode)) {
+        finalCode = `${baseCode}-${suffix++}`;
+      }
+
+      if (finalCode !== current) {
+        usedSet.add(finalCode);
+        b.batch_number = finalCode;
+        updates.push(
+          supabase.from('batches').update({ batch_number: finalCode }).eq('id', b.id)
+        );
+      } else {
+        usedSet.add(current);
+      }
+    } catch {}
+  }
+
+  if (updates.length > 0) {
+    await Promise.allSettled(updates);
+  }
+}
 
 // -- Read ---------------------------------------------------------------------
 
@@ -40,6 +130,8 @@ export async function fetchBatches() {
       (!b.commodities || b.commodities.deleted_at === null)
     );
 
+    await _upgradeLegacyBatchCodes(batches);
+
     return { batches, error: null };
   } catch (err) {
     console.error('[BatchService] fetchBatches:', err);
@@ -60,6 +152,7 @@ export async function fetchActiveCommodities() {
       .order('name');
 
     if (error) throw error;
+    await _upgradeLegacyCommodityCodes(data || []);
     return { commodities: data, error: null };
   } catch (err) {
     console.error('[BatchService] fetchActiveCommodities:', err);

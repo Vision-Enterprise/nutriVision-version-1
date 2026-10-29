@@ -13,6 +13,7 @@ import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import { generateBatchCode, generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
 
 let _activeBatchModalEscHandler = null;
 
@@ -100,7 +101,6 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
               <label for="field-delivery-date" class="form-label form-label--required">Delivery Date</label>
               <input type="date" id="field-delivery-date" name="delivery_date"
                 class="form-input"
-                min="${getLocalDateString()}"
                 value="${batch?.delivery_date ?? getLocalDateString()}" required />
               <span class="form-error" id="error-delivery-date" role="alert"></span>
             </div>
@@ -173,6 +173,34 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     e.target.setSelectionRange(pos, pos);
   });
 
+  const syncEditBatchCode = () => {
+    const commId = document.getElementById('field-commodity')?.value;
+    const delDate = document.getElementById('field-delivery-date')?.value;
+    const expDate = document.getElementById('field-expiration-date')?.value;
+    const supplier = document.getElementById('field-supplier')?.value;
+    const batchInput = document.getElementById('field-batch-number');
+    if (!commId || !expDate || !batchInput) return;
+    const comm = commodities.find(c => c.id === commId);
+    if (!comm) return;
+    try {
+      const sku = generateCommoditySKU(comm.name, comm.unit) || comm.commodity_code;
+      batchInput.value = generateBatchCode(sku, expDate, delDate, supplier);
+    } catch {}
+  };
+
+  ['field-commodity', 'field-delivery-date', 'field-expiration-date', 'field-supplier'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', syncEditBatchCode);
+      el.addEventListener('input', syncEditBatchCode);
+    }
+  });
+
+  // Upgrade legacy batch code on modal open if it lacks -DEL
+  if (batch?.batch_number && !batch.batch_number.includes('-DEL')) {
+    syncEditBatchCode();
+  }
+
   _activeBatchModalEscHandler = e => { if (e.key === 'Escape') closeBatchModal(); };
   document.addEventListener('keydown', _activeBatchModalEscHandler);
 
@@ -196,9 +224,6 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     }
     if (!formData.delivery_date) {
       setFieldError('field-delivery-date', 'error-delivery-date', 'Delivery date is required.');
-      valid = false;
-    } else if (formData.delivery_date < getLocalDateString()) {
-      setFieldError('field-delivery-date', 'error-delivery-date', 'Delivery date cannot be in the past.');
       valid = false;
     }
     if (!formData.expiration_date) {

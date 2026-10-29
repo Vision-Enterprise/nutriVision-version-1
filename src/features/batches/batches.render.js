@@ -204,7 +204,7 @@ export function renderTable(batches) {
               : `in ${days}d`;
 
             return `
-              <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view notes">
+              <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view supplier & notes">
                 <td style="white-space: nowrap;">
                   ${renderBatchCodeBadge(b.batch_number)}
                 </td>
@@ -270,11 +270,18 @@ export function renderTable(batches) {
                 </td>
               </tr>
               <tr class="batch-desc-row" id="desc-${b.id}" style="display: none; background: var(--color-surface-alt);">
-                <td colspan="7" style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
-                  <div style="display: flex; gap: var(--space-2); align-items: flex-start;">
-                    <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
-                    <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
-                      ${b.notes ? escapeHtml(b.notes) : '<em>No notes provided.</em>'}
+                <td colspan="7" style="padding: var(--space-3) var(--space-5); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
+                  <div style="display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start;">
+                    <div style="display: flex; gap: var(--space-2); align-items: center; min-width: 220px;">
+                      <span class="icon icon--sm" style="color: var(--color-primary); font-size: 16px;">business</span>
+                      <div style="font-size: var(--font-size-sm); line-height: 1.4;">
+                        <span style="font-weight: 600; color: var(--color-text-secondary); margin-right: 6px;">Supplier / Source:</span>
+                        <span style="color: var(--color-text); font-weight: 500;">${b.supplier ? escapeHtml(b.supplier) : '<em style="color: var(--color-text-muted); font-weight: 400;">Not specified</em>'}</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: var(--space-2); align-items: flex-start; flex: 1; min-width: 260px;">
+                      <span class="icon icon--sm" style="color: var(--color-text-muted); font-size: 16px; margin-top: 2px;">info</span>
+                      <div style="font-size: var(--font-size-sm); line-height: 1.4; white-space: pre-wrap;"><span style="font-weight: 600; color: var(--color-text-secondary); margin-right: 6px;">Notes:</span><span style="color: var(--color-text-muted);">${b.notes ? escapeHtml(b.notes) : '<em>No notes provided.</em>'}</span></div>
                     </div>
                   </div>
                 </td>
