@@ -511,6 +511,104 @@
   white-space: nowrap;
 }
 
+/* Segmented Batch Code Badge (handles long SKU-DEL-EXP-SUP format cleanly) */
+.batch-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  background-color: #f4fbf7;
+  border: 1px solid rgba(27, 122, 62, 0.28);
+  border-left: 3px solid var(--color-primary);
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.batch-code-seg--sku {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.batch-code-seg--del {
+  font-weight: 600;
+  color: #0369a1;
+  background-color: #e0f2fe;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.71rem;
+}
+
+.batch-code-seg--exp {
+  font-weight: 600;
+  color: #b45309;
+  background-color: #fef3c7;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.71rem;
+}
+
+.batch-code-seg--sup {
+  font-weight: 700;
+  color: #334155;
+  background-color: #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.71rem;
+}
+
+.batch-code-sep {
+  color: #94a3b8;
+  font-weight: 400;
+  user-select: none;
+}
+
+/* Days remaining reminder pill under Expiration Date */
+.expiry-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.expiry-reminder::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+.expiry-reminder--good {
+  color: var(--color-exp-good);
+  background-color: var(--color-exp-good-bg);
+}
+
+.expiry-reminder--moderate {
+  color: var(--color-exp-moderate);
+  background-color: var(--color-exp-moderate-bg);
+}
+
+.expiry-reminder--near {
+  color: var(--color-exp-near);
+  background-color: var(--color-exp-near-bg);
+}
+
+.expiry-reminder--expired {
+  color: var(--color-exp-expired);
+  background-color: var(--color-exp-expired-bg);
+}
+
 .table-actions {
   display: inline-flex;
   align-items: center;

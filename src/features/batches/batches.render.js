@@ -5,7 +5,7 @@
  * Zero database calls or mutation logic.
  */
 
-import { formatDate, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 
 export function escapeHtml(str) {
@@ -17,6 +17,59 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function formatShortDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+/**
+ * Formats a batch code (e.g. PNPP-JAR-DEL2610-EXP2810-GNC) into a
+ * color-segmented, single-line badge so SKU, Delivery, Expiry, and Supplier
+ * are immediately distinguishable.
+ */
+export function renderBatchCodeBadge(batchNumber) {
+  const raw = String(batchNumber ?? '').trim();
+  if (!raw) return '<code class="code-badge">—</code>';
+
+  const parts = raw.split('-');
+  const delIdx = parts.findIndex(p => /^DEL\d+$/i.test(p));
+  const expIdx = parts.findIndex(p => /^EXP?\d+$/i.test(p));
+
+  // Fallback for legacy/custom codes without DEL/EXP markers
+  if (delIdx === -1 && expIdx === -1) {
+    return `<code class="code-badge">${escapeHtml(raw)}</code>`;
+  }
+
+  const firstMarkerIdx = delIdx !== -1 && expIdx !== -1
+    ? Math.min(delIdx, expIdx)
+    : Math.max(delIdx, expIdx);
+
+  const skuPart = parts.slice(0, firstMarkerIdx).join('-');
+  const segments = [];
+
+  if (skuPart) {
+    segments.push(`<span class="batch-code-seg--sku" title="Commodity SKU">${escapeHtml(skuPart)}</span>`);
+  }
+
+  for (let i = firstMarkerIdx; i < parts.length; i++) {
+    const token = parts[i];
+    if (/^DEL\d+$/i.test(token)) {
+      segments.push(`<span class="batch-code-seg--del" title="Delivery YYMM">${escapeHtml(token)}</span>`);
+    } else if (/^EXP?\d+$/i.test(token)) {
+      segments.push(`<span class="batch-code-seg--exp" title="Expiration YYMM">${escapeHtml(token)}</span>`);
+    } else {
+      segments.push(`<span class="batch-code-seg--sup" title="Supplier / Source">${escapeHtml(token)}</span>`);
+    }
+  }
+
+  return `<code class="batch-code-badge">${segments.join('<span class="batch-code-sep">-</span>')}</code>`;
+}
+
 export function statusBadgeClass(status) {
   const map = {
     [EXPIRATION_STATUS.GOOD]:        'badge-good',
@@ -25,6 +78,16 @@ export function statusBadgeClass(status) {
     [EXPIRATION_STATUS.EXPIRED]:     'badge-expired',
   };
   return map[status] ?? '';
+}
+
+function expiryReminderClass(status) {
+  const map = {
+    [EXPIRATION_STATUS.GOOD]:        'expiry-reminder--good',
+    [EXPIRATION_STATUS.MODERATE]:    'expiry-reminder--moderate',
+    [EXPIRATION_STATUS.NEAR_EXPIRY]: 'expiry-reminder--near',
+    [EXPIRATION_STATUS.EXPIRED]:     'expiry-reminder--expired',
+  };
+  return map[status] ?? 'expiry-reminder--good';
 }
 
 export function renderBatchesLayout({ batches, commodities, filtered, filterComm, filterStatus }) {
@@ -142,52 +205,68 @@ export function renderTable(batches) {
 
             return `
               <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view notes">
-                <td>
-                  <code style="font-size:var(--font-size-xs);
-                               background:var(--color-surface-alt);
-                               color:var(--color-primary);
-                               padding:2px 8px;
-                               border-radius:var(--radius-sm);
-                               font-weight:var(--font-weight-medium);
-                               letter-spacing:0.05em;">
-                    ${escapeHtml(b.batch_number)}
-                  </code>
+                <td style="white-space: nowrap;">
+                  ${renderBatchCodeBadge(b.batch_number)}
                 </td>
                 <td>
-                  <span style="font-weight:var(--font-weight-medium);">
+                  <span style="font-weight:var(--font-weight-medium); color:var(--color-text);">
                     ${escapeHtml(b.commodities?.name ?? '—')}
                   </span>
                   <br>
-                  <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">
+                  <span style="display:inline-block; margin-top:2px; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:0.74rem; font-weight:var(--font-weight-bold); color:var(--color-primary); letter-spacing:0.03em;">
                     ${escapeHtml(b.commodities?.commodity_code ?? '')}
                   </span>
                 </td>
-                <td>${b.quantity.toLocaleString()} ${escapeHtml(b.commodities?.unit ?? '')}</td>
-                <td style="color:var(--color-text-muted); font-size:var(--font-size-sm);">
-                  ${formatDate(b.delivery_date)}
+                <td style="font-weight:var(--font-weight-medium); white-space:nowrap;">
+                  ${b.quantity.toLocaleString()} ${escapeHtml(b.commodities?.unit ?? '')}
                 </td>
-                <td>
-                  <span style="font-size:var(--font-size-sm);">${formatDate(b.expiration_date)}</span>
-                  <br>
-                  <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">
+                <td style="color:var(--color-text-muted); font-size:var(--font-size-sm); font-variant-numeric:tabular-nums; white-space:nowrap;">
+                  ${formatShortDate(b.delivery_date)}
+                </td>
+                <td style="white-space:nowrap;">
+                  <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text); font-variant-numeric:tabular-nums;">
+                    ${formatShortDate(b.expiration_date)}
+                  </div>
+                  <span class="expiry-reminder ${expiryReminderClass(status)}">
                     ${daysStr}
                   </span>
                 </td>
-                <td>
+                <td style="white-space:nowrap;">
                   <span class="badge ${statusBadgeClass(status)}">${status}</span>
                 </td>
                 <td style="text-align:right; white-space:nowrap;">
-                  ${b.quantity > 0 ? `<button class="btn btn-ghost btn-sm release-batch-btn"
-                          data-id="${b.id}" type="button"
-                          style="color: var(--color-primary);"
-                          aria-label="Release batch ${escapeHtml(b.batch_number)}">Release</button>` : ''}
-                  <button class="btn btn-ghost btn-sm edit-batch-btn"
-                          data-id="${b.id}" type="button"
-                          aria-label="Edit batch ${escapeHtml(b.batch_number)}">Edit</button>
-                  <button class="btn btn-ghost btn-sm delete-batch-btn"
-                          data-id="${b.id}" type="button"
-                          style="color:var(--color-danger);"
-                          aria-label="Delete batch ${escapeHtml(b.batch_number)}">Delete</button>
+                  <div class="table-actions">
+                    ${b.quantity > 0 ? `
+                      <button
+                        class="btn-table-action release-batch-btn"
+                        data-id="${b.id}"
+                        type="button"
+                        title="Release stock from batch ${escapeHtml(b.batch_number)}"
+                        aria-label="Release batch ${escapeHtml(b.batch_number)}"
+                      >
+                        <span class="icon icon--sm" style="font-size: 16px;" aria-hidden="true">local_shipping</span>
+                        Release
+                      </button>
+                    ` : ''}
+                    <button
+                      class="btn-table-icon edit-batch-btn"
+                      data-id="${b.id}"
+                      type="button"
+                      title="Edit batch ${escapeHtml(b.batch_number)}"
+                      aria-label="Edit batch ${escapeHtml(b.batch_number)}"
+                    >
+                      <span class="icon" aria-hidden="true">edit</span>
+                    </button>
+                    <button
+                      class="btn-table-icon btn-table-icon--danger delete-batch-btn"
+                      data-id="${b.id}"
+                      type="button"
+                      title="Delete batch ${escapeHtml(b.batch_number)}"
+                      aria-label="Delete batch ${escapeHtml(b.batch_number)}"
+                    >
+                      <span class="icon" aria-hidden="true">delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr class="batch-desc-row" id="desc-${b.id}" style="display: none; background: var(--color-surface-alt);">
