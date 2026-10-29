@@ -102,7 +102,27 @@ function _refreshPdfArchive() {
   const tbody = document.getElementById('defect-pdf-archive-tbody');
   if (!tbody) return;
 
-  const archive = _getArchive();
+  let archive = _getArchive();
+  let archiveUpdated = false;
+  for (const item of archive) {
+    const matchedInc = _incidentsData.find(i =>
+      i.id === item.incidentId ||
+      (item.batch?.id && i.batches?.id === item.batch.id) ||
+      (item.batchNumber && i.batches?.batch_number && i.batches.batch_number.startsWith(item.batchNumber.split('-')[0]))
+    );
+    if (matchedInc?.batches?.batch_number && item.batchNumber !== matchedInc.batches.batch_number) {
+      const oldBatchNum = item.batchNumber;
+      item.batchNumber = matchedInc.batches.batch_number;
+      if (item.batch) item.batch.batch_number = matchedInc.batches.batch_number;
+      if (item.fileName && oldBatchNum) {
+        item.fileName = item.fileName.replace(oldBatchNum, matchedInc.batches.batch_number);
+      }
+      archiveUpdated = true;
+    }
+  }
+  if (archiveUpdated) {
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+  }
   tbody.innerHTML = renderPdfArchiveRows(archive);
 
   // Clear All button state & click handler
@@ -205,7 +225,27 @@ async function _handleReplayDefectPdf(item) {
 }
 
 function _saveToArchive(incident, batch, incidentData) {
-  const archive = _getArchive();
+  let archive = _getArchive();
+  let archiveUpdated = false;
+  for (const item of archive) {
+    const matchedInc = _incidentsData.find(i =>
+      i.id === item.incidentId ||
+      (item.batch?.id && i.batches?.id === item.batch.id) ||
+      (item.batchNumber && i.batches?.batch_number && i.batches.batch_number.startsWith(item.batchNumber.split('-')[0]))
+    );
+    if (matchedInc?.batches?.batch_number && item.batchNumber !== matchedInc.batches.batch_number) {
+      const oldBatchNum = item.batchNumber;
+      item.batchNumber = matchedInc.batches.batch_number;
+      if (item.batch) item.batch.batch_number = matchedInc.batches.batch_number;
+      if (item.fileName && oldBatchNum) {
+        item.fileName = item.fileName.replace(oldBatchNum, matchedInc.batches.batch_number);
+      }
+      archiveUpdated = true;
+    }
+  }
+  if (archiveUpdated) {
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+  }
   const isDispose = (incidentData?.actionTaken || incident?.action_taken || '').toLowerCase().includes('dispos');
   const actionTaken = isDispose ? 'Disposed' : 'Quarantined';
   const fileName = getDefectPdfFileName(batch?.batch_number, actionTaken);

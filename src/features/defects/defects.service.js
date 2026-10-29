@@ -52,8 +52,8 @@ export async function fetchDefectIncidents(filter = 'all') {
         evidence_url, remarks, reported_at, reported_by,
         scope, remaining_quarantined,
         batches!inner (
-          id, batch_number, quantity, delivery_date, expiration_date, supplier, created_at,
-          commodities!inner ( id, name, unit )
+          id, batch_number, quantity, commodity_id, delivery_date, expiration_date, supplier, created_at,
+          commodities!inner ( id, name, commodity_code, unit )
         )
       `)
       .order('reported_at', { ascending: false });
