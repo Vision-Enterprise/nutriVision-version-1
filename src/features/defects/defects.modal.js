@@ -7,6 +7,7 @@ import { fetchActiveBatchesForSelector } from './defects.service.js';
 import { showDefectPrintPreview, getDefectPdfFileName } from './defects.pdf.js';
 import { logDefectIncident } from './defects.service.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { supabase } from '../../core/supabase.js';
 
 const CLASSIFICATIONS = [
   'Damaged Packaging / Torn',
@@ -176,7 +177,7 @@ function _renderModal(batches, profile, onSuccess) {
 
         <!-- Remarks -->
         <div class="form-group">
-          <label class="form-label" for="defect-remarks">Remarks / Incident Details</label>
+          <label class="form-label form-label--required" for="defect-remarks">Remarks / Incident Details</label>
           <textarea
             id="defect-remarks"
             class="form-textarea"
@@ -187,7 +188,30 @@ function _renderModal(batches, profile, onSuccess) {
 
         <!-- Photo Evidence -->
         <div class="form-group">
-          <label class="form-label" for="defect-evidence">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <label class="form-label" for="defect-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+            <button id="btn-toggle-defect-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+              <span class="icon" style="font-size: 14px;">qr_code_2</span>
+              <span>Upload via Phone</span>
+            </button>
+          </div>
+
+          <!-- Phone Upload QR Panel (toggled on demand) -->
+          <div id="defect-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div id="defect-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
+                <span class="icon" style="animation: spin 1s linear infinite; font-size: 20px; color: var(--color-text-muted);">progress_activity</span>
+              </div>
+              <div style="flex: 1; font-size: 12px; line-height: 1.4;">
+                <div style="font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: 2px;">Scan with your Phone Camera</div>
+                <div style="color: var(--color-text-muted);">Take a photo or choose from phone gallery. Image will automatically appear below!</div>
+                <div id="defect-phone-sync-status" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--color-primary); font-size: 11px;">
+                  <span style="width: 7px; height: 7px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
+                  <span>Awaiting phone photo...</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div style="
             border: 2px dashed var(--color-border);
             border-radius: var(--radius-lg);
@@ -261,6 +285,97 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
   const dropzone     = overlay.querySelector('#defect-evidence-dropzone');
   const actionSelect = overlay.querySelector('#defect-action');
   const qtyInput     = overlay.querySelector('#defect-qty');
+  const qrToggleBtn  = overlay.querySelector('#btn-toggle-defect-qr');
+  const qrPanel      = overlay.querySelector('#defect-phone-qr-panel');
+  const qrContainer  = overlay.querySelector('#defect-qr-container');
+  const qrStatus     = overlay.querySelector('#defect-phone-sync-status');
+
+  let phoneSessionId   = null;
+  let realtimeChannel  = null;
+  let chunkBuffer      = {};
+
+  async function ensureQRCodeLib() {
+    if (window.QRCode) return true;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/src/assets/libs/qrcode.min.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load local qrcode.min.js'));
+      document.head.appendChild(script);
+    });
+  }
+
+  function stopPhoneRealtime() {
+    if (realtimeChannel) {
+      try { supabase.removeChannel(realtimeChannel); } catch (_) {}
+      realtimeChannel = null;
+    }
+    chunkBuffer = {};
+  }
+
+  async function initPhoneQR() {
+    if (phoneSessionId) return;
+    try {
+      await ensureQRCodeLib();
+      phoneSessionId = 'def-' + Math.random().toString(36).slice(2, 9);
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const cloudScannerBase = isLocalHost ? 'https://nutrivision-mnao.vercel.app' : window.location.origin;
+      const phoneUrl = `${cloudScannerBase}/mobile-scan.html?s=${phoneSessionId}`;
+
+      qrContainer.innerHTML = '';
+      new window.QRCode(qrContainer, {
+        text: phoneUrl,
+        width: 100,
+        height: 100,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.M
+      });
+
+      const topic = `nv-scan-${phoneSessionId}`;
+      realtimeChannel = supabase.channel(topic);
+      realtimeChannel
+        .on('broadcast', { event: 'receipt-chunk' }, (msg) => {
+          const payload = msg?.payload;
+          if (!payload || !payload.id) return;
+          const { id, idx, total, chunk } = payload;
+          if (!chunkBuffer[id]) {
+            chunkBuffer[id] = { parts: new Array(total), received: 0, total };
+          }
+          const entry = chunkBuffer[id];
+          if (entry.parts[idx] === undefined) {
+            entry.parts[idx] = chunk;
+            entry.received += 1;
+          }
+          if (entry.received === entry.total) {
+            const fullDataUrl = entry.parts.join('');
+            delete chunkBuffer[id];
+            imageData = fullDataUrl;
+            previewImg.src = fullDataUrl;
+            previewName.textContent = `Phone_Upload_${new Date().toLocaleTimeString().replace(/:/g, '-')}.jpg`;
+            preview.style.display = 'block';
+            dropzone.style.display = 'none';
+            if (qrStatus) {
+              qrStatus.innerHTML = '<span class="icon" style="font-size: 14px; color: var(--color-primary);">check_circle</span> <span>Photo received from phone!</span>';
+            }
+          }
+        })
+        .subscribe();
+    } catch (err) {
+      console.error('[DefectsModal] Phone QR init error:', err);
+      qrContainer.innerHTML = '<span style="color:var(--color-danger);font-size:11px;">QR Failed</span>';
+    }
+  }
+
+  qrToggleBtn?.addEventListener('click', () => {
+    const isShown = qrPanel.style.display === 'block';
+    qrPanel.style.display = isShown ? 'none' : 'block';
+    qrToggleBtn.style.background = isShown ? '' : 'var(--color-primary-bg, #e8f5ee)';
+    qrToggleBtn.style.color = isShown ? '' : 'var(--color-primary)';
+    if (!isShown) {
+      initPhoneQR();
+    }
+  });
 
   // ── Action selection / Qty auto-fill ───────────────────────────────────────
   actionSelect.addEventListener('change', () => {
@@ -370,6 +485,7 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
 
   // ── Modal Dismissal ────────────────────────────────────────────────────────
   const closeModal = () => {
+    stopPhoneRealtime();
     overlay.remove();
     document.removeEventListener('keydown', handleKeyDown);
   };
@@ -402,6 +518,7 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
     if (!selectedBatch) { _showError(errorEl, 'Please select a batch first.'); return; }
     if (!classification) { _showError(errorEl, 'Please select a defect classification.'); return; }
     if (!qty || qty < 1) { _showError(errorEl, 'Quantity affected must be at least 1.'); return; }
+    if (!remarks) { _showError(errorEl, 'Remarks / incident details are required.'); return; }
     if (qty > selectedBatch.quantity) { _showError(errorEl, `Quantity exceeds batch stock (max: ${selectedBatch.quantity}).`); return; }
 
     errorEl.style.display = 'none';
