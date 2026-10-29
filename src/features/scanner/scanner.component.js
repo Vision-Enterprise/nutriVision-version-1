@@ -764,8 +764,6 @@ export class ScannerComponent {
     if (titleEl) titleEl.textContent = diag.title;
     if (descEl) descEl.textContent = diag.desc;
     if (errorEl) errorEl.style.display = 'flex';
-
-    SystemDialog.alert(`${diag.title}\n\n${diag.alertMsg}`);
   }
 
   async loadCameraDevices() {
