@@ -2,17 +2,11 @@
  * Authentication Validation
  *
  * Validates login form inputs before sending them to Supabase.
- *
- * WHY validate on the frontend at all if Supabase also validates?
- * 1. User experience: show errors instantly without a network round-trip.
- *    "Email is required" should appear immediately, not after 300ms.
- * 2. Cost: fewer unnecessary Supabase API calls.
- * 3. Clarity: we control the error messages shown to users.
- *    Supabase error messages are generic; ours are specific and helpful.
- *
- * Frontend validation is NOT a security measure — it can be bypassed.
- * Supabase Auth is the actual security boundary.
+ * Supports signing in with just an Account ID (e.g. "20260001")
+ * by normalizing it to "20260001@mnao.ph".
  */
+
+import { normalizeStaffEmail } from '../users/users.service.js';
 
 /**
  * Validate the login form inputs.
@@ -21,27 +15,16 @@
  * @param {string} fields.email
  * @param {string} fields.password
  * @returns {{ valid: boolean, errors: Object }}
- *
- * Example return when invalid:
- * {
- *   valid: false,
- *   errors: {
- *     email: 'Email address is required.',
- *     password: 'Password is required.'
- *   }
- * }
- *
- * Example return when valid:
- * { valid: true, errors: {} }
  */
 export function validateLoginForm({ email, password }) {
   const errors = {};
+  const normalized = normalizeStaffEmail(email);
 
-  // Email validation
-  if (!email || email.trim() === '') {
-    errors.email = 'Email address is required.';
-  } else if (!isValidEmailFormat(email.trim())) {
-    errors.email = 'Please enter a valid email address.';
+  // Email / Account ID validation
+  if (!normalized) {
+    errors.email = 'Account ID or email address is required.';
+  } else if (!isValidEmailFormat(normalized)) {
+    errors.email = 'Please enter a valid Account ID (e.g. 20260001) or email address.';
   }
 
   // Password validation
@@ -56,9 +39,7 @@ export function validateLoginForm({ email, password }) {
 }
 
 /**
- * Basic email format check.
- * Checks for the presence of @ and a domain with a dot.
- * Not exhaustive — Supabase Auth handles true email validation.
+ * Basic email format check after normalization.
  *
  * @param {string} email
  * @returns {boolean}

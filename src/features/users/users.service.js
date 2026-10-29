@@ -8,21 +8,120 @@
 import { supabase, createIsolatedAuthClient } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, ROLES } from '../../shared/constants/app.constants.js';
 
+export const DEFAULT_STAFF_DOMAIN = 'mnao.ph';
+
+/**
+ * Normalize a staff login identifier or email:
+ * - If only an ID/username is typed (e.g. "20260001"), appends "@mnao.ph"
+ * - If full email is typed (e.g. "20260001@mnao.ph"), keeps it lowercase
+ */
+export function normalizeStaffEmail(rawInput) {
+  const val = String(rawInput ?? '').trim().toLowerCase();
+  if (!val) return '';
+  if (!val.includes('@')) {
+    return `${val}@${DEFAULT_STAFF_DOMAIN}`;
+  }
+  return val;
+}
+
+/**
+ * Generate the next sequential MNAO Staff Email/ID in YYYYXXXX@mnao.ph format
+ * (e.g. 20260001@mnao.ph, 20260002@mnao.ph).
+ */
+export function generateNextStaffEmail(users = []) {
+  const year = new Date().getFullYear();
+  const yearPrefix = String(year);
+  let maxSeq = Array.isArray(users) ? users.length : 0;
+
+  for (const u of (users || [])) {
+    const emailStr = String(u.email || u.staff_id || '').trim().toLowerCase();
+    const localPart = emailStr.split('@')[0] || '';
+    if (localPart.startsWith(yearPrefix) && /^\d{8}$/.test(localPart)) {
+      const seq = parseInt(localPart.slice(4), 10);
+      if (!isNaN(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  return `${yearPrefix}${String(nextSeq).padStart(4, '0')}@${DEFAULT_STAFF_DOMAIN}`;
+}
+
+/**
+ * Compute a deterministic recommended MNAO ID (YYYYXXXX@mnao.ph) for an existing user
+ * based on their registration year and chronological signup order.
+ */
+export function getRecommendedStaffEmailForUser(targetUserId, allUsers = []) {
+  if (!Array.isArray(allUsers) || allUsers.length === 0) {
+    return `${new Date().getFullYear()}0001@${DEFAULT_STAFF_DOMAIN}`;
+  }
+
+  const sorted = [...allUsers].sort(
+    (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)
+  );
+  const idx = sorted.findIndex(u => u.id === targetUserId);
+  const seq = idx >= 0 ? idx + 1 : sorted.length + 1;
+  const userObj = idx >= 0 ? sorted[idx] : null;
+  const regYear = userObj?.created_at
+    ? new Date(userObj.created_at).getFullYear()
+    : new Date().getFullYear();
+
+  return `${regYear}${String(seq).padStart(4, '0')}@${DEFAULT_STAFF_DOMAIN}`;
+}
+
 // ── Read ──────────────────────────────────────────────────────────────────
 
 /**
- * Fetch all registered user profiles ordered by full name.
+ * Fetch all registered user profiles ordered by full name, enriched with
+ * known email / staff ID from audit logs or chronological registration sequence.
  * @returns {Promise<{ users: Array, error: string|null }>}
  */
 export async function fetchUsers() {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, role, is_active, created_at, updated_at')
-      .order('full_name');
+    const [profilesRes, emailLogsRes, currentAuthRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, role, is_active, created_at, updated_at')
+        .order('full_name'),
+      supabase
+        .from('audit_logs')
+        .select('entity_id, user_id, description, created_at')
+        .eq('entity_type', 'profile')
+        .order('created_at', { ascending: false })
+        .limit(300),
+      supabase.auth.getUser()
+    ]);
 
-    if (error) throw error;
-    return { users: data || [], error: null };
+    if (profilesRes.error) throw profilesRes.error;
+    const profiles = profilesRes.data || [];
+    const currentUser = currentAuthRes?.data?.user || null;
+
+    // Extract latest known email per profile from audit_logs descriptions
+    const emailByUserId = {};
+    for (const log of (emailLogsRes.data || [])) {
+      const targetId = log.entity_id || log.user_id;
+      if (!targetId || emailByUserId[targetId]) continue;
+      const match = String(log.description || '').match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
+      if (match) {
+        emailByUserId[targetId] = match[1].toLowerCase();
+      }
+    }
+
+    if (currentUser?.id && currentUser?.email) {
+      emailByUserId[currentUser.id] = currentUser.email.toLowerCase();
+    }
+
+    const enriched = profiles.map(u => {
+      const recEmail = getRecommendedStaffEmailForUser(u.id, profiles);
+      return {
+        ...u,
+        email: emailByUserId[u.id] || recEmail,
+        recommended_email: recEmail,
+      };
+    });
+
+    return { users: enriched, error: null };
   } catch (err) {
     console.error('[UsersService] fetchUsers error:', err);
     return { users: [], error: 'Failed to load user accounts.' };
@@ -79,9 +178,10 @@ export async function fetchUserLogs() {
 export async function createUser(formData, adminProfile) {
   try {
     const isolatedClient = createIsolatedAuthClient();
+    const normalizedEmail = normalizeStaffEmail(formData.email);
 
     const { data, error: authError } = await isolatedClient.auth.signUp({
-      email: formData.email.trim().toLowerCase(),
+      email: normalizedEmail,
       password: formData.password,
       options: {
         data: {
@@ -93,7 +193,7 @@ export async function createUser(formData, adminProfile) {
 
     if (authError) {
       if (authError.message?.toLowerCase().includes('already registered')) {
-        return { user: null, error: 'An account with this email/username already exists.' };
+        return { user: null, error: 'An account with this Account ID / email already exists.' };
       }
       return { user: null, error: authError.message || 'Failed to create user account.' };
     }
@@ -110,7 +210,7 @@ export async function createUser(formData, adminProfile) {
       action: AUDIT_ACTIONS.CREATE_USER,
       entity_type: 'profile',
       entity_id: createdUser.id,
-      description: `Created user account for ${formData.full_name.trim()} (${roleLabel}) with email ${formData.email.trim().toLowerCase()}`,
+      description: `Created user account for ${formData.full_name.trim()} (${roleLabel}) with email ${normalizedEmail}`,
     });
 
     return { user: createdUser, error: null };

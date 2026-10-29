@@ -1,11 +1,14 @@
 /**
  * Account Settings Page
- * Allows the logged-in user to update their display name and password.
+ * Allows the logged-in user to update their display name, Office Email / Account ID, and password.
  * Uses the system design classes: .page-header, .card, .form-group, .form-label,
  * .form-input, .btn, .btn-primary — consistent with all other modules.
  */
 
 import { supabase } from '../../core/supabase.js';
+import { normalizeStaffEmail, getRecommendedStaffEmailForUser } from '../users/users.service.js';
+import { saveEmailAlias } from '../auth/auth.service.js';
+import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 
 const MODULE = '[Account]';
 
@@ -13,14 +16,24 @@ export async function renderAccountPage(profile) {
   const content = document.getElementById('page-content');
   if (!content) return;
 
-  // Email lives in auth.users, not profiles — fetch from session
-  let email = '';
+  let authEmail = '';
+  let displayEmail = '';
+  let recommendedEmail = '20260001@mnao.ph';
+
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    email = user?.email || '';
+    const [{ data: { user } }, profilesRes] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from('profiles').select('id, created_at').order('created_at', { ascending: true })
+    ]);
+    authEmail = user?.email || '';
+    displayEmail = user?.user_metadata?.staff_email || authEmail;
+    recommendedEmail = getRecommendedStaffEmailForUser(profile?.id || user?.id, profilesRes.data || []);
   } catch (e) {
     console.warn(`${MODULE} could not fetch email from session`, e);
   }
+
+  const recommendedIdOnly = recommendedEmail.split('@')[0];
+  const isAlreadyRecommended = displayEmail.toLowerCase() === recommendedEmail.toLowerCase();
 
   const roleLabel   = profile?.role === 'administrator' ? 'Administrator' : 'Staff Personnel';
   const roleBadge   = profile?.role === 'administrator' ? 'badge-admin' : 'badge-personnel';
@@ -30,7 +43,7 @@ export async function renderAccountPage(profile) {
   content.innerHTML = `
     <div class="page-header">
       <h1 class="page-header__title">Account Settings</h1>
-      <p class="page-header__subtitle">Manage your profile information and password.</p>
+      <p class="page-header__subtitle">Manage your profile information, Account ID, and password.</p>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start;">
@@ -49,7 +62,7 @@ export async function renderAccountPage(profile) {
             </div>
             <div>
               <div class="card-title">Profile Information</div>
-              <div class="card-subtitle" style="margin-top: 0;">Update your account details.</div>
+              <div class="card-subtitle" style="margin-top: 0;">Update your account details and login ID.</div>
             </div>
           </div>
         </div>
@@ -69,16 +82,28 @@ export async function renderAccountPage(profile) {
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="account-email">Office Email / Account ID</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <label class="form-label form-label--required" for="account-email">Office Email / Account ID</label>
+              ${!isAlreadyRecommended ? `
+                <button type="button" id="btn-use-recommended-id" class="btn-table-action" style="padding: 2px 8px; font-size: 11.5px;" data-rec="${recommendedEmail}">
+                  ★ Use MNAO ID (${recommendedEmail})
+                </button>
+              ` : `
+                <span style="font-size: 11px; color: var(--color-primary); font-weight: 600;">✓ Standard MNAO ID</span>
+              `}
+            </div>
             <input
-              type="email"
+              type="text"
               id="account-email"
               class="form-input"
-              value="${email}"
-              disabled
-              style="opacity: 0.6; cursor: not-allowed;"
+              value="${displayEmail}"
+              data-auth-email="${authEmail}"
+              placeholder="e.g. ${recommendedEmail}"
+              style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600;"
             >
-            <span class="form-hint">Contact IT support to change your registered office email.</span>
+            <span class="form-hint">
+              Sign in faster by typing just the ID number (e.g. <strong>${recommendedIdOnly}</strong>) or full <strong>${recommendedEmail}</strong>.
+            </span>
           </div>
 
           <div class="form-row">
@@ -225,6 +250,21 @@ function _bindEvents(profile) {
     });
   });
 
+  const emailInput = document.getElementById('account-email');
+  emailInput?.addEventListener('blur', () => {
+    if (emailInput.value.trim()) {
+      emailInput.value = normalizeStaffEmail(emailInput.value);
+    }
+  });
+
+  const recBtn = document.getElementById('btn-use-recommended-id');
+  recBtn?.addEventListener('click', () => {
+    if (emailInput && recBtn.dataset.rec) {
+      emailInput.value = recBtn.dataset.rec;
+      emailInput.focus();
+    }
+  });
+
   // Save profile
   document.getElementById('btn-save-profile')?.addEventListener('click', () => _saveProfile(profile));
 
@@ -235,14 +275,25 @@ function _bindEvents(profile) {
 // ─── Profile Update ───────────────────────────────────────────────────────────
 
 async function _saveProfile(profile) {
-  const fullName = document.getElementById('account-full-name')?.value.trim();
-  const msgEl    = document.getElementById('account-profile-msg');
-  const btn      = document.getElementById('btn-save-profile');
+  const fullName   = document.getElementById('account-full-name')?.value.trim();
+  const emailInput = document.getElementById('account-email');
+  const rawEmail   = emailInput?.value.trim() || '';
+  const newEmail   = normalizeStaffEmail(rawEmail);
+  const authEmail  = emailInput?.dataset.authEmail || '';
+  const msgEl      = document.getElementById('account-profile-msg');
+  const btn        = document.getElementById('btn-save-profile');
 
   if (!fullName) {
     _showMsg(msgEl, 'Full name cannot be empty.', 'error');
     return;
   }
+
+  if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+    _showMsg(msgEl, 'Please enter a valid Account ID (e.g. 20260001) or email.', 'error');
+    return;
+  }
+
+  if (emailInput) emailInput.value = newEmail;
 
   btn.disabled = true;
   btn.innerHTML = '<span class="icon" style="font-size:18px;animation:spin 1s linear infinite;">progress_activity</span> Saving...';
@@ -255,11 +306,41 @@ async function _saveProfile(profile) {
 
     if (error) throw error;
 
-    // Update the topbar display name if it exists
+    // If email / Account ID was changed, update auth user & record alias
+    if (newEmail.toLowerCase() !== authEmail.toLowerCase()) {
+      // 1. Try direct PostgreSQL RPC (instant update in auth.users if 08_account_id_email.sql is installed)
+      const { error: rpcErr } = await supabase.rpc('update_own_email', { new_email: newEmail });
+
+      // 2. Always store staff_email in user_metadata + local alias so login works immediately
+      await supabase.auth.updateUser({
+        data: { full_name: fullName, staff_email: newEmail }
+      });
+
+      if (rpcErr) {
+        // Also attempt standard Supabase email update and save alias fallback
+        await supabase.auth.updateUser({ email: newEmail }).catch(() => {});
+        if (authEmail) {
+          saveEmailAlias(newEmail, authEmail);
+        }
+      } else if (emailInput) {
+        emailInput.dataset.authEmail = newEmail;
+      }
+
+      // 3. Log in audit_logs so User Management table displays the new Account ID
+      await supabase.from('audit_logs').insert({
+        user_id: profile.id,
+        action: AUDIT_ACTIONS.CREATE_USER,
+        entity_type: 'profile',
+        entity_id: profile.id,
+        description: `Updated Account ID / email for ${fullName} to ${newEmail}`,
+      });
+    }
+
     const topbarName = document.querySelector('.topbar-user-name');
     if (topbarName) topbarName.textContent = fullName;
 
-    _showMsg(msgEl, 'Profile updated successfully.', 'success');
+    const idOnly = newEmail.split('@')[0];
+    _showMsg(msgEl, `Profile saved! You can now sign in with "${idOnly}" or "${newEmail}".`, 'success');
     console.log(`${MODULE} profile updated for`, profile.id);
   } catch (err) {
     console.error(`${MODULE} _saveProfile error:`, err);
@@ -279,7 +360,6 @@ async function _updatePassword() {
   const msgEl     = document.getElementById('account-pw-msg');
   const btn       = document.getElementById('btn-update-pw');
 
-  // Validation
   if (!currentPw) { _showMsg(msgEl, 'Current password is required.', 'error'); return; }
   if (!newPw)     { _showMsg(msgEl, 'New password is required.', 'error'); return; }
   if (newPw.length < 6) { _showMsg(msgEl, 'New password must be at least 6 characters.', 'error'); return; }
@@ -290,15 +370,12 @@ async function _updatePassword() {
   btn.innerHTML = '<span class="icon" style="font-size:18px;animation:spin 1s linear infinite;">progress_activity</span> Updating...';
 
   try {
-    // Supabase requires re-authentication to change password.
-    // We use updateUser which works for the currently logged-in session.
     const { error } = await supabase.auth.updateUser({ password: newPw });
 
     if (error) throw error;
 
-    // Clear fields on success
     document.getElementById('account-current-pw').value = '';
-    document.getElementById('account-new-pw').value     = '';
+    document.getElementById('account-new-pw').value = '';
     document.getElementById('account-confirm-pw').value = '';
 
     _showMsg(msgEl, 'Password updated successfully.', 'success');
@@ -312,18 +389,22 @@ async function _updatePassword() {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Inline Message Helper ────────────────────────────────────────────────────
 
-function _showMsg(el, text, type) {
+function _showMsg(el, text, type = 'success') {
   if (!el) return;
-  el.style.display  = 'block';
-  el.style.color    = type === 'success' ? 'var(--color-success, #2e7d32)' : 'var(--color-danger, #c62828)';
-  el.style.background = type === 'success' ? 'var(--color-success-bg, #f0fdf4)' : 'var(--color-danger-bg, #fff5f5)';
-  el.style.border   = `1px solid ${type === 'success' ? 'var(--color-success, #2e7d32)' : 'var(--color-danger, #c62828)'}`;
+  const isErr = type === 'error';
+  el.style.display      = 'flex';
+  el.style.alignItems   = 'center';
+  el.style.gap          = '6px';
+  el.style.padding      = '8px 12px';
   el.style.borderRadius = 'var(--radius-md)';
-  el.style.padding  = '10px 14px';
-  el.textContent    = text;
-
-  // Auto-hide after 4 seconds
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
+  el.style.background   = isErr ? '#fef2f2' : '#f0fdf4';
+  el.style.color        = isErr ? 'var(--color-danger)' : 'var(--color-success)';
+  el.style.border       = `1px solid ${isErr ? '#fecaca' : '#bbf7d0'}`;
+  el.innerHTML = `
+    <span class="icon" style="font-size:16px;">${isErr ? 'error' : 'check_circle'}</span>
+    <span>${text}</span>
+  `;
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
 }

@@ -2,32 +2,35 @@
  * Authentication Service
  *
  * Business logic layer between the UI and Supabase Auth.
- *
- * Architecture:
- *   auth.page.js (UI)
- *       ↓
- *   auth.service.js (business logic) ← YOU ARE HERE
- *       ↓
- *   core/auth.js (Supabase Auth wrapper)
- *       ↓
- *   Supabase
- *
- * This layer is responsible for:
- * 1. Calling Supabase Auth
- * 2. Fetching the user's profile after authentication
- * 3. Validating the profile (active? exists?)
- * 4. Writing audit log entries
- * 5. Returning clean result objects to the UI
- *
- * The UI layer (auth.page.js) should NOT need to know about
- * Supabase table names, column names, or query structure.
- * All of that lives here.
  */
 
 import { supabase } from '../../core/supabase.js';
 import { signIn, signOut } from '../../core/auth.js';
 import { isActive } from '../../core/permissions.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { normalizeStaffEmail } from '../users/users.service.js';
+
+const EMAIL_ALIASES_STORAGE_KEY = 'nutrivision_email_aliases';
+
+export function saveEmailAlias(newEmail, authEmail) {
+  try {
+    const raw = localStorage.getItem(EMAIL_ALIASES_STORAGE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[normalizeStaffEmail(newEmail)] = String(authEmail || '').trim().toLowerCase();
+    localStorage.setItem(EMAIL_ALIASES_STORAGE_KEY, JSON.stringify(map));
+  } catch {}
+}
+
+function getEmailAlias(inputEmail) {
+  try {
+    const raw = localStorage.getItem(EMAIL_ALIASES_STORAGE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return map[normalizeStaffEmail(inputEmail)] || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Fetch a user's profile from the profiles table.
@@ -43,7 +46,6 @@ export async function fetchProfile(userId) {
     .single();
 
   if (error) {
-    // PGRST116 = "no rows returned" — the profile doesn't exist
     if (error.code === 'PGRST116') {
       return { profile: null, error: 'No profile found for this account.' };
     }
@@ -55,17 +57,6 @@ export async function fetchProfile(userId) {
 
 /**
  * Write an entry to the audit_logs table.
- *
- * This is a best-effort operation. If it fails, we log the error
- * to the console but do NOT block the user's action.
- * A failed audit log is not a reason to prevent login.
- *
- * @param {Object} params
- * @param {string} params.userId
- * @param {string} params.action     - From AUDIT_ACTIONS constants
- * @param {string} [params.entityType]
- * @param {string} [params.entityId]
- * @param {string} [params.description]
  */
 async function writeAuditLog({ userId, action, entityType = null, entityId = null, description = null }) {
   const { error } = await supabase
@@ -79,30 +70,37 @@ async function writeAuditLog({ userId, action, entityType = null, entityId = nul
     });
 
   if (error) {
-    // Don't throw — audit log failure should not break the app
     console.warn('[NutriVision] Audit log write failed:', error.message);
   }
 }
 
 /**
  * Perform a complete login flow:
- * 1. Authenticate with Supabase Auth
- * 2. Fetch the user's profile
- * 3. Check that the account is active
- * 4. Write a LOGIN audit log entry
- *
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{ profile: Object|null, error: string|null }>}
+ * 1. Normalize Account ID (e.g. "20260001" -> "20260001@mnao.ph")
+ * 2. Authenticate with Supabase Auth (with seamless fallback if Account ID is an alias for an existing account)
+ * 3. Fetch the user's profile
+ * 4. Check that the account is active
+ * 5. Write a LOGIN audit log entry
  */
-export async function login(email, password) {
-  // Step 1: Authenticate
-  const { data: authData, error: authError } = await signIn(email, password);
+export async function login(emailInput, password) {
+  const normalizedEmail = normalizeStaffEmail(emailInput);
+
+  // Step 1: Authenticate with normalized email
+  let { data: authData, error: authError } = await signIn(normalizedEmail, password);
+
+  // Seamless alias fallback if user changed Account ID in Account Settings before running SQL migration
+  if (authError) {
+    const aliasTarget = getEmailAlias(normalizedEmail);
+    if (aliasTarget && aliasTarget !== normalizedEmail) {
+      const retryRes = await signIn(aliasTarget, password);
+      if (!retryRes.error && retryRes.data?.user) {
+        authData = retryRes.data;
+        authError = null;
+      }
+    }
+  }
 
   if (authError) {
-    // Map Supabase error messages to user-friendly messages.
-    // WHY? Supabase returns technical errors like "Invalid login credentials".
-    // We can do better than that for the user experience.
     return { profile: null, error: mapAuthError(authError.message) };
   }
 
@@ -112,8 +110,7 @@ export async function login(email, password) {
   const { profile, error: profileError } = await fetchProfile(userId);
 
   if (profileError) {
-    // Profile doesn't exist — edge case (auth user exists but no profile)
-    await signOut(); // Sign them back out — don't leave them in a broken state
+    await signOut();
     return {
       profile: null,
       error: 'Your account profile could not be found. Please contact the administrator.',
@@ -122,7 +119,7 @@ export async function login(email, password) {
 
   // Step 3: Check account is active
   if (!isActive(profile)) {
-    await signOut(); // Deactivated accounts cannot access the system
+    await signOut();
     return {
       profile: null,
       error: 'Your account has been deactivated. Please contact the administrator.',
@@ -143,17 +140,8 @@ export async function login(email, password) {
  * Perform a complete logout flow:
  * 1. Write a LOGOUT audit log entry (must happen BEFORE signOut)
  * 2. Sign out from Supabase Auth
- *
- * WHY write the audit log before signing out?
- * After signOut(), auth.uid() returns null.
- * The RLS policy on audit_logs requires user_id = auth.uid().
- * If we sign out first, the INSERT would be rejected by RLS.
- *
- * @param {Object} profile - The current user's profile
- * @returns {Promise<{ error: string|null }>}
  */
 export async function logout(profile) {
-  // Write log FIRST — while still authenticated
   await writeAuditLog({
     userId: profile.id,
     action: AUDIT_ACTIONS.LOGOUT,
@@ -171,13 +159,6 @@ export async function logout(profile) {
 
 /**
  * Map Supabase Auth error messages to user-friendly strings.
- *
- * WHY: Supabase error messages are designed for developers, not users.
- * "Invalid login credentials" is acceptable. But some errors are more
- * technical and confusing. We intercept and translate them here.
- *
- * @param {string} message - The error message from Supabase Auth
- * @returns {string} - A user-friendly error message
  */
 function mapAuthError(message) {
   if (!message) return 'An unexpected error occurred. Please try again.';
@@ -185,7 +166,7 @@ function mapAuthError(message) {
   const lower = message.toLowerCase();
 
   if (lower.includes('invalid login credentials') || lower.includes('invalid email or password')) {
-    return 'Incorrect email or password. Please try again.';
+    return 'Incorrect Account ID / email or password. Please try again.';
   }
   if (lower.includes('email not confirmed')) {
     return 'Please confirm your email address before signing in.';
@@ -197,6 +178,5 @@ function mapAuthError(message) {
     return 'Network error. Please check your internet connection and try again.';
   }
 
-  // Fallback: show the original message from Supabase
   return message;
 }

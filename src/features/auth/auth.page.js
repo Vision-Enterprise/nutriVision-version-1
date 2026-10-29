@@ -10,6 +10,7 @@
 import { login } from './auth.service.js';
 import { validateLoginForm } from './auth.validation.js';
 import { renderLoginLayout } from './auth.render.js';
+import { normalizeStaffEmail } from '../users/users.service.js';
 
 export function renderLoginPage(onSuccess) {
   const app = document.getElementById('app');
@@ -37,6 +38,14 @@ function attachLoginHandlers(onSuccess) {
   emailInput?.addEventListener('input', () => clearFieldError(emailInput, emailError));
   passInput?.addEventListener('input', () => clearFieldError(passInput, passError));
 
+  // Auto-complete "@mnao.ph" when user types just an ID like "20260001" and leaves field
+  emailInput?.addEventListener('blur', () => {
+    const val = emailInput.value.trim();
+    if (val && !val.includes('@')) {
+      emailInput.value = normalizeStaffEmail(val);
+    }
+  });
+
   // Password visibility toggle
   toggleBtn?.addEventListener('click', () => {
     const isPassword = passInput.type === 'password';
@@ -53,7 +62,11 @@ function attachLoginHandlers(onSuccess) {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const email    = emailInput.value.trim();
+    const rawEmail = emailInput.value.trim();
+    const email    = normalizeStaffEmail(rawEmail);
+    if (rawEmail && !rawEmail.includes('@')) {
+      emailInput.value = email;
+    }
     const password = passInput.value;
 
     hideError(errorBox);

@@ -81,7 +81,7 @@ function _getFilteredUsers() {
   return _users.filter(u => {
     if (_search) {
       const q = _search.toLowerCase();
-      const nameMatch = u.full_name?.toLowerCase().includes(q);
+      const nameMatch = u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
       if (!nameMatch) return false;
     }
     if (_roleFilter && u.role !== _roleFilter) return false;
@@ -128,6 +128,7 @@ function _attachEventListeners() {
   document.getElementById('add-user-btn')?.addEventListener('click', () => {
     openAddUserModal({
       profile: _profile,
+      users: _users,
       onSuccess: async () => {
         await _refreshAllUsers();
       }
@@ -158,6 +159,7 @@ function _attachEventListeners() {
         openConfirmToggleStatusModal({
           user: targetUser,
           profile: _profile,
+      users: _users,
           onSuccess: async () => {
             await _refreshAllUsers();
           }

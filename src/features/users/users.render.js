@@ -72,7 +72,7 @@ export function renderUsersLayout({ users, filtered, search, roleFilter, statusF
             type="text"
             id="user-search"
             class="form-input"
-            placeholder="Search by name..."
+            placeholder="Search by name or Account ID..."
             value="${escapeHtml(search)}"
             aria-label="Search users by name"
           />
@@ -129,6 +129,7 @@ export function renderUsersTable(filtered, totalUsersCount, profile) {
         <thead>
           <tr>
             <th scope="col">User</th>
+            <th scope="col">Account ID / Email</th>
             <th scope="col">Role</th>
             <th scope="col">Status</th>
             <th scope="col">Registered</th>
@@ -174,6 +175,9 @@ export function renderUserRow(user, profile) {
             </div>
           </div>
         </div>
+      </td>
+      <td>
+        <code class="code-badge">${escapeHtml(user.email || '—')}</code>
       </td>
       <td>
         <span class="badge ${isAdmin ? 'badge-admin' : 'badge-personnel'}">

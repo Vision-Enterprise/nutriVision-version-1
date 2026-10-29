@@ -6,7 +6,7 @@
  *   - Activate / Deactivate User Status Confirmation
  */
 
-import { createUser, toggleUserStatus, fetchUserLogs } from './users.service.js';
+import { createUser, toggleUserStatus, fetchUserLogs, generateNextStaffEmail, normalizeStaffEmail } from './users.service.js';
 import { validateUserForm } from './users.validation.js';
 import { escapeHtml } from './users.render.js';
 import { ROLES, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
@@ -29,7 +29,9 @@ export function closeUserModal() {
 /**
  * Open Create User Account Modal
  */
-export function openAddUserModal({ profile, onSuccess }) {
+export function openAddUserModal({ profile, users = [], onSuccess }) {
+  const suggestedEmail = generateNextStaffEmail(users);
+  const suggestedIdOnly = suggestedEmail.split('@')[0];
   closeUserModal();
 
   const overlay = document.createElement('div');
@@ -73,17 +75,19 @@ export function openAddUserModal({ profile, onSuccess }) {
 
           <!-- Office Email / Username -->
           <div class="form-group">
-            <label for="field-email" class="form-label form-label--required">Office Email / Account ID</label>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><label for="field-email" class="form-label form-label--required">Office Email / Account ID</label><span style="font-size: 11px; color: var(--color-primary); font-weight: 600;">★ Auto-generated MNAO ID</span></div>
             <input
               type="email"
               id="field-email"
               name="email"
               class="form-input"
-              placeholder="e.g. staff.maria@nutrivision.mnao"
+              placeholder="e.g. ${suggestedEmail}"
+              value="${suggestedEmail}"
+              style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600;"
               autocomplete="off"
               required
             />
-            <span class="form-hint">Used by staff to sign in. Format: name@domain</span>
+            <span class="form-hint">Staff can sign in quickly using just <strong>${suggestedIdOnly}</strong> or <strong>${suggestedEmail}</strong>.</span>
             <span class="form-error" id="error-email" role="alert"></span>
           </div>
 
@@ -149,6 +153,12 @@ export function openAddUserModal({ profile, onSuccess }) {
   document.getElementById('modal-cancel-btn')?.addEventListener('click', closeUserModal);
 
   const pwdInput = document.getElementById('field-password');
+  const emailInput = document.getElementById('field-email');
+  emailInput?.addEventListener('blur', () => {
+    if (emailInput.value.trim()) {
+      emailInput.value = normalizeStaffEmail(emailInput.value);
+    }
+  });
   const toggleBtn = document.getElementById('toggle-pwd-btn');
   const toggleIcon = document.getElementById('toggle-pwd-icon');
 
@@ -167,7 +177,7 @@ export function openAddUserModal({ profile, onSuccess }) {
     const form = e.target;
     const formData = {
       full_name: form.full_name.value.trim(),
-      email:     form.email.value.trim(),
+      email:     normalizeStaffEmail(form.email.value),
       password:  form.password.value,
       role:      form.role.value,
     };

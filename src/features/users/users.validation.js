@@ -5,6 +5,7 @@
  */
 
 import { ROLES } from '../../shared/constants/app.constants.js';
+import { normalizeStaffEmail } from './users.service.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,11 +25,12 @@ export function validateUserForm(data) {
     errors.full_name = 'Full name must be at least 2 characters.';
   }
 
-  // Email / Username
-  if (!data.email || !data.email.trim()) {
-    errors.email = 'Email address is required.';
-  } else if (!EMAIL_REGEX.test(data.email.trim())) {
-    errors.email = 'Please enter a valid email address (e.g. staff.maria@nutrivision.mnao).';
+  // Email / Account ID (accepts "20260001" or "20260001@mnao.ph")
+  const normalizedEmail = normalizeStaffEmail(data.email);
+  if (!normalizedEmail) {
+    errors.email = 'Account ID / Email is required.';
+  } else if (!EMAIL_REGEX.test(normalizedEmail)) {
+    errors.email = 'Please enter a valid Account ID or email (e.g. 20260001@mnao.ph).';
   }
 
   // Password

@@ -71,14 +71,14 @@ export function renderLoginLayout() {
 
             <div class="form-group">
               <label for="login-email" class="form-label form-label--required">
-                Email Address
+                Account ID / Office Email
               </label>
               <input
-                type="email"
+                type="text"
                 id="login-email"
                 name="email"
                 class="form-input"
-                placeholder="you@example.com"
+                placeholder="e.g. 20260001 or 20260001@mnao.ph"
                 autocomplete="email"
                 required
                 aria-describedby="login-email-error"
