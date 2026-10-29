@@ -119,6 +119,18 @@ def get_temp_dir() -> str:
 
     return temp_dir
 
+@app.on_event("startup")
+def warmup_ocr_models():
+    """Pre-warm ONNX models in background thread on startup so first scan has zero cold-init latency."""
+    import threading
+    def _warm():
+        try:
+            _ = extractor.ocr
+            _ = extractor.table_engine
+        except Exception:
+            pass
+    threading.Thread(target=_warm, daemon=True).start()
+
 @app.get('/api/health')
 def health_check():
     """Lightweight health check for launcher and monitoring."""
@@ -933,13 +945,13 @@ def render_mobile_upload_page(session_id: str):
       if (cropperInstance && typeof cropperInstance.getCroppedCanvas === 'function') {{
         try {{
           const canvas = cropperInstance.getCroppedCanvas({{
-            maxWidth: 1600,
-            maxHeight: 2400,
+            maxWidth: 1280,
+            maxHeight: 1600,
             imageSmoothingEnabled: true,
             imageSmoothingQuality: 'high'
           }});
           if (canvas) {{
-            blobToSend = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+            blobToSend = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
           }}
         }} catch (cropErr) {{
           console.warn("Could not get cropped canvas, falling back to original image", cropErr);

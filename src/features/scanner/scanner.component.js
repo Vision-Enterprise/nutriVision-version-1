@@ -986,22 +986,28 @@ export class ScannerComponent {
   fuzzyMatchCommodity(ocrName) {
     if (!ocrName || !this.commodities.length) return null;
     const search = ocrName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!search) return null;
     let bestMatch = null;
     let bestScore = Infinity;
     
     for (const com of this.commodities) {
       const name = com.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (name.includes(search) || search.includes(name)) return com;
+      if (name === search) return com;
       
-      const dist = this.levenshtein(search, name);
-      if (dist < bestScore) {
-        bestScore = dist;
-        bestMatch = com;
+      if (Math.abs(search.length - name.length) <= 3) {
+        const dist = this.levenshtein(search, name);
+        if (dist < bestScore) {
+          bestScore = dist;
+          bestMatch = com;
+        }
       }
     }
     
-    if (bestMatch && bestScore <= Math.ceil(Math.max(search.length, bestMatch.name.length) * 0.4)) {
-      return bestMatch;
+    if (bestMatch) {
+      const targetLen = bestMatch.name.toLowerCase().replace(/[^a-z0-9]/g, '').length;
+      if (bestScore <= Math.max(1, Math.floor(targetLen * 0.12))) {
+        return bestMatch;
+      }
     }
     return null;
   }
@@ -1046,10 +1052,13 @@ export class ScannerComponent {
         parsedTable = parseHtmlTableData(data.html_structure);
     }
     
-    if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
-        console.log('Trying spatial bbox parsing on raw cells');
-        if (data.raw_cells && data.raw_cells.length > 0) {
-            parsedTable = parseSpatialCells(data.raw_cells);
+    if (data.raw_cells && data.raw_cells.length > 0) {
+        const spatialTable = parseSpatialCells(data.raw_cells);
+        const htmlRows = parsedTable?.rows?.length || 0;
+        const spatialRows = spatialTable?.rows?.length || 0;
+        if (!htmlRows || (parsedTable?.hasMergedCells && spatialRows > htmlRows) || (spatialRows >= htmlRows + 2)) {
+            console.log('Using spatial bbox parsing on raw cells:', spatialRows, 'rows vs HTML:', htmlRows);
+            parsedTable = spatialTable;
         }
     }
 

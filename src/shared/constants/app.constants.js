@@ -135,6 +135,7 @@ export const COMMODITY_UNITS = [
   'Bottle',
   'Box',
   'Pack',
+  'Can',
   'Piece',
   'Kilogram',
   'Gram',

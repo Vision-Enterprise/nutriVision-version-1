@@ -79,6 +79,7 @@ export function normalizeUnit(rawUnit) {
     'bottie': 'Bottle', 'botties': 'Bottle',
     'bx': 'Box', 'box': 'Box', 'boxes': 'Box',
     'pk': 'Pack', 'pck': 'Pack', 'pack': 'Pack', 'packs': 'Pack', 'pkt': 'Pack',
+    'can': 'Can', 'cans': 'Can', 'tin': 'Can', 'tins': 'Can',
     'pc': 'Piece', 'pcs': 'Piece', 'piece': 'Piece', 'pieces': 'Piece',
     'kg': 'Kilogram', 'kgs': 'Kilogram', 'kilo': 'Kilogram', 'kilogram': 'Kilogram',
     'g': 'Gram', 'gm': 'Gram', 'gms': 'Gram', 'gram': 'Gram', 'grams': 'Gram',
@@ -408,6 +409,7 @@ export function parseHtmlTableData(htmlString) {
   };
 
   const rows = [];
+  let hasMergedCells = false;
   for (let i = headerRowIdx + 1; i < trs.length; i++) {
     const tds = Array.from(trs[i].querySelectorAll('td'));
     if (tds.length === 0) continue;
@@ -420,11 +422,17 @@ export function parseHtmlTableData(htmlString) {
       }
     });
     
-    record.qty = (record.qty || '').replace(/[^\d]/g, '');
+    const qtyTokens = (record.qty || '').trim().match(/\b\d[\d,]*\b/g) || [];
+    record.qty = qtyTokens.length > 0
+      ? qtyTokens[0].replace(/[^\d]/g, '')
+      : (record.qty || '').replace(/[^\d]/g, '');
     
     const expDates = extractAllDates(record.expDate);
     const delDates = extractAllDates(record.delDate);
     const genericDates = extractAllDates(record.genericDate);
+    if (expDates.length > 1 || qtyTokens.length > 1) {
+      hasMergedCells = true;
+    }
     
     let finalExpDate = '';
     let finalDelDate = '';
@@ -447,11 +455,14 @@ export function parseHtmlTableData(htmlString) {
       finalExpDate = genericDates[0];
     }
     
+    const unitTokens = (record.unit || '').trim().split(/\s+/).filter(Boolean);
+    const primaryUnit = unitTokens.length > 0 ? unitTokens[0] : (record.unit || '');
+
     if (record.productName || record.qty || finalExpDate || finalDelDate) {
       rows.push({
         productName: record.productName,
         qty: record.qty,
-        unit: normalizeUnit(record.unit) || record.unit || '',
+        unit: normalizeUnit(primaryUnit) || primaryUnit || '',
         expDate: finalExpDate,
         deliveryDate: finalDelDate,
         supplier: record.supplier || ''
@@ -459,7 +470,7 @@ export function parseHtmlTableData(htmlString) {
     }
   }
   
-  return { rows, headerFound: true };
+  return { rows, headerFound: true, hasMergedCells };
 }
 
 /**
@@ -481,18 +492,20 @@ export function parseSpatialCells(rawCells) {
     y2: c.bbox[3]
   })).filter(i => i.text.length > 0);
 
-  items.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+  items.sort((a, b) => a.midY - b.midY || a.x1 - b.x1);
 
   const lines = [];
   for (const item of items) {
     let placed = false;
     for (const line of lines) {
+      const avgMidY = line.reduce((s, i) => s + i.midY, 0) / line.length;
+      const avgH = line.reduce((s, i) => s + i.h, 0) / line.length;
       const lineY1 = Math.min(...line.map(i => i.y1));
       const lineY2 = Math.max(...line.map(i => i.y2));
       const yOverlap = Math.min(item.y2, lineY2) - Math.max(item.y1, lineY1);
       const minH = Math.min(item.h, lineY2 - lineY1);
 
-      if (yOverlap > minH * 0.35) {
+      if (yOverlap > minH * 0.35 || Math.abs(item.midY - avgMidY) < Math.min(item.h, avgH) * 0.55) {
         line.push(item);
         placed = true;
         break;
@@ -558,27 +571,22 @@ export function parseSpatialCells(rawCells) {
       const normU = normalizeUnit(t);
       const isKnownUnit = COMMODITY_UNITS && COMMODITY_UNITS.includes(normU);
 
-      if (isKnownUnit && !unit && item.x1 > maxX * 0.35 && item.x1 < maxX * 0.75) {
+      if (isKnownUnit && !unit && !expDate && item.x1 > maxX * 0.25 && item.x1 < maxX * 0.80) {
         unit = normU;
         continue;
       }
 
       const cleanNum = t.replace(/,/g, '');
-      if (/^\d{1,6}$/.test(cleanNum) && !qty && item.x1 > maxX * 0.3 && item.x1 < maxX * 0.65) {
+      if (/^\d{1,6}$/.test(cleanNum) && !qty && !expDate && item.x1 > maxX * 0.20 && item.x1 < maxX * 0.70) {
         qty = cleanNum;
         continue;
       }
 
-      if (item.x1 < maxX * 0.55 && !expDate) {
+      const seenMiddleCol = Boolean(qty || unit || expDate);
+      if (!seenMiddleCol && item.x1 < maxX * 0.55) {
         productNameParts.push(t);
-      } else if (item.x1 > maxX * 0.55 || expDate) {
-        if (t.toLowerCase() !== 'doh' && !/department/i.test(t) && !supplierParts.length && item.x1 < maxX * 0.55) {
-          productNameParts.push(t);
-        } else {
-          supplierParts.push(t);
-        }
       } else {
-        productNameParts.push(t);
+        supplierParts.push(t);
       }
     }
 

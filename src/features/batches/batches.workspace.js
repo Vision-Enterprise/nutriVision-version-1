@@ -84,17 +84,16 @@ function fuzzyMatchCommodity(text, commodities) {
   let found = commodities.find(c => c.name.toLowerCase() === clean);
   if (found) return found;
 
-  // 2. Contains match — guard against short OCR snippets matching long commodity names
+  // 2. Contains match — guard against short OCR snippets or variant prefixes matching different commodities
   found = commodities.find(c => {
     const cName = c.name.toLowerCase();
-    const ocrContainsComm = clean.includes(cName);
-    const commContainsOcr = cName.includes(clean) && clean.length >= Math.floor(cName.length * 0.6);
+    const ocrContainsComm = clean.includes(cName) && cName.length >= Math.floor(clean.length * 0.85);
+    const commContainsOcr = cName.includes(clean) && clean.length >= Math.floor(cName.length * 0.85);
     return ocrContainsComm || commContainsOcr;
   });
   if (found) return found;
 
-  // 3. Word token overlap — MINIMUM 2 meaningful tokens required to prevent false positives.
-  // Score of 1 (e.g. "Nutri" matching "Nutri-Med MMS" AND "Nutri-Foods Rice Porridge") is rejected.
+  // 3. Word token overlap — require all meaningful tokens to match so variants (e.g. "Zinc-Fortified...") stay distinct
   const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'use', 'per', 'box', 'pack', 'sac', 'tab']);
   const words = clean.split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
   let bestMatch = null;
@@ -102,17 +101,17 @@ function fuzzyMatchCommodity(text, commodities) {
 
   for (const c of commodities) {
     const cWords = c.name.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+    if (words.length !== cWords.length) continue;
     let score = 0;
     for (const w of words) {
       if (cWords.includes(w)) score++;
     }
-    if (score > maxScore) {
+    if (score === words.length && score > maxScore) {
       maxScore = score;
       bestMatch = c;
     }
   }
 
-  // Require at least 2 meaningful token overlaps — score=1 is ambiguous, leave unmatched
   return maxScore >= 2 ? bestMatch : null;
 }
 

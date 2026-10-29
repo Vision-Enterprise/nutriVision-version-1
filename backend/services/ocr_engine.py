@@ -65,10 +65,16 @@ class InventoryExtractor:
             if img is None:
                 raise ValueError(f"Failed to decode image at {image_path} with cv2")
             
+            h, w = img.shape[:2]
+            max_dim = max(h, w)
+            if max_dim > 1200:
+                scale = 1200.0 / max_dim
+                img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
             print(f"DEBUG Image Shape: {img.shape}")
 
-            # 1. OCR text detection using modern unified rapidocr
-            res = self.ocr(image_path)
+            # 1. OCR text detection using modern unified rapidocr (skip 180-deg cls for upright receipts)
+            res = self.ocr(img, use_cls=False)
             
             # If no text is found, res.boxes is None
             if res.boxes is None or len(res.boxes) == 0:
@@ -78,7 +84,7 @@ class InventoryExtractor:
             formatted_ocr_result = [(res.boxes, res.txts, res.scores)]
 
             # 2. Table structure recognition
-            table_res = self.table_engine(image_path, formatted_ocr_result)
+            table_res = self.table_engine(img, formatted_ocr_result)
             table_html = table_res.pred_htmls[0]
 
             rows = []
