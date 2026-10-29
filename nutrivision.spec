@@ -15,7 +15,9 @@ webview_datas = collect_data_files('webview')
 
 datas = [
     (os.path.join(root_dir, 'dist', 'index.html'), 'dist'),
+    (os.path.join(root_dir, 'dist', 'mobile-scan.html'), 'dist'),
     (os.path.join(root_dir, 'dist', 'assets'), os.path.join('dist', 'assets')),
+    (os.path.join(root_dir, 'dist', 'src'), os.path.join('dist', 'src')),
     (os.path.join(root_dir, 'src', 'assets'), os.path.join('src', 'assets')),
     (backend_dir, 'backend'),
 ] + rapidocr_datas + rapid_table_datas + webview_datas
