@@ -27,7 +27,7 @@ export class ScannerComponent {
       ? (window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin)
       : (import.meta.env.VITE_OCR_API_URL || 'https://nutrivision-ocr.onrender.com')
     ).replace(/\/$/, '');
-    this.cloudScannerBase = 'https://nutri-vision-version-1.vercel.app';
+    this.cloudScannerBase = isLocalHost ? 'https://nutrivision-mnao.vercel.app' : window.location.origin;
     // Pre-wake OCR server immediately in background so it's warm before the user scans
     fetch(`${this.apiBase}/api/health`).catch(() => {});
     this.init();
