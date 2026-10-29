@@ -1,6 +1,7 @@
 import { parseTableData, parseHtmlTableData, parseSpatialCells } from './table-parser.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { fetchCommodities } from '../commodities/commodities.service.js';
+import { supabase } from '../../core/supabase.js';
 
 let cropper = null;
 let stream = null;
@@ -13,13 +14,22 @@ export class ScannerComponent {
     this.scanMode = 'table';
     this.mobileSessionId = null;
     this.mobilePollTimer = null;
+    this.realtimeChannel = null;
+    this.chunkBuffer = {};
     this.isProcessingMobile = false;
     this.lastProcessedImageUrl = null;
     this.mobileScanCount = 0;
     this.activeReceiptUrl = null;
     this.isReceiptZoomed = false;
     this.stream = null;
-    this.apiBase = (import.meta.env.VITE_OCR_API_URL || (window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin)).replace(/\/$/, '');
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    this.apiBase = (isLocalHost
+      ? (window.location.port === '5173' ? 'http://localhost:8000' : window.location.origin)
+      : (import.meta.env.VITE_OCR_API_URL || 'https://nutrivision-ocr.onrender.com')
+    ).replace(/\/$/, '');
+    this.cloudScannerBase = 'https://nutri-vision-version-1.vercel.app';
+    // Pre-wake OCR server immediately in background so it's warm before the user scans
+    fetch(`${this.apiBase}/api/health`).catch(() => {});
     this.init();
   }
 
@@ -153,7 +163,7 @@ export class ScannerComponent {
                 <h3 style="margin:0 0 4px 0; color:var(--color-text, #1A2B1C); font-size:16px; font-weight:700; letter-spacing:-0.2px;">Mobile Scanner Companion</h3>
                 <p style="margin:0 0 8px 0; color:var(--color-text-muted, #5A7060); font-size:12px; line-height:1.4;">
                   Scan with your phone to upload receipts.<br>
-                  <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Connected to local Wi-Fi. Continuous batch scanning enabled.)</span>
+                  <span style="font-size:11px; color:var(--color-text-subtle, #8FA892);">(Works across Wi-Fi &amp; Mobile Data. Continuous batch scanning enabled.)</span>
                 </p>
 
                 <!-- QR Code Render Canvas/Box -->
@@ -519,20 +529,53 @@ export class ScannerComponent {
     const linkInput = this.container.querySelector('#scanner-mobile-link-input');
     const statusPill = this.container.querySelector('#scanner-mobile-status');
 
-    // If session already exists and active, do NOT regenerate! Continue polling the same session.
+    // If session already exists and active, do NOT regenerate!
     if (this.mobileSessionId && !forceNew) {
-      this.startMobilePolling();
+      if (navigator.onLine === false) {
+        this.startMobilePolling();
+      }
       return;
     }
 
     try {
       await this.ensureQRCodeLib();
 
-      if (statusPill) {
-        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to backend...</span>`;
+      // Online Mode (Default): Instant QR via Vercel + Supabase Realtime (works across any Wi-Fi or Mobile Data)
+      if (navigator.onLine !== false) {
+        this.mobileSessionId = Math.random().toString(36).slice(2, 10);
+        this.lastProcessedImageUrl = null;
+        this.isProcessingMobile = false;
+        this.mobileScanCount = 0;
+        this.chunkBuffer = {};
+
+        const uploadUrl = `${this.cloudScannerBase}/mobile-scan.html?s=${this.mobileSessionId}`;
+
+        if (linkInput) linkInput.value = uploadUrl;
+        if (statusPill) {
+          statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
+        }
+
+        if (qrContainer) {
+          qrContainer.innerHTML = '';
+          new window.QRCode(qrContainer, {
+            text: uploadUrl,
+            width: 200,
+            height: 200,
+            colorDark: '#0f172a',
+            colorLight: '#ffffff',
+            correctLevel: window.QRCode.CorrectLevel.M
+          });
+        }
+
+        this.startMobileRealtime();
+        return;
       }
 
-      // Create new session
+      // Offline Fallback Mode: Local Wi-Fi Session
+      if (statusPill) {
+        statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary-light, #3FA65B); border-radius:50%; display:inline-block;"></span><span>Connecting to local backend...</span>`;
+      }
+
       const res = await fetch(`${this.apiBase}/api/mobile/create-session`);
       if (!res.ok) throw new Error('Failed to create mobile session');
       const data = await res.json();
@@ -548,7 +591,6 @@ export class ScannerComponent {
         statusPill.innerHTML = `<span style="width:8px; height:8px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block; box-shadow:0 0 6px var(--color-primary);"></span><span>Ready: Scan QR code with phone</span>`;
       }
 
-      // Render QR code
       if (qrContainer) {
         qrContainer.innerHTML = '';
         new window.QRCode(qrContainer, {
@@ -561,7 +603,6 @@ export class ScannerComponent {
         });
       }
 
-      // Start Polling every 1.5 seconds
       this.startMobilePolling();
     } catch (err) {
       console.error(err);
@@ -576,6 +617,63 @@ export class ScannerComponent {
         statusPill.innerHTML = `<span style="color:var(--color-danger, #C62828);">Connection failed</span>`;
       }
     }
+  }
+
+  startMobileRealtime() {
+    this.stopMobileRealtime();
+    if (!this.mobileSessionId) return;
+
+    const topic = `nv-scan-${this.mobileSessionId}`;
+    this.realtimeChannel = supabase.channel(topic);
+
+    this.realtimeChannel
+      .on('broadcast', { event: 'receipt-chunk' }, async (msg) => {
+        const payload = msg?.payload;
+        if (!payload || !payload.id) return;
+
+        const { id, idx, total, chunk, count } = payload;
+        if (!this.chunkBuffer[id]) {
+          this.chunkBuffer[id] = { parts: new Array(total), received: 0, total, count };
+        }
+
+        const entry = this.chunkBuffer[id];
+        if (entry.parts[idx] === undefined) {
+          entry.parts[idx] = chunk;
+          entry.received += 1;
+        }
+
+        if (entry.received === entry.total) {
+          const fullDataUrl = entry.parts.join('');
+          delete this.chunkBuffer[id];
+
+          this.mobileScanCount = entry.count || (this.mobileScanCount + 1);
+          this.displayMobileReceipt(fullDataUrl, this.mobileScanCount);
+
+          const statusPill = this.container.querySelector('#scanner-mobile-status');
+          if (statusPill) {
+            statusPill.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--color-primary, #1B7A3E); border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></span><span>Receipt #${this.mobileScanCount} received! Extracting data...</span>`;
+          }
+
+          try {
+            const imgRes = await fetch(fullDataUrl);
+            const blob = await imgRes.blob();
+            await this.processBlob(blob, 'mobile', this.mobileScanCount);
+          } catch (e) {
+            console.error('Error processing realtime mobile receipt:', e);
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  stopMobileRealtime() {
+    if (this.realtimeChannel) {
+      try {
+        supabase.removeChannel(this.realtimeChannel);
+      } catch (_) {}
+      this.realtimeChannel = null;
+    }
+    this.chunkBuffer = {};
   }
 
   startMobilePolling() {
@@ -1179,6 +1277,7 @@ export class ScannerComponent {
   unmount() {
     this.stopCamera();
     this.stopMobilePolling();
+    this.stopMobileRealtime();
     this.destroyCropper();
     if (this.container) {
       this.container.innerHTML = '';
