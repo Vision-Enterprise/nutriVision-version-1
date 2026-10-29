@@ -159,6 +159,14 @@
   padding-right: var(--space-10);
 }
 
+/* Hide Microsoft Edge / WebView2 native password reveal button */
+.auth-password-wrapper input[type="password"]::-ms-reveal,
+.auth-password-wrapper input[type="password"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .auth-password-toggle {
   position: absolute;
   right: var(--space-3);

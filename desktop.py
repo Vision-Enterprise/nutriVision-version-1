@@ -123,11 +123,16 @@ def launch():
     )
 
     log_msg("Opening desktop window via pywebview...")
+    appdata_dir = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
+    webview_data_dir = os.path.join(appdata_dir, 'NutriVision', 'WebViewData')
+    os.makedirs(webview_data_dir, exist_ok=True)
+    log_msg(f"Using persistent WebView2 storage path: {webview_data_dir}")
+
     try:
-        webview.start(gui='edgechromium', debug=False)
+        webview.start(gui='edgechromium', debug=False, private_mode=False, storage_path=webview_data_dir)
     except Exception as e:
         log_msg(f"EdgeChromium GUI failed, falling back to default webview: {e}")
-        webview.start(debug=False)
+        webview.start(debug=False, private_mode=False, storage_path=webview_data_dir)
     log_msg("Window closed. Exiting.")
     sys.exit(0)
 

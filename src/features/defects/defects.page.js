@@ -98,11 +98,39 @@ async function _loadIncidents() {
 
 // ─── PDF Archive (localStorage) ───────────────────────────────────────────────
 
-function _refreshPdfArchive() {
+async function _refreshPdfArchive() {
   const tbody = document.getElementById('defect-pdf-archive-tbody');
   if (!tbody) return;
 
+  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
   let archive = _getArchive();
+
+  if (_profile?.id) {
+    try {
+      const { data, error } = await supabase
+        .from('user_defect_archive')
+        .select('*')
+        .eq('user_id', _profile.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        archive = data.map(d => ({
+          id: d.id,
+          incidentId: d.incident_id,
+          generatedOn: d.created_at,
+          fileName: d.file_name,
+          batchNumber: d.batch_number,
+          actionTaken: d.action_taken,
+          incidentData: d.incident_data,
+          batch: d.batch_data
+        }));
+        localStorage.setItem(userArchiveKey, JSON.stringify(archive));
+      }
+    } catch (e) {
+      console.warn('[DefectsPage] remote defect archive fetch skipped:', e);
+    }
+  }
   let archiveUpdated = false;
   for (const item of archive) {
     const matchedInc = _incidentsData.find(i =>
@@ -137,8 +165,11 @@ function _refreshPdfArchive() {
         true
       );
       if (!confirmed) return;
+      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+      if (_profile?.id) { try { await supabase.from('user_defect_archive').delete().eq('user_id', _profile.id); } catch (_) {} }
+      localStorage.removeItem(userArchiveKey);
       localStorage.removeItem(ARCHIVE_KEY);
-      _refreshPdfArchive();
+      await _refreshPdfArchive();
     };
   }
 
@@ -168,10 +199,12 @@ function _refreshPdfArchive() {
       );
       if (!confirmed) return;
 
-      const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+      const raw = JSON.parse(localStorage.getItem(userArchiveKey) || localStorage.getItem(ARCHIVE_KEY) || '[]');
       const updated = raw.filter(a => a.id !== id);
-      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(updated));
-      _refreshPdfArchive();
+      if (_profile?.id) { try { await supabase.from('user_defect_archive').delete().eq('id', id); } catch (_) {} }
+      localStorage.setItem(userArchiveKey, JSON.stringify(updated));
+      await _refreshPdfArchive();
     });
   });
 }
@@ -224,7 +257,7 @@ async function _handleReplayDefectPdf(item) {
   showDefectPrintPreview(effectiveIncident, effectiveBatch, _profile, null, item.generatedOn || incident?.reported_at);
 }
 
-function _saveToArchive(incident, batch, incidentData) {
+async function _saveToArchive(incident, batch, incidentData) {
   let archive = _getArchive();
   let archiveUpdated = false;
   for (const item of archive) {
@@ -278,14 +311,32 @@ function _saveToArchive(incident, batch, incidentData) {
   };
 
   archive.unshift(entry);
-  // Keep only last 20
   const trimmed = archive.slice(0, 20);
+  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+  localStorage.setItem(userArchiveKey, JSON.stringify(trimmed));
   localStorage.setItem(ARCHIVE_KEY, JSON.stringify(trimmed));
+
+  if (_profile?.id) {
+    try {
+      await supabase.from('user_defect_archive').insert({
+        user_id: _profile.id,
+        incident_id: incident?.id || null,
+        file_name: fileName,
+        batch_number: batch?.batch_number || '—',
+        action_taken: actionTaken,
+        incident_data: entry.incidentData,
+        batch_data: entry.batch
+      });
+    } catch (err) {
+      console.warn('[DefectsPage] remote defect archive insert skipped:', err);
+    }
+  }
 }
 
 function _getArchive() {
   try {
-    const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+    const raw = JSON.parse(localStorage.getItem(userArchiveKey) || localStorage.getItem(ARCHIVE_KEY) || '[]');
     return raw.map(item => {
       const isDispose = (item.actionTaken || item.fileName || '').toLowerCase().includes('dispos');
       if (isDispose) {
