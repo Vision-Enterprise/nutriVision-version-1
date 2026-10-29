@@ -270,7 +270,7 @@ function _bindTabHeaderEvents() {
 }
 
 /**
- * Smoothly scroll ledger to bottom to reveal newly appended draft row
+ * Smoothly scroll ledger to bottom to reveal newly appended draft row with comfortable breathing room
  */
 function _scrollToBottomDraft() {
   setTimeout(() => {
@@ -278,11 +278,16 @@ function _scrollToBottomDraft() {
     if (tableWrap) {
       tableWrap.scrollTop = tableWrap.scrollHeight;
     }
-    const draftInputs = document.querySelectorAll('.grid-row--draft input:not([disabled])');
+    const draftRows = document.querySelectorAll('.grid-row--draft');
+    const latestDraftRow = draftRows.length > 0 ? draftRows[draftRows.length - 1] : null;
+    const draftInputs = latestDraftRow
+      ? latestDraftRow.querySelectorAll('input:not([disabled])')
+      : document.querySelectorAll('.grid-row--draft input:not([disabled])');
+
     if (draftInputs.length > 0) {
       const firstInDraft = draftInputs[0];
-      firstInDraft.focus();
-      firstInDraft.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      firstInDraft.focus({ preventScroll: true });
+      firstInDraft.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, 70);
 }

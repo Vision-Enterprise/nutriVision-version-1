@@ -49,6 +49,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding-bottom: 96px;
   animation: fadeIn 0.15s ease-out;
 }
 
@@ -336,6 +337,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 0 0 8px 8px;
+  padding-bottom: 24px;
   scrollbar-width: auto;
   scrollbar-color: #94a3b8 #f1f5f9;
 }

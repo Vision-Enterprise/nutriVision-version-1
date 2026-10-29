@@ -18,7 +18,7 @@ export function renderMilkPageSkeleton() {
   return `
     <div class="page-header">
       <h1 class="page-header__title">Milk Bank</h1>
-      <p class="page-header__subtitle">Track donor milk intake, pasteurized batches (BM-XXX), and infant dispensing ledger.</p>
+      <p class="page-header__subtitle">Track donor milk intake, pasteurized batches, and infant dispensing ledger.</p>
     </div>
 
     <div class="milk-page">
@@ -53,7 +53,7 @@ export function renderMilkPageSkeleton() {
             </button>
             <button class="milk-tab" data-tab="batches" role="tab" aria-selected="false">
               <span class="icon icon--sm" aria-hidden="true">science</span>
-              Pasteurized Batches (BM-XXX)
+              Pasteurized Batches
               <span class="milk-tab__count" id="count-batches">0</span>
             </button>
             <button class="milk-tab" data-tab="dispense" role="tab" aria-selected="false">
@@ -100,7 +100,7 @@ export function renderMetrics(metrics) {
         ${metrics.rawBags}
         <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-medium);color:var(--color-text-muted);">Intakes</span>
       </div>
-      <div class="stat-card__footer">Awaiting pasteurization into BM-XXX</div>
+      <div class="stat-card__footer">Awaiting pasteurization</div>
     </div>
 
     <div class="stat-card milk-stat-card--blue">
@@ -322,7 +322,7 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
     <div class="milk-sheet-toolbar milk-sheet-toolbar--batches">
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">science</span>
-        Pasteurized Batches (BM-XXX)
+        Pasteurized Batches
         <span class="milk-sheet-subtitle">Freezer Inventory &amp; FEFO Dispatch</span>
       </div>
 
