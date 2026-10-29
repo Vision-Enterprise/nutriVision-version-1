@@ -8,6 +8,7 @@
  */
 
 import { formatDate } from '../../shared/utils/date.utils.js';
+import { renderBatchCodeBadge } from '../batches/batches.render.js';
 
 export function escapeHtml(str) {
   if (!str) return '';
@@ -85,7 +86,7 @@ export function renderHistoricalTable(depletedBatches, searchTerm = '') {
         <tbody>
           ${filtered.map(b => `
             <tr>
-              <td style="font-weight: 600;">${escapeHtml(b.batch_number)}</td>
+              <td style="white-space: nowrap;">${renderBatchCodeBadge(b.batch_number)}</td>
               <td>${escapeHtml(b.commodities?.name || '-')}</td>
               <td>${b.totalDistributed.toLocaleString()}</td>
               <td>${formatDate(b.updated_at)}</td>
@@ -132,7 +133,7 @@ export function renderVoidedTable(voidedBatches, searchTerm = '') {
         <tbody>
           ${filtered.map(b => `
             <tr>
-              <td style="font-weight: 600;">${escapeHtml(b.batch_number)}</td>
+              <td style="white-space: nowrap;">${renderBatchCodeBadge(b.batch_number)}</td>
               <td>${escapeHtml(b.commodities?.name || '-')}</td>
               <td style="font-style: italic; color: var(--color-text-muted);">"${escapeHtml(b.void_reason || 'No reason provided')}"</td>
               <td>${escapeHtml(b.voided_by_name || 'Unknown')}</td>

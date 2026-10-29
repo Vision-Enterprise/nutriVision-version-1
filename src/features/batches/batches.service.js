@@ -39,7 +39,7 @@ async function _upgradeLegacyCommodityCodes(commodities) {
   }
 }
 
-async function _upgradeLegacyBatchCodes(batches) {
+export async function upgradeLegacyBatchCodes(batches) {
   if (!Array.isArray(batches) || batches.length === 0) return;
 
   // First ensure embedded commodities have standardized SKUs
@@ -130,7 +130,7 @@ export async function fetchBatches() {
       (!b.commodities || b.commodities.deleted_at === null)
     );
 
-    await _upgradeLegacyBatchCodes(batches);
+    await upgradeLegacyBatchCodes(batches);
 
     return { batches, error: null };
   } catch (err) {

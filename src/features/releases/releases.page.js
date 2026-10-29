@@ -1,8 +1,8 @@
 /**
  * Releases Ledger Page (Controller)
  *
- * Coordinates releases ledger state, filters (barangay/commodity),
- * and row expansion for notes.
+ * Coordinates releases ledger state, filters (barangay/commodity/search),
+ * and row expansion for supplier & release notes.
  *
  * MVC Controller: delegates HTML template strings to .render.js.
  */
@@ -13,6 +13,7 @@ import { renderReleasesLayout, renderReleasesTable, renderEmpty, escapeHtml } fr
 let _releases = [];
 let _filterBarangay = 'all';
 let _filterCommodity = 'all';
+let _searchTerm = '';
 
 export async function renderReleasesPage(profile) {
   const contentContainer = document.getElementById('page-content');
@@ -53,17 +54,31 @@ function _renderMainView(container) {
     commodities,
     filtered,
     filterCommodity: _filterCommodity,
-    filterBarangay: _filterBarangay
+    filterBarangay: _filterBarangay,
+    searchTerm: _searchTerm,
   });
 
   _attachEventListeners();
 }
 
 function _applyFilters() {
+  const q = _searchTerm.trim().toLowerCase();
+
   return _releases.filter(r => {
     const matchComm = _filterCommodity === 'all' || r.batches?.commodities?.name === _filterCommodity;
     const matchBrgy = _filterBarangay === 'all' || r.barangay === _filterBarangay;
-    return matchComm && matchBrgy;
+    const matchSearch = !q || [
+      r.batches?.batch_number,
+      r.batches?.commodities?.name,
+      r.batches?.commodities?.commodity_code,
+      r.barangay,
+      r.recipient_name,
+      r.profiles?.full_name,
+      r.batches?.supplier,
+      r.notes,
+    ].some(val => String(val ?? '').toLowerCase().includes(q));
+
+    return matchComm && matchBrgy && matchSearch;
   });
 }
 
@@ -71,7 +86,8 @@ function _refreshTable() {
   const region = document.getElementById('releases-table-region');
   if (!region) return;
   const filtered = _applyFilters();
-  region.innerHTML = filtered.length === 0 ? renderEmpty() : renderReleasesTable(filtered);
+  const hasFilters = _filterCommodity !== 'all' || _filterBarangay !== 'all' || Boolean(_searchTerm.trim());
+  region.innerHTML = filtered.length === 0 ? renderEmpty(hasFilters) : renderReleasesTable(filtered);
 }
 
 function _attachEventListeners() {
@@ -82,6 +98,11 @@ function _attachEventListeners() {
 
   document.getElementById('filter-barangay')?.addEventListener('change', e => {
     _filterBarangay = e.target.value;
+    _refreshTable();
+  });
+
+  document.getElementById('release-search')?.addEventListener('input', e => {
+    _searchTerm = e.target.value;
     _refreshTable();
   });
 

@@ -1,5 +1,6 @@
 import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { upgradeLegacyBatchCodes } from '../batches/batches.service.js';
 
 /**
  * Fetch profile ID -> full_name mapping for display in archives & audit views.
@@ -31,8 +32,11 @@ export async function fetchDepletedBatches() {
           updated_at,
           created_at,
           supplier,
+          delivery_date,
+          expiration_date,
+          commodity_id,
           record_status,
-          commodities ( name, commodity_code, unit ),
+          commodities ( id, name, commodity_code, unit ),
           releases ( quantity, barangay, recipient_name, notes, released_by, released_at )
         `)
         .eq('record_status', RECORD_STATUS.DEPLETED)
@@ -44,6 +48,8 @@ export async function fetchDepletedBatches() {
       console.error('[ArchiveService] fetchDepletedBatches Supabase error:', batchesRes.error);
       throw batchesRes.error;
     }
+
+    await upgradeLegacyBatchCodes(batchesRes.data || []);
 
     const formattedData = (batchesRes.data || []).map(batch => {
       const totalDistributed = batch.releases 
@@ -83,8 +89,12 @@ export async function fetchVoidedBatches() {
           void_reason,
           deleted_at,
           voided_by,
+          supplier,
+          delivery_date,
+          expiration_date,
+          commodity_id,
           record_status,
-          commodities ( name, commodity_code, unit )
+          commodities ( id, name, commodity_code, unit )
         `)
         .eq('record_status', RECORD_STATUS.VOIDED)
         .order('deleted_at', { ascending: false }),
@@ -95,6 +105,8 @@ export async function fetchVoidedBatches() {
       console.error('[ArchiveService] fetchVoidedBatches Supabase error:', batchesRes.error);
       throw batchesRes.error;
     }
+
+    await upgradeLegacyBatchCodes(batchesRes.data || []);
 
     const formatted = (batchesRes.data || []).map(b => ({
       ...b,
