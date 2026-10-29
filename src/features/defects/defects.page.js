@@ -227,25 +227,7 @@ async function _handleReplayDefectPdf(item) {
   showDefectPrintPreview(effectiveIncident, effectiveBatch, _profile, null, item.generatedOn || incident?.reported_at);
 }
 
-function _saveToArchive(incident, batch, incidentData) {
-  let archive = _getArchive();
-  let archiveUpdated = false;
-  for (const item of archive) {
-    const matchedInc = _incidentsData.find(i =>
-      i.id === item.incidentId ||
-      (item.batch?.id && i.batches?.id === item.batch.id) ||
-      (item.batchNumber && i.batches?.batch_number && i.batches.batch_number.startsWith(item.batchNumber.split('-')[0]))
-    );
-    if (matchedInc?.batches?.batch_number && item.batchNumber !== matchedInc.batches.batch_number) {
-      const oldBatchNum = item.batchNumber;
-      item.batchNumber = matchedInc.batches.batch_number;
-      if (item.batch) item.batch.batch_number = matchedInc.batches.batch_number;
-      if (item.fileName && oldBatchNum) {
-        item.fileName = item.fileName.replace(oldBatchNum, matchedInc.batches.batch_number);
-      }
-      archiveUpdated = true;
-    }
-  }
+async function _saveToArchive(incident, batch, incidentData) {
   const isDispose = (incidentData?.actionTaken || incident?.action_taken || '').toLowerCase().includes('dispos');
   const actionTaken = isDispose ? 'Disposed' : 'Quarantined';
   const fileName = getDefectPdfFileName(batch?.batch_number, actionTaken);
@@ -256,27 +238,26 @@ function _saveToArchive(incident, batch, incidentData) {
     generatedOn: new Date().toISOString(),
     fileName,
     batchNumber: batch?.batch_number || '—',
-    actionTaken,
-    incidentData: {
-      classification:   incidentData?.classification || incident?.classification,
-      quantityAffected: incidentData?.quantityAffected || incident?.quantity_affected,
-      actionTaken:      incidentData?.actionTaken || actionTaken,
-      remarks:          incidentData?.remarks || incident?.remarks || '',
-      imageData:        incidentData?.imageData || null,
-      evidenceUrl:      incident?.evidence_url || null,
-    },
-    batch: {
-      id:           batch?.id,
-      batch_number: batch?.batch_number,
-      quantity:     batch?.quantity,
-      commodities: {
-        id:   batch?.commodities?.id,
-        name: batch?.commodities?.name,
-        unit: batch?.commodities?.unit
-      }
-    }
+    actionTaken
   };
 
+  // 1. Save lightweight reference to Supabase (max 20 enforced by DB trigger)
+  if (_profile?.id) {
+    try {
+      await supabase.from('user_defect_archive').insert({
+        user_id:      _profile.id,
+        incident_id:  incident?.id || null,
+        file_name:    fileName,
+        batch_number: batch?.batch_number || '—',
+        action_taken: actionTaken
+      });
+    } catch (dbErr) {
+      console.warn(`${MODULE} Supabase defect archive write error:`, dbErr);
+    }
+  }
+
+  // 2. Local mirror fallback (max 20, no heavy images)
+  let archive = _getArchive();
   archive.unshift(entry);
   const trimmed = archive.slice(0, 20);
   const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;

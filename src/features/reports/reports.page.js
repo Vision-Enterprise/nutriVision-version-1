@@ -1,3 +1,4 @@
+import { supabase } from '../../core/supabase.js';
 import { renderReportsLayout, renderArchiveRows } from './reports.render.js';
 import {
   fetchCommodityOptions,
@@ -260,7 +261,7 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
 
 // ─── Archive ────────────────────────────────────────────────────────────────
 
-function _saveToArchive(modelId, title, filters, format) {
+async function _saveToArchive(modelId, title, filters, format) {
   let paramsStr = '';
   try {
     const commStr = filters.commodityName || 'All Commodities';
@@ -286,11 +287,28 @@ function _saveToArchive(modelId, title, filters, format) {
       format
     };
 
-    // Save strictly to user-specific localStorage key
+    // 1. Cloud persistence: Supabase user_report_archive (max 20 enforced by DB trigger)
+    if (_profile?.id) {
+      try {
+        await supabase.from('user_report_archive').insert({
+          user_id:     _profile.id,
+          report_name: title,
+          file_name:   fileName,
+          model_id:    modelId,
+          parameters:  paramsStr,
+          filters,
+          format
+        });
+      } catch (dbErr) {
+        console.warn(`${MODULE} Supabase archive write error:`, dbErr);
+      }
+    }
+
+    // 2. Local mirror fallback (max 20)
     const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
     let history = [];
     try {
-      history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+      history = JSON.parse(localStorage.getItem(userArchiveKey)) || [];
     } catch {
       history = [];
     }
@@ -302,15 +320,48 @@ function _saveToArchive(modelId, title, filters, format) {
   }
 }
 
-function _refreshArchiveTable() {
+async function _refreshArchiveTable() {
   const tbody = _el?.querySelector('#report-archive-tbody');
   if (!tbody) return;
 
-  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
   let history = [];
-  try {
-    history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-  } catch {}
+
+  // 1. Cloud fetch: last 20 reports for this user
+  if (_profile?.id) {
+    try {
+      const { data, error } = await supabase
+        .from('user_report_archive')
+        .select('*')
+        .eq('user_id', _profile.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        history = data.map(row => ({
+          id:          row.id,
+          name:        row.report_name,
+          fileName:    row.file_name,
+          modelId:     row.model_id,
+          parameters:  row.parameters,
+          filters:     row.filters,
+          format:      row.format,
+          generatedOn: new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        }));
+        const userArchiveKey = `${ARCHIVE_KEY}_${_profile.id}`;
+        localStorage.setItem(userArchiveKey, JSON.stringify(history));
+      }
+    } catch (dbErr) {
+      console.warn(`${MODULE} Cloud archive fetch failed:`, dbErr);
+    }
+  }
+
+  // 2. Offline / local fallback
+  if (history.length === 0) {
+    const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+    try {
+      history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+    } catch {}
+  }
 
   tbody.innerHTML = renderArchiveRows(history);
 
@@ -325,8 +376,16 @@ function _refreshArchiveTable() {
         true
       );
       if (!confirmed) return;
-      localStorage.removeItem(userArchiveKey); localStorage.removeItem(ARCHIVE_KEY);
-      _refreshArchiveTable();
+
+      if (_profile?.id) {
+        try {
+          await supabase.from('user_report_archive').delete().eq('user_id', _profile.id);
+        } catch (e) {}
+      }
+      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+      localStorage.removeItem(userArchiveKey);
+      localStorage.removeItem(ARCHIVE_KEY);
+      await _refreshArchiveTable();
     };
   }
 
@@ -343,7 +402,7 @@ function _refreshArchiveTable() {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const item = history.find(h => h.id === id);
-      const name = item?.fileName || buildReportFileName(item?.modelId, item?.filters, item?.format, item?.generatedOn) || item?.name || 'this report';
+      const name = item?.fileName || item?.name || 'this report';
       const confirmed = await SystemDialog.confirm(
         `Remove "${name}" from report archive history?`,
         'Remove Archived Report',
@@ -352,9 +411,15 @@ function _refreshArchiveTable() {
       );
       if (!confirmed) return;
 
+      if (_profile?.id) {
+        try {
+          await supabase.from('user_report_archive').delete().eq('id', id);
+        } catch (e) {}
+      }
+      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
       const updated = history.filter(h => h.id !== id);
       localStorage.setItem(userArchiveKey, JSON.stringify(updated));
-      _refreshArchiveTable();
+      await _refreshArchiveTable();
     });
   });
 }
