@@ -14,7 +14,7 @@ export function renderReportsLayout() {
     <!-- Page Header -->
     <div class="page-header">
       <h1 class="page-header__title">Analytics &amp; Reporting</h1>
-      <p class="page-header__subtitle">Generate and export official MNAO inventory, distribution, stock summary, and wastage reports.</p>
+      <p class="page-header__subtitle">Generate and export official MNAO batch inventory, barangay distribution, and stock summary reports.</p>
     </div>
 
     <!-- Report Configuration Card -->
@@ -70,7 +70,7 @@ export function renderReportsLayout() {
             display: flex; align-items: flex-start; gap: var(--space-3);
             padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
             border: 1px solid var(--color-border); box-shadow: none; background: transparent;
-            margin-bottom: var(--space-3); cursor: pointer;
+            cursor: pointer;
             transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
           ">
             <input type="radio" name="report_model" value="allocation"
@@ -78,22 +78,6 @@ export function renderReportsLayout() {
             <div>
               <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Commodity Stock Summary Report</div>
               <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Physical stock balance per commodity, active batch counts, and cumulative units released.</div>
-            </div>
-          </label>
-
-          <!-- 4. Defect, Quarantine & Wastage Report -->
-          <label class="report-model-option" data-model="defects" style="
-            display: flex; align-items: flex-start; gap: var(--space-3);
-            padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
-            border: 1px solid var(--color-border); box-shadow: none; background: transparent;
-            cursor: pointer;
-            transition: border-color var(--transition-md3), background var(--transition-md3), box-shadow var(--transition-md3);
-          ">
-            <input type="radio" name="report_model" value="defects"
-              style="margin-top: 3px; accent-color: var(--color-primary); flex-shrink: 0;">
-            <div>
-              <div style="font-weight: var(--font-weight-semibold); color: var(--color-text); font-size: var(--font-size-sm);">Defect, Quarantine &amp; Wastage Report</div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">Accountability audit of damaged, quarantined, or disposed stock incidents.</div>
             </div>
           </label>
         </div>
@@ -151,16 +135,6 @@ export function renderReportsLayout() {
             <label class="form-label" for="report-filter-barangay">Filter by Destination Barangay <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
             <select id="report-filter-barangay" class="form-select">
               <option value="all">All Barangays</option>
-            </select>
-          </div>
-
-          <!-- Defect Action filter — Defects only -->
-          <div id="filter-group-defect-action" class="form-group" style="display: none;">
-            <label class="form-label" for="report-filter-defect-action">Filter by Disposition / Action</label>
-            <select id="report-filter-defect-action" class="form-select">
-              <option value="all">All Defect &amp; Wastage Incidents</option>
-              <option value="Quarantined">Quarantined Stock Only</option>
-              <option value="Disposed">Disposed / Written-Off Stock Only</option>
             </select>
           </div>
 
@@ -270,14 +244,12 @@ export function renderArchiveRows(historyArr = []) {
         <td style="text-align: right; white-space: nowrap;">
           <div class="table-actions">
             ${isPdf ? `
-              <button class="btn-table-action btn-replay-report" data-id="${item.id}" type="button" title="View / Print report" aria-label="View report">
-                <span class="icon icon--sm" style="font-size: 15px;">visibility</span>
-                View
+              <button class="btn-table-icon btn-replay-report" data-id="${item.id}" type="button" title="View / Print report" aria-label="View report">
+                <span class="icon">visibility</span>
               </button>
             ` : `
-              <button class="btn-table-action btn-replay-report" data-id="${item.id}" type="button" title="Download CSV" aria-label="Download CSV">
-                <span class="icon icon--sm" style="font-size: 15px;">download</span>
-                Download
+              <button class="btn-table-icon btn-replay-report" data-id="${item.id}" type="button" title="Download CSV" aria-label="Download CSV">
+                <span class="icon">download</span>
               </button>
             `}
             <button class="btn-table-icon btn-table-icon--danger btn-delete-report" data-id="${item.id}" type="button" title="Delete from history" aria-label="Delete report">
