@@ -7,7 +7,7 @@ import {
   fetchAllocationBalances,
   fetchDefectWastageReport
 } from './reports.service.js';
-import { exportToCSV } from './reports.export.js';
+import { exportToCSV, buildReportFileName } from './reports.export.js';
 import { showPrintPreview } from './reports.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
@@ -276,6 +276,7 @@ function _saveToArchive(modelId, title, filters, format) {
     const entry = {
       id: Date.now().toString(),
       name: title,
+      fileName: buildReportFileName(modelId, filters, format),
       modelId,
       filters,
       parameters: paramsStr,
@@ -338,7 +339,7 @@ function _refreshArchiveTable() {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const item = history.find(h => h.id === id);
-      const name = item?.name || 'this report';
+      const name = item?.fileName || buildReportFileName(item?.modelId, item?.filters, item?.format, item?.generatedOn) || item?.name || 'this report';
       const confirmed = await SystemDialog.confirm(
         `Remove "${name}" from report archive history?`,
         'Remove Archived Report',

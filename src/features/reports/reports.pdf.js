@@ -1,4 +1,5 @@
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { buildReportFileName } from './reports.export.js';
 
 function _esc(str) {
   return String(str ?? '')
@@ -212,8 +213,7 @@ function generateReportHTML(title, data, modelId, filters = {}, profile) {
     summaryRow = '';
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const fileTitle = `NutriVision_${(title || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_')}_${todayStr}`;
+  const fileTitle = buildReportFileName(modelId, filters, 'PDF').replace(/\.pdf$/i, '');
 
   return `
     <!DOCTYPE html>
@@ -307,8 +307,7 @@ function generateReportHTML(title, data, modelId, filters = {}, profile) {
  * Shows the Print Preview Modal and handles actual printing
  */
 export function showPrintPreview(title, data, modelId, filters, profile, onConfirm) {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const fileTitle = `NutriVision_${(title || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_')}_${todayStr}`;
+  const fileTitle = buildReportFileName(modelId, filters, 'PDF').replace(/\.pdf$/i, '');
 
   const originalTitle = document.title;
   document.title = fileTitle;

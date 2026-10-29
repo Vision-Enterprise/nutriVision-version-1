@@ -5,6 +5,7 @@
 
 import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { upgradeLegacyBatchCodes } from '../batches/batches.service.js';
 
 const MODULE = '[DefectsService]';
 
@@ -51,7 +52,7 @@ export async function fetchDefectIncidents(filter = 'all') {
         evidence_url, remarks, reported_at, reported_by,
         scope, remaining_quarantined,
         batches!inner (
-          id, batch_number, quantity,
+          id, batch_number, quantity, delivery_date, expiration_date, supplier, created_at,
           commodities!inner ( id, name, unit )
         )
       `)
@@ -71,6 +72,10 @@ export async function fetchDefectIncidents(filter = 'all') {
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
       nameMap = (profiles || []).reduce((acc, p) => { acc[p.id] = p.full_name; return acc; }, {});
     }
+
+    // Auto-upgrade legacy batch codes on referenced batches
+    const batchList = (data || []).map(i => i.batches).filter(Boolean);
+    await upgradeLegacyBatchCodes(batchList);
 
     const incidents = (data || []).map(i => ({
       ...i,

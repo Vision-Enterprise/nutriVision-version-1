@@ -1,6 +1,43 @@
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 
+/**
+ * Builds the exact download filename (.pdf or .csv) for any report configuration.
+ */
+export function buildReportFileName(modelId, filters = {}, format = 'PDF', customDateStr = null) {
+  let datePart = customDateStr;
+  if (!datePart) {
+    datePart = getLocalDateString();
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const parsed = new Date(datePart);
+    datePart = !isNaN(parsed.getTime()) ? getLocalDateString(parsed) : getLocalDateString();
+  }
+
+  const ext = String(format || 'PDF').toUpperCase() === 'CSV' ? 'csv' : 'pdf';
+  const commPart = filters?.commodityName && filters.commodityName !== 'All Commodities'
+    ? `_${filters.commodityName.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 24)}`
+    : '';
+
+  if (modelId === 'batches' || modelId === 'fefo') {
+    const isFefoRisk = modelId === 'fefo' || filters?.expiryStatus === 'fefo_risk';
+    const base = isFefoRisk ? 'MNAO_FEFO_Expiry_Risk_Report' : 'MNAO_Batch_Inventory_Report';
+    return `${base}${commPart}_${datePart}.${ext}`;
+  }
+
+  if (modelId === 'distribution') {
+    const brgyPart = filters?.barangay && filters.barangay !== 'all'
+      ? `_${filters.barangay.replace(/[^a-zA-Z0-9]+/g, '_')}`
+      : '';
+    return `MNAO_Distribution_Report${brgyPart}${commPart}_${datePart}.${ext}`;
+  }
+
+  if (modelId === 'allocation') {
+    return `MNAO_Commodity_Stock_Summary${commPart}_${datePart}.${ext}`;
+  }
+
+  return `MNAO_Report_${datePart}.${ext}`;
+}
+
 function _csvSafe(val) {
   if (val === null || val === undefined) return '""';
   const str = String(val).replace(/\r?\n/g, ' ').trim();
@@ -29,11 +66,9 @@ export function exportToCSV(data, modelId, filters = {}) {
   }
 
   let csvContent = '';
-  let filename = 'NutriVision_Report.csv';
-  const today = getLocalDateString();
+  const filename = buildReportFileName(modelId, filters, 'CSV');
 
   if (modelId === 'batches' || modelId === 'fefo') {
-    filename = `MNAO_Batch_Inventory_Report_${today}.csv`;
     csvContent += 'Batch Code,Commodity,SKU,Category,Supplier / Source,Delivery Date,Expiration Date,Days Remaining,Expiry Status,Quantity On Hand,Unit\n';
 
     let totalUnits = 0;
@@ -60,7 +95,6 @@ export function exportToCSV(data, modelId, filters = {}) {
     csvContent += `"TOTAL (${data.length} Batches)",,,,,,,,,${totalUnits},""\n`;
   }
   else if (modelId === 'distribution') {
-    filename = `MNAO_Distribution_Report_${today}.csv`;
     csvContent += 'Date Released,Destination Barangay,Recipient,Commodity,SKU,Batch Code,Supplier / Source,Quantity Released,Unit,Released By,Notes\n';
 
     let totalReleased = 0;
@@ -84,7 +118,6 @@ export function exportToCSV(data, modelId, filters = {}) {
     csvContent += `"TOTAL (${data.length} Releases)",,,,,,,${totalReleased},"","",""\n`;
   }
   else if (modelId === 'allocation') {
-    filename = `MNAO_Commodity_Stock_Summary_${today}.csv`;
     csvContent += 'Commodity Code (SKU),Commodity Name,Category,Unit,Active Batches,Near-Expiry / Expired Batches,Total Stock On Hand,Total Released to Date,Earliest Expiry Date\n';
 
     let grandOnHand = 0;
@@ -110,29 +143,6 @@ export function exportToCSV(data, modelId, filters = {}) {
     });
 
     csvContent += `"TOTAL (${data.length} Commodities)",,,,${grandBatches},,${grandOnHand},${grandReleased},""\n`;
-  }
-  else if (modelId === 'defects') {
-    filename = `MNAO_Defect_Wastage_Report_${today}.csv`;
-    csvContent += 'Date Reported,Batch Code,Commodity,SKU,Classification / Issue,Disposition Action,Quantity Affected,Unit,Reported By,Remarks\n';
-
-    let totalAffected = 0;
-    data.forEach(item => {
-      totalAffected += Number(item.quantity_affected || 0);
-      csvContent += [
-        _csvSafe(_fmtDate(item.reported_at)),
-        _csvSafe(item.batches?.batch_number || ''),
-        _csvSafe(item.batches?.commodities?.name || ''),
-        _csvSafe(item.batches?.commodities?.commodity_code || ''),
-        _csvSafe(item.classification || ''),
-        _csvSafe(item.action_taken || ''),
-        Number(item.quantity_affected || 0),
-        _csvSafe(item.batches?.commodities?.unit || ''),
-        _csvSafe(item.reported_by_name || 'Staff'),
-        _csvSafe(item.remarks || '')
-      ].join(',') + '\n';
-    });
-
-    csvContent += `"TOTAL (${data.length} Incidents)",,,,,,${totalAffected},"","",""\n`;
   }
 
   // Trigger download (with UTF-8 BOM for Excel)

@@ -8,6 +8,7 @@
  */
 
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { buildReportFileName } from './reports.export.js';
 
 export function renderReportsLayout() {
   return `
@@ -188,7 +189,7 @@ export function renderReportsLayout() {
         <table class="table">
           <thead>
             <tr>
-              <th>Report Name</th>
+              <th>Report File Name</th>
               <th>Parameters</th>
               <th>Generated On</th>
               <th>Format</th>
@@ -228,14 +229,15 @@ export function renderArchiveRows(historyArr = []) {
   return historyArr.map(item => {
     const isPdf = item.format === 'PDF';
     const badgeClass = isPdf ? 'badge badge-near-expiry' : 'badge badge-active';
+    const displayFileName = item.fileName || buildReportFileName(item.modelId, item.filters, item.format, item.generatedOn);
     return `
       <tr>
         <td style="font-weight: var(--font-weight-medium);">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="icon" style="font-size: 18px; color: ${isPdf ? '#e05252' : '#10b981'};">
+            <span class="icon" style="font-size: 18px; color: ${isPdf ? '#e05252' : '#10b981'}; flex-shrink: 0;">
               ${isPdf ? 'picture_as_pdf' : 'table_view'}
             </span>
-            <span>${item.name}</span>
+            <span style="word-break: break-all;">${displayFileName}</span>
           </div>
         </td>
         <td style="color: var(--color-text-muted); font-size: var(--font-size-sm);">${item.parameters}</td>

@@ -3,6 +3,8 @@
  * Uses system CSS classes exclusively.
  */
 
+import { renderBatchCodeBadge } from '../batches/batches.render.js';
+
 export function renderDefectsLayout() {
   return `
     <div class="page-header">
@@ -139,14 +141,14 @@ export function renderIncidentRows(incidents = []) {
       qtyStr = `${remaining} ${inc.batches?.commodities?.unit || ''}`;
       
       if (remaining > 0) {
-        actionHtml = `<button class="btn btn-sm btn-restore-incident" data-id="${inc.id}" style="font-size: 11px; padding: 3px 8px; white-space: nowrap;">Restore</button>`;
+        actionHtml = `<div class="table-actions"><button class="btn-table-action btn-restore-incident" data-id="${inc.id}" type="button"><span class="icon icon--sm" style="font-size: 15px;">restore</span> Restore</button></div>`;
       }
     }
 
     return `
       <tr>
         <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
-        <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-family: monospace; font-size: 11px; white-space: nowrap;">${inc.batches?.batch_number || '—'}</td>
+        <td style="padding: 8px 6px; white-space: nowrap;">${renderBatchCodeBadge(inc.batches?.batch_number || '—')}</td>
         <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px;">${inc.batches?.commodities?.name || '—'}</td>
         <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted);">${inc.classification}</td>
         <td style="padding: 8px 6px; text-align: center; white-space: nowrap;">${scopeBadge}</td>
@@ -186,15 +188,15 @@ export function renderPdfArchiveRows(archiveArr = []) {
       <tr>
         <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
         <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px; word-break: break-all;">${displayFileName}</td>
-        <td style="padding: 8px 6px; font-family: monospace; font-size: 11px; color: var(--color-text-muted); white-space: nowrap;">${item.batchNumber}</td>
+        <td style="padding: 8px 6px; white-space: nowrap;">${renderBatchCodeBadge(item.batchNumber || '—')}</td>
         <td style="padding: 8px 6px; font-size: 12px; white-space: nowrap;">${type}</td>
         <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">
-          <div style="display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end;">
-            <button class="btn btn-icon btn-replay-defect-pdf" data-id="${item.id}" title="View / Print PDF" aria-label="View PDF" style="width: 28px; height: 28px;">
-              <span class="icon" style="font-size: 18px;">visibility</span>
+          <div class="table-actions">
+            <button class="btn-table-icon btn-replay-defect-pdf" data-id="${item.id}" type="button" title="View / Print PDF" aria-label="View PDF">
+              <span class="icon">visibility</span>
             </button>
-            <button class="btn btn-icon btn-delete-defect-pdf" data-id="${item.id}" title="Delete from history" aria-label="Delete report" style="width: 28px; height: 28px; color: var(--color-danger);">
-              <span class="icon" style="font-size: 18px;">delete_outline</span>
+            <button class="btn-table-icon btn-table-icon--danger btn-delete-defect-pdf" data-id="${item.id}" type="button" title="Delete from history" aria-label="Delete report">
+              <span class="icon">delete_outline</span>
             </button>
           </div>
         </td>
