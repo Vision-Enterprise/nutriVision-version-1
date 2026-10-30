@@ -1,4 +1,4 @@
-import { printReportHtml } from '../../shared/utils/print.utils.js';
+import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { buildReportFileName } from './reports.export.js';
 
@@ -364,11 +364,20 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
   closeBtn.className = 'btn btn-ghost';
   
   const printBtn = document.createElement('button');
-  printBtn.innerHTML = '<span class="icon" style="font-size:18px; margin-right:6px;">print</span> Print / Save PDF';
-  printBtn.className = 'btn btn-primary';
+  printBtn.innerHTML = '<span class="icon" style="font-size:18px; margin-right:6px;">print</span> Print';
+  printBtn.className = 'btn btn-secondary';
+  printBtn.style.display = 'inline-flex';
+  printBtn.style.alignItems = 'center';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.innerHTML = '<span class="icon" style="font-size:18px; margin-right:6px;">download</span> Save PDF';
+  saveBtn.className = 'btn btn-primary';
+  saveBtn.style.display = 'inline-flex';
+  saveBtn.style.alignItems = 'center';
 
   actions.appendChild(closeBtn);
   actions.appendChild(printBtn);
+  actions.appendChild(saveBtn);
   toolbar.appendChild(titleEl);
   toolbar.appendChild(actions);
 
@@ -412,5 +421,18 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
   printBtn.onclick = () => {
     printReportHtml(fileTitle, htmlContent);
     if (typeof onConfirm === 'function') onConfirm();
+  };
+  saveBtn.onclick = async () => {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="icon" style="font-size:18px; margin-right:6px;">hourglass_top</span> Saving...';
+    try {
+      await downloadReportPdf(fileTitle, htmlContent, 'landscape');
+      if (typeof onConfirm === 'function') onConfirm();
+    } catch (err) {
+      console.error('Error saving PDF:', err);
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span class="icon" style="font-size:18px; margin-right:6px;">download</span> Save PDF';
+    }
   };
 }

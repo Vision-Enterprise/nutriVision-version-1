@@ -1,4 +1,4 @@
-import { printReportHtml } from '../../shared/utils/print.utils.js';
+import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 /**
  * Milk Bank — Official Print / PDF Export Generator
  * Formatted precisely for A4 Landscape print/PDF export matching official paper forms.
@@ -39,13 +39,22 @@ function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
             background: #fff; cursor: pointer; font-size: 14px; color: #475569;
           ">Close</button>
           <button id="milk-preview-print" style="
+            padding: 8px 18px; border-radius: 8px; border: 1px solid #cbd5e1;
+            background: #fff; color: #334155; cursor: pointer;
+            font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+          ">
+            <span class="icon" style="font-size:18px;">print</span>
+            Print
+          </button>
+          <button id="milk-preview-save" style="
             padding: 8px 20px; border-radius: 8px; border: none;
             background: #0284c7; color: #fff; cursor: pointer;
             font-size: 14px; font-weight: 600;
             display: flex; align-items: center; gap: 6px;
           ">
-            <span class="icon" style="font-size:18px;">print</span>
-            Print / Save PDF
+            <span class="icon" style="font-size:18px;">download</span>
+            Save PDF
           </button>
         </div>
       </div>
@@ -78,6 +87,22 @@ function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
   document.getElementById('milk-preview-print').addEventListener('click', () => {
     printReportHtml(pdfFilename, htmlContent);
   });
+
+  const saveBtn = document.getElementById('milk-preview-save');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="icon" style="font-size:18px;">hourglass_top</span> Saving...';
+      try {
+        await downloadReportPdf(pdfFilename, htmlContent, 'landscape');
+      } catch (err) {
+        console.error('Error saving milk report PDF:', err);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="icon" style="font-size:18px;">download</span> Save PDF';
+      }
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

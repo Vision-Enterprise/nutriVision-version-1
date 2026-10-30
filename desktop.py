@@ -135,9 +135,12 @@ def launch():
                     dialog.InitialDirectory = os.path.expanduser('~/Downloads')
 
                 suggested_name = os.path.basename(args.ResultFilePath or '')
-                if not suggested_name or suggested_name.lower() in ('download', 'untitled'):
-                    suggested_name = 'NutriVision_Export.csv'
-
+                ext = os.path.splitext(suggested_name)[1].lower()
+                mime_type = getattr(args, 'MimeType', '') or ''
+                uri = str(getattr(args.DownloadOperation, 'Uri', '') or '')
+                is_pdf = ext == '.pdf' or 'pdf' in mime_type.lower() or uri.lower().endswith('.pdf')
+                if not suggested_name or suggested_name.lower() in ('download', 'untitled', 'download.pdf'):
+                    suggested_name = 'NutriVision_Report.pdf' if is_pdf else 'NutriVision_Export.csv'
                 ext = os.path.splitext(suggested_name)[1].lower()
                 if ext == '.csv':
                     dialog.Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*"

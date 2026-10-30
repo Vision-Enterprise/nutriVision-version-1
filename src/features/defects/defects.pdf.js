@@ -1,4 +1,4 @@
-import { printReportHtml } from '../../shared/utils/print.utils.js';
+import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 /**
  * Defects Module — PDF Print Preview
  * Generates the official Incident/Quarantine Report HTML and shows
@@ -57,13 +57,22 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
             background: transparent; cursor: pointer; font-size: 14px; color: #555;
           ">Cancel</button>
           <button id="defect-preview-print" style="
+            padding: 8px 18px; border-radius: 8px; border: 1px solid #cbd5e1;
+            background: #fff; color: #334155; cursor: pointer;
+            font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+          ">
+            <span class="icon" style="font-size:18px;">print</span>
+            Print
+          </button>
+          <button id="defect-preview-save" style="
             padding: 8px 20px; border-radius: 8px; border: none;
             background: #1b7a3e; color: #fff; cursor: pointer;
             font-size: 14px; font-weight: 600;
             display: flex; align-items: center; gap: 6px;
           ">
-            <span class="icon" style="font-size:18px;">print</span>
-            Print / Save PDF
+            <span class="icon" style="font-size:18px;">download</span>
+            Save PDF
           </button>
         </div>
       </div>
@@ -95,12 +104,28 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
     }
   };
 
+  const saveBtn = overlay.querySelector('#defect-preview-save');
+
   cancelBtn.onclick = cleanup;
   printBtn.onclick  = () => {
     printReportHtml(pdfTitle, html);
-    // Only save to DB after confirming print
     if (typeof onConfirm === 'function') onConfirm();
   };
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="icon" style="font-size:18px;">hourglass_top</span> Saving...';
+      try {
+        await downloadReportPdf(pdfTitle, html, 'portrait');
+        if (typeof onConfirm === 'function') onConfirm();
+      } catch (err) {
+        console.error('Error saving defect PDF:', err);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="icon" style="font-size:18px;">download</span> Save PDF';
+      }
+    };
+  }
 }
 
 // ─── HTML Generation ──────────────────────────────────────────────────────────
