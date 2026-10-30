@@ -1,3 +1,4 @@
+import { printReportHtml } from '../../shared/utils/print.utils.js';
 /**
  * Defects Module — PDF Print Preview
  * Generates the official Incident/Quarantine Report HTML and shows
@@ -79,17 +80,16 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
   const cancelBtn = overlay.querySelector('#defect-preview-cancel');
   const printBtn  = overlay.querySelector('#defect-preview-print');
 
-  // Write content into iframe
-  iframe.srcdoc = html;
-  try {
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-  } catch (e) {}
+  // Write content into iframe via Blob URL
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  iframe.src = blobUrl;
 
   const cleanup = () => {
+    try { URL.revokeObjectURL(blobUrl); } catch (e) {}
     document.title = originalTitle;
+    const printArea = document.getElementById('nv-print-area');
+    if (printArea) printArea.innerHTML = '';
     if (document.body.contains(overlay)) {
       document.body.removeChild(overlay);
     }
@@ -97,16 +97,7 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
 
   cancelBtn.onclick = cleanup;
   printBtn.onclick  = () => {
-    document.title = pdfTitle;
-    try {
-      if (iframe.contentDocument) iframe.contentDocument.title = pdfTitle;
-    } catch (e) {}
-
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-
-    // Retain file title until preview modal is closed or cleaned up
-
+    printReportHtml(pdfTitle, html);
     // Only save to DB after confirming print
     if (typeof onConfirm === 'function') onConfirm();
   };

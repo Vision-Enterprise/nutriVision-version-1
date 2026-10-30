@@ -89,11 +89,81 @@ def launch():
     # 2. Launch native desktop window via pywebview (enforcing Edge WebView2)
     import webview  # type: ignore
 
+    # Allow downloads so that CSV / Excel and file exports trigger file saving
+    webview.settings['ALLOW_DOWNLOADS'] = True
+
     try:
         import importlib
         import webview.platforms.edgechromium as ec  # type: ignore
         wv2_core = importlib.import_module("Microsoft.Web.WebView2.Core")
         allow_state = getattr(wv2_core.CoreWebView2PermissionState, "Allow", 1)
+
+        # Hook EdgeChrome.__init__ to enable browser print preview (identical to Vercel/browser experience)
+        orig_init = ec.EdgeChrome.__init__
+        def custom_init(self, form, window, cache_dir):
+            orig_init(self, form, window, cache_dir)
+            try:
+                if hasattr(self, 'webview') and self.webview.CreationProperties:
+                    current_args = self.webview.CreationProperties.AdditionalBrowserArguments or ''
+                    if '--enable-features=msWebView2BrowserPrintPreview' not in current_args:
+                        self.webview.CreationProperties.AdditionalBrowserArguments = (
+                            current_args + ' --enable-features=msWebView2BrowserPrintPreview'
+                        ).strip()
+                        log_msg(f"Configured WebView2 browser arguments: {self.webview.CreationProperties.AdditionalBrowserArguments}")
+            except Exception as ex:
+                log_msg(f"Error configuring AdditionalBrowserArguments: {ex}")
+
+        ec.EdgeChrome.__init__ = custom_init
+
+        # Custom download handler to guarantee pre-populated filename and correct filter
+        def custom_on_download_starting(self, sender, args):
+            try:
+                log_msg(f"Download starting: {args.ResultFilePath} (Uri: {args.DownloadOperation.Uri})")
+                import winreg
+                import System.Windows.Forms as WinForms  # type: ignore
+                dialog = WinForms.SaveFileDialog()
+
+                try:
+                    with winreg.OpenKey(
+                        winreg.HKEY_CURRENT_USER,
+                        r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',
+                    ) as windows_key:
+                        dialog.InitialDirectory = winreg.QueryValueEx(
+                            windows_key, '{374DE290-123F-4565-9164-39C4925E467B}'
+                        )[0]
+                except Exception:
+                    dialog.InitialDirectory = os.path.expanduser('~/Downloads')
+
+                suggested_name = os.path.basename(args.ResultFilePath or '')
+                if not suggested_name or suggested_name.lower() in ('download', 'untitled'):
+                    suggested_name = 'NutriVision_Export.csv'
+
+                ext = os.path.splitext(suggested_name)[1].lower()
+                if ext == '.csv':
+                    dialog.Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*"
+                    dialog.DefaultExt = "csv"
+                elif ext == '.pdf':
+                    dialog.Filter = "PDF Files (*.pdf)|*.pdf|All Files (*.*)|*.*"
+                    dialog.DefaultExt = "pdf"
+                else:
+                    dialog.Filter = "All Files (*.*)|*.*"
+
+                dialog.RestoreDirectory = True
+                dialog.FileName = suggested_name
+                dialog.Title = "Save As"
+
+                result = dialog.ShowDialog(self.form)
+                if result == WinForms.DialogResult.OK:
+                    args.ResultFilePath = dialog.FileName
+                    log_msg(f"Download saved to: {dialog.FileName}")
+                else:
+                    args.Cancel = True
+                    log_msg("Download cancelled by user.")
+            except Exception as ex:
+                log_msg(f"Error in custom_on_download_starting: {ex}")
+                pass
+
+        ec.EdgeChrome.on_download_starting = custom_on_download_starting
 
         orig_on_webview_ready = ec.EdgeChrome.on_webview_ready
 
@@ -109,9 +179,19 @@ def launch():
                 except Exception as ex:
                     log_msg(f"Failed to attach PermissionRequested handler: {ex}")
 
+                try:
+                    def on_title_changed(s, _):
+                        doc_title = s.DocumentTitle
+                        if doc_title and doc_title.strip() and doc_title != "NutriVision":
+                            self.pywebview_window.set_title(doc_title)
+                    sender.CoreWebView2.DocumentTitleChanged += on_title_changed
+                    log_msg("WebView2 DocumentTitleChanged handler registered successfully.")
+                except Exception as ex:
+                    log_msg(f"Failed to attach DocumentTitleChanged handler: {ex}")
+
         ec.EdgeChrome.on_webview_ready = custom_on_webview_ready
     except Exception as e:
-        log_msg(f"Could not hook WebView2 permissions: {e}")
+        log_msg(f"Could not hook WebView2 customization: {e}")
 
     window = webview.create_window(
         title="NutriVision — Commodity Inventory System",

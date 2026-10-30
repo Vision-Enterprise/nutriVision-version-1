@@ -35,6 +35,10 @@ export function buildReportFileName(modelId, filters = {}, format = 'PDF', custo
     return `MNAO_Commodity_Stock_Summary${commPart}_${datePart}.${ext}`;
   }
 
+  if (modelId === 'defects') {
+    return `MNAO_Defect_Wastage_Report${commPart}_${datePart}.${ext}`;
+  }
+
   return `MNAO_Report_${datePart}.${ext}`;
 }
 
@@ -143,6 +147,28 @@ export function exportToCSV(data, modelId, filters = {}) {
     });
 
     csvContent += `"TOTAL (${data.length} Commodities)",,,,${grandBatches},,${grandOnHand},${grandReleased},""\n`;
+  }
+  else if (modelId === 'defects') {
+    csvContent += 'Date Reported,Batch Code,Commodity,SKU,Classification / Defect,Disposition Action,Quantity Affected,Unit,Reported By,Remarks\n';
+
+    let totalAffected = 0;
+    data.forEach(item => {
+      totalAffected += Number(item.quantity_affected || 0);
+      csvContent += [
+        _csvSafe(_fmtDate(item.reported_at)),
+        _csvSafe(item.batches?.batch_number || ''),
+        _csvSafe(item.batches?.commodities?.name || ''),
+        _csvSafe(item.batches?.commodities?.commodity_code || ''),
+        _csvSafe(item.classification || ''),
+        _csvSafe(item.action_taken || ''),
+        Number(item.quantity_affected || 0),
+        _csvSafe(item.batches?.commodities?.unit || ''),
+        _csvSafe(item.reported_by_name || 'Staff'),
+        _csvSafe(item.remarks || '')
+      ].join(',') + '\n';
+    });
+
+    csvContent += `"TOTAL (${data.length} Incidents)",,,,,,${totalAffected},"","",""\n`;
   }
 
   // Trigger download (with UTF-8 BOM for Excel)

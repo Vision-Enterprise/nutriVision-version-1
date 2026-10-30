@@ -229,7 +229,7 @@ export function renderArchiveRows(historyArr = []) {
   return historyArr.map(item => {
     const isPdf = item.format === 'PDF';
     const badgeClass = isPdf ? 'badge badge-near-expiry' : 'badge badge-active';
-    const displayFileName = item.fileName || buildReportFileName(item.modelId, item.filters, item.format, item.generatedOn);
+    const displayFileName = item.fileName || buildReportFileName(item.modelId || item.model_id, item.filters, item.format, item.generatedOn);
     return `
       <tr>
         <td style="font-weight: var(--font-weight-medium);">

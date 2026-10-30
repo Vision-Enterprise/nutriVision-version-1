@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS public.user_report_archive (
 
 CREATE INDEX IF NOT EXISTS idx_user_report_archive_user ON public.user_report_archive(user_id, created_at DESC);
 
+-- Ensure column exists if table was already created
+ALTER TABLE public.user_report_archive ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT 'PDF';
+
 -- Trigger: Automatically prune older entries beyond 20 per user
 CREATE OR REPLACE FUNCTION public.trim_user_report_archive()
 RETURNS TRIGGER AS $$

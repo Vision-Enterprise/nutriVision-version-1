@@ -1,3 +1,4 @@
+import { printReportHtml } from '../../shared/utils/print.utils.js';
 /**
  * Milk Bank — Official Print / PDF Export Generator
  * Formatted precisely for A4 Landscape print/PDF export matching official paper forms.
@@ -60,21 +61,22 @@ function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
   document.body.appendChild(overlay);
 
   const iframe = document.getElementById('milk-preview-iframe');
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  iframeDoc.open();
-  iframeDoc.write(htmlContent);
-  iframeDoc.close();
+  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  iframe.src = blobUrl;
 
   const cleanup = () => {
+    try { URL.revokeObjectURL(blobUrl); } catch (e) {}
     document.title = originalTitle;
+    const printArea = document.getElementById('nv-print-area');
+    if (printArea) printArea.innerHTML = '';
     overlay.remove();
   };
 
   document.getElementById('milk-preview-cancel').addEventListener('click', cleanup);
 
   document.getElementById('milk-preview-print').addEventListener('click', () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
+    printReportHtml(pdfFilename, htmlContent);
   });
 }
 

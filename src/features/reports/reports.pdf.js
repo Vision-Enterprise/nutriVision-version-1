@@ -1,3 +1,4 @@
+import { printReportHtml } from '../../shared/utils/print.utils.js';
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { buildReportFileName } from './reports.export.js';
 
@@ -393,16 +394,15 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  iframe.srcdoc = htmlContent;
-  try {
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-  } catch (e) {}
+  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  iframe.src = blobUrl;
 
   const cleanup = () => {
+    try { URL.revokeObjectURL(blobUrl); } catch (e) {}
     document.title = originalTitle;
+    const printArea = document.getElementById('nv-print-area');
+    if (printArea) printArea.innerHTML = '';
     if (document.body.contains(overlay)) {
       document.body.removeChild(overlay);
     }
@@ -410,16 +410,7 @@ export function showPrintPreview(title, data, modelId, filters, profile, onConfi
 
   closeBtn.onclick = cleanup;
   printBtn.onclick = () => {
-    document.title = fileTitle;
-    try {
-      if (iframe.contentDocument) iframe.contentDocument.title = fileTitle;
-    } catch (e) {}
-
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-
-    // Retain file title until preview modal is closed or cleaned up
-
+    printReportHtml(fileTitle, htmlContent);
     if (typeof onConfirm === 'function') onConfirm();
   };
 }

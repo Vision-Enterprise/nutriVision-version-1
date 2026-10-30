@@ -307,13 +307,14 @@ async function _saveToArchive(modelId, title, filters, format) {
     const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
     let history = [];
     try {
-      history = JSON.parse(localStorage.getItem(userArchiveKey)) || [];
+      history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
     } catch {
       history = [];
     }
     history.unshift(entry);
     if (history.length > 20) history.pop();
     localStorage.setItem(userArchiveKey, JSON.stringify(history));
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(history));
   } catch (err) {
     console.error(`${MODULE} _saveToArchive error:`, err);
   }
@@ -324,6 +325,7 @@ async function _refreshArchiveTable() {
   if (!tbody) return;
 
   let history = [];
+  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
 
   // 1. Cloud fetch: last 20 reports for this user
   if (_profile?.id) {
@@ -341,12 +343,25 @@ async function _refreshArchiveTable() {
           name:        row.report_name,
           fileName:    row.file_name,
           modelId:     row.model_id,
+          model_id:    row.model_id,
           parameters:  row.parameters,
           filters:     row.filters,
-          format:      row.format,
+          format:      row.format || 'PDF',
           generatedOn: new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         }));
-        const userArchiveKey = `${ARCHIVE_KEY}_${_profile.id}`;
+
+        // Merge any local entries that were saved locally
+        let localHistory = [];
+        try {
+          localHistory = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+        } catch {}
+
+        const dbFileNames = new Set(history.map(h => h.fileName));
+        const unsynced = localHistory.filter(l => l.fileName && !dbFileNames.has(l.fileName));
+        if (unsynced.length > 0) {
+          history = [...unsynced, ...history].slice(0, 20);
+        }
+
         localStorage.setItem(userArchiveKey, JSON.stringify(history));
       }
     } catch (dbErr) {
@@ -356,7 +371,6 @@ async function _refreshArchiveTable() {
 
   // 2. Offline / local fallback
   if (history.length === 0) {
-    const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
     try {
       history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
     } catch {}
@@ -427,7 +441,8 @@ async function _refreshArchiveTable() {
 
 async function _replayReport(item) {
   try {
-    const targetModel = item.modelId === 'fefo' ? 'batches' : item.modelId;
+    const rawModel = item.modelId || item.model_id;
+    const targetModel = rawModel === 'fefo' ? 'batches' : rawModel;
     const radio = _el.querySelector(`input[name="report_model"][value="${targetModel}"]`);
     if (radio) {
       radio.checked = true;
@@ -450,7 +465,7 @@ async function _replayReport(item) {
       if (defSel    && item.filters.defectAction)           defSel.value    = item.filters.defectAction;
     }
 
-    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, item.modelId, item.filters, item.generatedOn);
+    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, targetModel, item.filters, item.generatedOn);
   } catch (err) {
     console.error(`${MODULE} _replayReport error:`, err);
   }
