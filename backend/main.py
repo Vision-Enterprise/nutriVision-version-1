@@ -1025,6 +1025,19 @@ if dist_dir:
     dist_assets = os.path.join(dist_dir, "assets")
     if os.path.exists(dist_assets):
         app.mount("/assets", StaticFiles(directory=dist_assets), name="dist_assets")
+
+    @app.get("/")
+    @app.get("/index.html")
+    async def serve_index():
+        index_file = os.path.join(dist_dir, "index.html")
+        if os.path.exists(index_file):
+            resp = FileResponse(index_file)
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+            return resp
+        return HTMLResponse("<h1>NutriVision</h1><p>index.html not found</p>")
+
     app.mount("/", StaticFiles(directory=dist_dir, html=True), name="frontend")
 
 if __name__ == '__main__':

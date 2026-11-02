@@ -105,11 +105,13 @@ def launch():
             try:
                 if hasattr(self, 'webview') and self.webview.CreationProperties:
                     current_args = self.webview.CreationProperties.AdditionalBrowserArguments or ''
-                    if '--enable-features=msWebView2BrowserPrintPreview' not in current_args:
-                        self.webview.CreationProperties.AdditionalBrowserArguments = (
-                            current_args + ' --enable-features=msWebView2BrowserPrintPreview'
-                        ).strip()
-                        log_msg(f"Configured WebView2 browser arguments: {self.webview.CreationProperties.AdditionalBrowserArguments}")
+                    new_args = current_args
+                    if '--enable-features=msWebView2BrowserPrintPreview' not in new_args:
+                        new_args += ' --enable-features=msWebView2BrowserPrintPreview'
+                    if '--disable-http-cache' not in new_args:
+                        new_args += ' --disable-http-cache'
+                    self.webview.CreationProperties.AdditionalBrowserArguments = new_args.strip()
+                    log_msg(f"Configured WebView2 browser arguments: {self.webview.CreationProperties.AdditionalBrowserArguments}")
             except Exception as ex:
                 log_msg(f"Error configuring AdditionalBrowserArguments: {ex}")
 
