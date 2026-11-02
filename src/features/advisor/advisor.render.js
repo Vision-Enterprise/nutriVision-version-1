@@ -35,14 +35,9 @@ export function renderDrilldownContent(type, data) {
             <strong style="color:#991b1b; font-size:14px;">Expired Batches (${items.length})</strong>
             <span style="font-size:12px; color:#64748b;">Click any batch to inspect in Batches module</span>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/defects'" style="background:#dc2626; border-color:#dc2626; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
-              <span class="icon" style="font-size:15px;">delete_forever</span> Log Defect / Quarantine
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
-              View All Batches
-            </button>
-          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/batches'" style="background:#dc2626; border-color:#dc2626; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+            <span class="icon" style="font-size:15px;">archive</span> Archive This Batch
+          </button>
         </div>
         <div style="display:grid; gap:8px;">
           ${items.map(b => {
@@ -92,14 +87,9 @@ export function renderDrilldownContent(type, data) {
             <strong style="color:#92400e; font-size:14px;">Batches Nearing Expiry (${items.length})</strong>
             <span style="font-size:12px; color:#64748b;">Click any batch to inspect in Batches module</span>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/releases'" style="background:#d97706; border-color:#d97706; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
-              <span class="icon" style="font-size:15px;">local_shipping</span> Dispatch Batches
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
-              View All Batches
-            </button>
-          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/bulk-release'" style="background:#d97706; border-color:#d97706; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+            <span class="icon" style="font-size:15px;">local_shipping</span> Dispatch Batches
+          </button>
         </div>
         <div style="display:grid; gap:8px;">
           ${items.map(b => {
@@ -149,8 +139,8 @@ export function renderDrilldownContent(type, data) {
             <strong style="color:#9a3412; font-size:14px;">Commodity Low Stock Alerts (${items.length})</strong>
             <span style="font-size:12px; color:#64748b;">Replenishment or procurement requested</span>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/commodities'" style="background:#ea580c; border-color:#ea580c; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
-            <span class="icon" style="font-size:15px;">add_box</span> Manage Commodities
+          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/batches?action=add'" style="background:#ea580c; border-color:#ea580c; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+            <span class="icon" style="font-size:15px;">add_box</span> Add Stocks
           </button>
         </div>
         <div style="display:grid; gap:8px;">
@@ -198,7 +188,7 @@ export function renderDrilldownContent(type, data) {
             <span style="font-size:12px; color:#64748b;">Upcoming municipal nutrition events</span>
           </div>
           <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/calendar'" style="background:#9333ea; border-color:#9333ea; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
-            <span class="icon" style="font-size:15px;">calendar_month</span> Open Program Calendar
+            <span class="icon" style="font-size:15px;">calendar_month</span> View Calendar
           </button>
         </div>
         <div style="display:grid; gap:8px;">
