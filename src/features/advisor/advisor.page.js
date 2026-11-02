@@ -9,7 +9,7 @@
 
 import { fetchAdvisorData } from './advisor.service.js';
 import { fetchChartData, fetchDashboardStats } from '../dashboard/dashboard.service.js';
-import { renderAdvisorLayout, renderDrilldownContent } from './advisor.render.js';
+import { renderAdvisorLayout, setupAdvisorChips } from './advisor.render.js';
 import { initAdvCharts, renderAdvChart } from './advisor.charts.js';
 import './advisor.css';
 
@@ -60,33 +60,8 @@ export async function renderAdvisorPage(profile) {
   contentContainer.innerHTML = renderAdvisorLayout(data);
   contentContainer.style.display = 'block';
 
-  // Interactive Chip Drilldowns
-  const chipButtons = contentContainer.querySelectorAll('.advisor-chip-btn');
-  const drilldownTray = document.getElementById('advisor-drilldown-tray');
-  const drilldownContent = document.getElementById('advisor-drilldown-content');
-  let currentActiveTarget = null;
-
-  chipButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.drilldown;
-      if (currentActiveTarget === target) {
-        // Toggle close
-        chipButtons.forEach(b => b.classList.remove('active'));
-        if (drilldownTray) drilldownTray.style.display = 'none';
-        currentActiveTarget = null;
-      } else {
-        // Open selected drilldown
-        chipButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentActiveTarget = target;
-        if (drilldownTray && drilldownContent) {
-          drilldownContent.innerHTML = renderDrilldownContent(target, data);
-          drilldownTray.style.display = 'block';
-          drilldownTray.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }
-    });
-  });
+  // Activate Interactive Summary Chips & Drilldown
+  setupAdvisorChips(contentContainer, data);
 
   // Charts Initialization
   if (statsRes && _advChartData) {

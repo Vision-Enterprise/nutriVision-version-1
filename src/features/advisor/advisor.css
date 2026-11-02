@@ -359,7 +359,7 @@
 }
 
 /* Drilldown Tray Animation */
-#advisor-drilldown-tray {
+.advisor-drilldown-tray {
   animation: fadeInDown 0.25s ease-out;
 }
 

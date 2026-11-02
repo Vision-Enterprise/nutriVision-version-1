@@ -33,14 +33,14 @@ export function renderDrilldownContent(type, data) {
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="icon" style="color:#dc2626;">error</span>
             <strong style="color:#991b1b; font-size:14px;">Expired Batches (${items.length})</strong>
-            <span style="font-size:12px; color:#64748b;">Requires immediate quarantine or disposal</span>
+            <span style="font-size:12px; color:#64748b;">Click any batch to inspect in Batches module</span>
           </div>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/defects'" style="background:#dc2626; border-color:#dc2626; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
               <span class="icon" style="font-size:15px;">delete_forever</span> Log Defect / Quarantine
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
-              View in Batches
+              View All Batches
             </button>
           </div>
         </div>
@@ -48,7 +48,13 @@ export function renderDrilldownContent(type, data) {
           ${items.map(b => {
             const days = getDaysRemaining(b.expirationDate);
             return `
-              <div style="display:flex; justify-content:space-between; align-items:center; background:#fef2f2; border:1px solid #fee2e2; border-radius:6px; padding:8px 12px; gap:12px;">
+              <div 
+                onclick="window.location.hash='#/batches?highlight=${encodeURIComponent(b.batchNumber)}'"
+                style="display:flex; justify-content:space-between; align-items:center; background:#fef2f2; border:1px solid #fee2e2; border-radius:6px; padding:10px 14px; gap:12px; cursor:pointer; transition:all 0.15s ease;"
+                onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 6px rgba(220,38,38,0.12)';"
+                onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fee2e2'; this.style.transform='none'; this.style.boxShadow='none';"
+                title="Click to view batch in Batches module"
+              >
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <strong>${_esc(b.commodityName)}</strong>
                   ${renderBatchCodeBadge(b.batchNumber)}
@@ -57,6 +63,7 @@ export function renderDrilldownContent(type, data) {
                 <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                   <span style="font-size:12px; color:#64748b;">${formatDate(b.expirationDate)}</span>
                   <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:600; font-size:11px; padding:2px 8px; border-radius:9999px;">${Math.abs(days)}d overdue</span>
+                  <span class="icon" style="font-size:16px; color:#991b1b; opacity:0.8;">arrow_forward</span>
                 </div>
               </div>
             `;
@@ -83,14 +90,14 @@ export function renderDrilldownContent(type, data) {
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="icon" style="color:#d97706;">warning</span>
             <strong style="color:#92400e; font-size:14px;">Batches Nearing Expiry (${items.length})</strong>
-            <span style="font-size:12px; color:#64748b;">Priority release recommended under FEFO</span>
+            <span style="font-size:12px; color:#64748b;">Click any batch to inspect in Batches module</span>
           </div>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/releases'" style="background:#d97706; border-color:#d97706; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
               <span class="icon" style="font-size:15px;">local_shipping</span> Dispatch Batches
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
-              View in Batches
+              View All Batches
             </button>
           </div>
         </div>
@@ -98,7 +105,13 @@ export function renderDrilldownContent(type, data) {
           ${items.map(b => {
             const days = getDaysRemaining(b.expirationDate);
             return `
-              <div style="display:flex; justify-content:space-between; align-items:center; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; padding:8px 12px; gap:12px;">
+              <div 
+                onclick="window.location.hash='#/batches?highlight=${encodeURIComponent(b.batchNumber)}'"
+                style="display:flex; justify-content:space-between; align-items:center; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; padding:10px 14px; gap:12px; cursor:pointer; transition:all 0.15s ease;"
+                onmouseover="this.style.background='#fef3c7'; this.style.borderColor='#fde68a'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 6px rgba(217,119,6,0.12)';"
+                onmouseout="this.style.background='#fffbeb'; this.style.borderColor='#fef3c7'; this.style.transform='none'; this.style.boxShadow='none';"
+                title="Click to view batch in Batches module"
+              >
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <strong>${_esc(b.commodityName)}</strong>
                   ${renderBatchCodeBadge(b.batchNumber)}
@@ -107,6 +120,7 @@ export function renderDrilldownContent(type, data) {
                 <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                   <span style="font-size:12px; color:#64748b;">${formatDate(b.expirationDate)}</span>
                   <span class="badge" style="background:#fef3c7; color:#b45309; font-weight:600; font-size:11px; padding:2px 8px; border-radius:9999px;">in ${days}d</span>
+                  <span class="icon" style="font-size:16px; color:#b45309; opacity:0.8;">arrow_forward</span>
                 </div>
               </div>
             `;
@@ -141,7 +155,13 @@ export function renderDrilldownContent(type, data) {
         </div>
         <div style="display:grid; gap:8px;">
           ${items.map(c => `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#fff7ed; border:1px solid #ffedd5; border-radius:6px; padding:8px 12px; gap:12px;">
+            <div 
+              onclick="window.location.hash='#/commodities'"
+              style="display:flex; justify-content:space-between; align-items:center; background:#fff7ed; border:1px solid #ffedd5; border-radius:6px; padding:10px 14px; gap:12px; cursor:pointer; transition:all 0.15s ease;"
+              onmouseover="this.style.background='#ffedd5'; this.style.borderColor='#fed7aa'; this.style.transform='translateY(-1px)';"
+              onmouseout="this.style.background='#fff7ed'; this.style.borderColor='#ffedd5'; this.style.transform='none';"
+              title="Click to manage commodities"
+            >
               <div style="display:flex; align-items:center; gap:10px;">
                 <strong>${_esc(c.name)}</strong>
                 <span style="font-size:11px; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px;">${_esc(c.category)}</span>
@@ -149,6 +169,7 @@ export function renderDrilldownContent(type, data) {
               <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                 <strong style="font-size:13px; color:${c.totalQty === 0 ? '#dc2626' : '#ea580c'};">${c.totalQty.toLocaleString()} ${_esc(c.unit)}</strong>
                 <span class="badge" style="background:${c.totalQty === 0 ? '#fee2e2' : '#ffedd5'}; color:${c.totalQty === 0 ? '#991b1b' : '#9a3412'}; font-size:11px; font-weight:600; padding:2px 7px; border-radius:9999px;">${_esc(c.status)}</span>
+                <span class="icon" style="font-size:16px; color:#ea580c; opacity:0.8;">arrow_forward</span>
               </div>
             </div>
           `).join('')}
@@ -182,13 +203,20 @@ export function renderDrilldownContent(type, data) {
         </div>
         <div style="display:grid; gap:8px;">
           ${items.map(e => `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#faf5ff; border:1px solid #f3e8ff; border-radius:6px; padding:8px 12px; gap:12px;">
+            <div 
+              onclick="window.location.hash='#/calendar'"
+              style="display:flex; justify-content:space-between; align-items:center; background:#faf5ff; border:1px solid #f3e8ff; border-radius:6px; padding:10px 14px; gap:12px; cursor:pointer; transition:all 0.15s ease;"
+              onmouseover="this.style.background='#f3e8ff'; this.style.borderColor='#e9d5ff'; this.style.transform='translateY(-1px)';"
+              onmouseout="this.style.background='#faf5ff'; this.style.borderColor='#f3e8ff'; this.style.transform='none';"
+              title="Click to view event in Calendar"
+            >
               <div>
                 <strong style="font-size:13px; color:#1e293b;">${_esc(e.title)}</strong>
                 <span style="font-size:11px; color:#64748b; margin-left:8px;">📍 ${_esc(e.location)}</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                 <span style="font-size:12px; font-weight:600; color:#6b21a8;">${formatDate(e.startDate)}</span>
+                <span class="icon" style="font-size:16px; color:#6b21a8; opacity:0.8;">arrow_forward</span>
               </div>
             </div>
           `).join('')}
@@ -200,9 +228,102 @@ export function renderDrilldownContent(type, data) {
   return '';
 }
 
-export function renderAdvisorLayout(data) {
-  const summaryText = generateAdvisorSummary(data);
+export function renderAdvisorSummaryCard(data, { isDashboard = false } = {}) {
+  const criticalCount = data?.criticalExpiringCount ?? 0;
+  const warningCount = data?.warningExpiringCount ?? 0;
+  const lowStockCount = data?.lowStockCount ?? 0;
+  const eventsCount = (data?.events || []).length;
+  const totalBatches = data?.totalBatches ?? 0;
 
+  return `
+    <div class="card advisor-summary-card" style="margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5); background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #10b981; border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="icon" style="color: #059669; font-size: 22px;">fact_check</span>
+          <span style="font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #065f46;">Advisor Action Summary</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 11px; color: #047857; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+            <span class="icon" style="font-size: 14px;">touch_app</span> Click any status chip to inspect details
+          </span>
+          ${isDashboard ? `
+            <a href="#/advisor" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 12px; background: #059669; border-color: #059669; text-decoration: none;">
+              Open Advisor
+              <span class="icon" style="font-size: 14px;">open_in_new</span>
+            </a>
+          ` : ''}
+        </div>
+      </div>
+
+      <div style="font-size: 13.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;">
+        Currently managing <strong>${totalBatches} active commodity batches</strong>. Action required:
+      </div>
+
+      <!-- Color-Coded Interactive Chips -->
+      <div class="advisor-chips-container" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <button type="button" class="advisor-chip-btn advisor-chip--danger ${criticalCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="expired" title="Click to view expired batches">
+          <span class="icon" style="font-size: 16px;">error</span>
+          <span><strong>${criticalCount}</strong> Expired Batch${criticalCount === 1 ? '' : 'es'}</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--warning ${warningCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="near-expiry" title="Click to view batches nearing expiry">
+          <span class="icon" style="font-size: 16px;">warning</span>
+          <span><strong>${warningCount}</strong> Nearing Expiry (90d)</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--orange ${lowStockCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="low-stock" title="Click to view low stock commodities">
+          <span class="icon" style="font-size: 16px;">inventory_2</span>
+          <span><strong>${lowStockCount}</strong> Low Stock Alert${lowStockCount === 1 ? '' : 's'}</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--purple" data-drilldown="events" title="Click to view scheduled events">
+          <span class="icon" style="font-size: 16px;">event</span>
+          <span><strong>${eventsCount}</strong> Program Event${eventsCount === 1 ? '' : 's'} (30d)</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+      </div>
+
+      <!-- Expandable Drilldown Drawer Tray -->
+      <div class="advisor-drilldown-tray" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #86efac;">
+        <div class="advisor-drilldown-content"></div>
+      </div>
+    </div>
+  `;
+}
+
+export function setupAdvisorChips(containerEl, data) {
+  if (!containerEl || !data) return;
+  const chipButtons = containerEl.querySelectorAll('.advisor-chip-btn');
+  const drilldownTray = containerEl.querySelector('.advisor-drilldown-tray');
+  const drilldownContent = containerEl.querySelector('.advisor-drilldown-content');
+  let currentActiveTarget = null;
+
+  chipButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = btn.dataset.drilldown;
+      if (currentActiveTarget === target) {
+        chipButtons.forEach(b => b.classList.remove('active'));
+        if (drilldownTray) drilldownTray.style.display = 'none';
+        currentActiveTarget = null;
+      } else {
+        chipButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentActiveTarget = target;
+        if (drilldownTray && drilldownContent) {
+          drilldownContent.innerHTML = renderDrilldownContent(target, data);
+          drilldownTray.style.display = 'block';
+          drilldownTray.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    });
+  });
+}
+
+export function renderAdvisorLayout(data) {
   const healthList = data.healthData.map(c => {
     let badgeHtml = '';
     const unit = _esc(c.unit || 'Units');
@@ -215,7 +336,14 @@ export function renderAdvisorLayout(data) {
     }
     
     return `
-      <div class="advisor-commodity-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border-light);">
+      <div 
+        onclick="window.location.hash='#/commodities'"
+        class="advisor-commodity-item" 
+        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid var(--color-border-light); cursor: pointer; border-radius: 6px; transition: all 0.15s ease;"
+        onmouseover="this.style.backgroundColor='#f8fafc'; this.style.paddingLeft='12px';"
+        onmouseout="this.style.backgroundColor='transparent'; this.style.paddingLeft='8px';"
+        title="Click to view commodity details"
+      >
         <div class="commodity-info" style="min-width: 0;">
           <div class="commodity-name" style="font-weight: 600; font-size: 13px; color: var(--color-text);">${_esc(c.name)}</div>
           <div class="commodity-batches" style="font-size: 11px; color: var(--color-text-muted);">${c.activeBatches} Active ${c.activeBatches === 1 ? 'Batch' : 'Batches'}</div>
@@ -228,16 +356,6 @@ export function renderAdvisorLayout(data) {
     `;
   }).join('');
 
-  const actionsList = data.suggestedActions.length > 0 ? data.suggestedActions.map(a => `
-    <div class="advisor-action-card advisor-action-type-${a.type}">
-      <div class="advisor-action-content">
-        <h4>${_esc(a.title)}</h4>
-        <p>${_esc(a.desc)}</p>
-      </div>
-      <button class="btn btn-ghost" onclick="window.location.hash='#/batches'">Act</button>
-    </div>
-  `).join('') : '<p style="color: var(--color-text-muted);">No urgent actions required.</p>';
-
   const expiringList = data.expiringSoon.length > 0 ? data.expiringSoon.map(e => {
     const isExpired = String(e.status).toLowerCase().includes('expire');
     const days = getDaysRemaining(e.date);
@@ -246,7 +364,13 @@ export function renderAdvisorLayout(data) {
       : `<span class="badge" style="background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px; white-space: nowrap;">in ${days}d</span>`;
 
     return `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); gap: 12px;">
+      <div 
+        onclick="window.location.hash='#/batches?highlight=${encodeURIComponent(e.batch)}'"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid var(--color-border-light); gap: 12px; cursor: pointer; border-radius: 6px; transition: all 0.15s ease;"
+        onmouseover="this.style.backgroundColor='#f8fafc'; this.style.paddingLeft='12px';"
+        onmouseout="this.style.backgroundColor='transparent'; this.style.paddingLeft='8px';"
+        title="Click to view batch in Batches module"
+      >
         <div style="min-width: 0; flex: 1;">
           <div style="font-weight: 600; font-size: 13px; color: var(--color-text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             ${_esc(e.name)}
@@ -260,7 +384,10 @@ export function renderAdvisorLayout(data) {
           <div style="font-size: 12px; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap;">
             ${formatDate(e.date)}
           </div>
-          ${daysBadge}
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${daysBadge}
+            <span class="icon" style="font-size: 15px; color: var(--color-text-muted);">arrow_forward</span>
+          </div>
         </div>
       </div>
     `;
@@ -292,63 +419,17 @@ export function renderAdvisorLayout(data) {
     </div>
 
     <!-- Enhanced Green Advisor Action Summary Card -->
-    <div class="card advisor-summary-card" style="margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5); background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #10b981; border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="icon" style="color: #059669; font-size: 22px;">fact_check</span>
-          <span style="font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #065f46;">Advisor Action Summary</span>
-        </div>
-        <span style="font-size: 11px; color: #047857; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
-          <span class="icon" style="font-size: 14px;">touch_app</span> Click any status chip to inspect details
-        </span>
-      </div>
+    ${renderAdvisorSummaryCard(data, { isDashboard: false })}
 
-      <div style="font-size: 13.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;">
-        Currently managing <strong>${data.totalBatches} active commodity batches</strong>. Action required:
-      </div>
-
-      <!-- Color-Coded Interactive Chips -->
-      <div class="advisor-chips-container" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-        <button type="button" class="advisor-chip-btn advisor-chip--danger ${data.criticalExpiringCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="expired" title="Click to view expired batches">
-          <span class="icon" style="font-size: 16px;">error</span>
-          <span><strong>${data.criticalExpiringCount}</strong> Expired Batch${data.criticalExpiringCount === 1 ? '' : 'es'}</span>
-          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
-        </button>
-
-        <button type="button" class="advisor-chip-btn advisor-chip--warning ${data.warningExpiringCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="near-expiry" title="Click to view batches nearing expiry">
-          <span class="icon" style="font-size: 16px;">warning</span>
-          <span><strong>${data.warningExpiringCount}</strong> Nearing Expiry (90d)</span>
-          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
-        </button>
-
-        <button type="button" class="advisor-chip-btn advisor-chip--orange ${data.lowStockCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="low-stock" title="Click to view low stock commodities">
-          <span class="icon" style="font-size: 16px;">inventory_2</span>
-          <span><strong>${data.lowStockCount}</strong> Low Stock Alert${data.lowStockCount === 1 ? '' : 's'}</span>
-          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
-        </button>
-
-        <button type="button" class="advisor-chip-btn advisor-chip--purple" data-drilldown="events" title="Click to view scheduled events">
-          <span class="icon" style="font-size: 16px;">event</span>
-          <span><strong>${data.events.length}</strong> Program Event${data.events.length === 1 ? '' : 's'} (30d)</span>
-          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
-        </button>
-      </div>
-
-      <!-- Expandable Drilldown Drawer Tray -->
-      <div id="advisor-drilldown-tray" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #86efac;">
-        <div id="advisor-drilldown-content"></div>
-      </div>
-    </div>
-
-    <!-- Health, Expiry & Actions Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); align-items: stretch; width: 100%; min-width: 0;">
+    <!-- Health & Expiry Grid (2-Column Balanced Layout) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); align-items: stretch; width: 100%; min-width: 0;">
       <!-- Inventory Health -->
       <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
           <h3 class="card-title" style="margin: 0;">Inventory by Commodity</h3>
           <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/commodities'">View All</button>
         </div>
-        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
+        <div class="card-body" style="overflow-y: auto; max-height: 280px; flex: 1;">
           <div class="advisor-commodity-list">
             ${healthList}
           </div>
@@ -361,18 +442,8 @@ export function renderAdvisorLayout(data) {
           <h3 class="card-title" style="margin: 0;">Expiring Soon (90 Days)</h3>
           <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'">Batches</button>
         </div>
-        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
+        <div class="card-body" style="overflow-y: auto; max-height: 280px; flex: 1;">
           ${expiringList}
-        </div>
-      </div>
-
-      <!-- Suggested Actions -->
-      <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
-        <div class="card-header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
-          <h3 class="card-title" style="margin: 0;">Suggested Actions</h3>
-        </div>
-        <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
-          ${actionsList}
         </div>
       </div>
     </div>

@@ -10,6 +10,8 @@
 import { fetchDashboardStats, fetchRecentActivity } from './dashboard.service.js';
 import { fetchAdvisorData } from '../advisor/advisor.service.js';
 import { renderDashboardLayout } from './dashboard.render.js';
+import { setupAdvisorChips } from '../advisor/advisor.render.js';
+import '../advisor/advisor.css';
 
 export async function renderDashboardPage(profile) {
   const content = document.getElementById('page-content');
@@ -52,4 +54,9 @@ export async function renderDashboardPage(profile) {
     activity,
     advisorData
   });
+
+  // Activate Advisor Interactive Summary Chips & Drilldown on Dashboard
+  if (advisorData) {
+    setupAdvisorChips(content, advisorData);
+  }
 }

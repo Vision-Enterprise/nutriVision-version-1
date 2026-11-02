@@ -8,45 +8,11 @@
  *   - Recent activity feed
  */
 
-import { generateAdvisorSummary } from '../advisor/advisor.service.js';
+import { renderAdvisorSummaryCard } from '../advisor/advisor.render.js';
 import { formatDateTime } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 
 export function renderDashboardLayout({ stats, activity, advisorData }) {
-  const alertsHtml = advisorData ? advisorData.expiringSoon.slice(0, 2).map(item => {
-    if (item.status === EXPIRATION_STATUS.EXPIRED || new Date(item.date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
-      return `
-        <a href="#/batches?highlight=${encodeURIComponent(item.batch)}" style="text-decoration:none; display:block;">
-          <div style="background-color: #fff5f5; border: 1px solid #ffcccc; border-radius: var(--radius-md); padding: var(--space-3); transition: box-shadow 0.15s ease; cursor:pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(198,40,40,0.15)'" onmouseout="this.style.boxShadow=''">
-            <div style="display: flex; align-items: center; gap: var(--space-2); color: #c62828; font-weight: bold; margin-bottom: var(--space-2);">
-              <span class="icon icon--sm">error</span>
-              <span>CRITICAL: Imminent Expiration</span>
-              <span style="margin-left:auto; font-size:11px; font-weight:400; color:#c62828; opacity:0.8;">Click to view →</span>
-            </div>
-            <div style="color: var(--color-text-dark);">
-              Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
-            </div>
-          </div>
-        </a>
-      `;
-    } else {
-      return `
-        <a href="#/batches?highlight=${encodeURIComponent(item.batch)}" style="text-decoration:none; display:block;">
-          <div style="background-color: #fffde7; border: 1px solid #ffe082; border-radius: var(--radius-md); padding: var(--space-3); transition: box-shadow 0.15s ease; cursor:pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(245,127,23,0.15)'" onmouseout="this.style.boxShadow=''">
-            <div style="display: flex; align-items: center; gap: var(--space-2); color: #f57f17; font-weight: bold; margin-bottom: var(--space-2);">
-              <span class="icon icon--sm">warning</span>
-              <span>NOTICE: Approaching Expiration</span>
-              <span style="margin-left:auto; font-size:11px; font-weight:400; color:#f57f17; opacity:0.8;">Click to view →</span>
-            </div>
-            <div style="color: var(--color-text-dark);">
-              Batch <strong>${item.batch}</strong> (${item.name}) expires on ${item.date}.
-            </div>
-          </div>
-        </a>
-      `;
-    }
-  }).join('') : '';
-
   return `
     <div class="page-header">
       <h1 class="page-header__title">Dashboard</h1>
@@ -133,33 +99,8 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
       </div>
     </div>
 
-    <!-- Inventory Advisor Widget -->
-    ${advisorData ? `
-      <div class="card" style="margin-bottom: var(--space-6); background: #ffffff; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 0;">
-        <div style="padding: var(--space-4);">
-          <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: #5a6b7c;">
-            <span class="icon icon--sm">fact_check</span>
-            <span style="font-weight: bold; font-size: var(--text-sm); letter-spacing: 1px;">SYSTEM SUMMARY</span>
-          </div>
-          <div style="border-left: 4px solid var(--color-primary); padding-left: var(--space-3); font-size: var(--text-md); color: var(--color-text); line-height: 1.6;">
-            ${generateAdvisorSummary(advisorData)}
-          </div>
-        </div>
-
-        <div style="border-top: 1px solid var(--color-border-light);"></div>
-
-        ${alertsHtml ? `<div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);">${alertsHtml}</div><div style="border-top: 1px solid var(--color-border-light);"></div>` : ''}
-
-        <div style="padding: var(--space-4); display: flex; justify-content: flex-end; align-items: center;">
-          <a href="#/advisor" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
-            Open Advisor
-            <span class="icon icon--sm">open_in_new</span>
-          </a>
-        </div>
-      </div>
-    ` : ''}
-
-
+    <!-- Inventory Advisor Widget (Synchronized with Advisor Module) -->
+    ${advisorData ? renderAdvisorSummaryCard(advisorData, { isDashboard: true }) : ''}
 
     <!-- Recent Activity -->
     <div class="card">
