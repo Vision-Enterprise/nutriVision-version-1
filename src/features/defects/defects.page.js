@@ -115,8 +115,9 @@ async function _refreshPdfArchive() {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (!error && data && data.length > 0) {
-        archive = data.map(row => ({
+      let cloudItems = [];
+      if (!error && data) {
+        cloudItems = data.map(row => ({
           id:          row.id,
           incidentId:  row.incident_id,
           generatedOn: row.created_at,
@@ -125,27 +126,55 @@ async function _refreshPdfArchive() {
           actionTaken: row.action_taken,
           evidenceImg: row.evidence_img || null
         }));
+      }
 
-        // Merge any local entries not yet pushed to cloud
-        let localHistory = [];
-        try {
-          localHistory = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-        } catch {}
+      // Check local storage for any historical entries not yet in cloud
+      let localHistory = _getArchive();
+      const cloudFileNames = new Set(cloudItems.map(h => h.fileName));
+      const unsynced = localHistory.filter(l => l.fileName && !cloudFileNames.has(l.fileName));
 
-        const dbFileNames = new Set(archive.map(h => h.fileName));
-        const unsynced = localHistory.filter(l => l.fileName && !dbFileNames.has(l.fileName));
-        if (unsynced.length > 0) {
-          archive = [...unsynced, ...archive].slice(0, 20);
+      // Auto-upload unsynced local items to cloud database so other devices get them
+      if (unsynced.length > 0) {
+        for (const item of unsynced) {
+          try {
+            const { data: inserted } = await supabase.from('user_defect_archive').insert({
+              user_id:      _profile.id,
+              incident_id:  item.incidentId || null,
+              file_name:    item.fileName,
+              batch_number: item.batchNumber || '—',
+              action_taken: item.actionTaken || 'Quarantined',
+              evidence_img: item.evidenceImg || null
+            }).select('id, created_at').maybeSingle();
+
+            if (inserted) {
+              cloudItems.push({
+                id:          inserted.id,
+                incidentId:  item.incidentId,
+                generatedOn: inserted.created_at,
+                fileName:    item.fileName,
+                batchNumber: item.batchNumber || '—',
+                actionTaken: item.actionTaken || 'Quarantined',
+                evidenceImg: item.evidenceImg || null
+              });
+            }
+          } catch (upErr) {
+            console.warn(`${MODULE} Auto-upload defect archive failed:`, upErr);
+          }
         }
+        cloudItems.sort((a, b) => new Date(b.generatedOn) - new Date(a.generatedOn));
+      }
 
+      if (cloudItems.length > 0) {
+        archive = cloudItems.slice(0, 20);
         localStorage.setItem(userArchiveKey, JSON.stringify(archive));
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
       }
     } catch (dbErr) {
       console.warn(`${MODULE} Cloud defect archive fetch failed:`, dbErr);
     }
   }
 
-  // Fallback to local if cloud was empty or offline
+  // Fallback to local if cloud fetch failed
   if (archive.length === 0) {
     archive = _getArchive();
   }
