@@ -247,9 +247,9 @@ export function renderAdvisorSummaryCard(data, { isDashboard = false } = {}) {
             <span class="icon" style="font-size: 14px;">touch_app</span> Click any status chip to inspect details
           </span>
           ${isDashboard ? `
-            <a href="#/advisor" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 12px; background: #059669; border-color: #059669; text-decoration: none;">
-              Open Advisor
-              <span class="icon" style="font-size: 14px;">open_in_new</span>
+            <a href="#/advisor" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; background: #059669; border-color: #059669; font-weight: 600; padding: 0.5rem 1.15rem; font-size: 0.875rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+              <span class="icon" style="font-size: 18px;">insights</span>
+              Advisor
             </a>
           ` : ''}
         </div>
@@ -394,27 +394,17 @@ export function renderAdvisorLayout(data) {
   }).join('') : '<p style="color: var(--color-text-muted); padding: var(--space-3) 0;">No batches expiring within 90 days.</p>';
 
   return `
-    <!-- Top KPI Stat Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+    <!-- Top KPI Stat Cards (Streamlined Non-Redundant) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
       <div class="stat-card">
-        <div class="stat-card__label">Total Active Items</div>
+        <div class="stat-card__label">Total Active Commodities</div>
         <div class="stat-card__value stat-card__value--primary">${data.totalActiveItems}</div>
-        <div class="stat-card__footer">Commodities in stock</div>
+        <div class="stat-card__footer">Commodity types registered in stock</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__label">Low Stock Alerts</div>
-        <div class="stat-card__value stat-card__value--warning">${data.lowStockCount}</div>
-        <div class="stat-card__footer">Requires replenishment</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Expired Batches</div>
-        <div class="stat-card__value stat-card__value--danger">${data.criticalExpiringCount}</div>
-        <div class="stat-card__footer">Requires quarantine / disposal</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Upcoming Events (30d)</div>
-        <div class="stat-card__value">${data.events.length}</div>
-        <div class="stat-card__footer">Last audit: ${new Date().toLocaleDateString()}</div>
+        <div class="stat-card__label">Total Batches</div>
+        <div class="stat-card__value">${data.totalBatches}</div>
+        <div class="stat-card__footer">Active deliveries currently in stock</div>
       </div>
     </div>
 
