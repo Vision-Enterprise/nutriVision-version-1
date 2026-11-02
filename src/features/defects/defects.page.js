@@ -27,7 +27,7 @@ export async function renderDefectsPage(profile) {
 
   _bindEvents();
   await _loadIncidents();
-  _refreshPdfArchive();
+  await _refreshPdfArchive();
 }
 
 // ─── Event Binding ────────────────────────────────────────────────────────────
@@ -98,11 +98,58 @@ async function _loadIncidents() {
 
 // ─── PDF Archive (localStorage) ───────────────────────────────────────────────
 
-function _refreshPdfArchive() {
+async function _refreshPdfArchive() {
   const tbody = document.getElementById('defect-pdf-archive-tbody');
   if (!tbody) return;
 
-  let archive = _getArchive();
+  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+  let archive = [];
+
+  // 1. Cloud fetch: last 20 defect reports for this user
+  if (_profile?.id) {
+    try {
+      const { data, error } = await supabase
+        .from('user_defect_archive')
+        .select('*')
+        .eq('user_id', _profile.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        archive = data.map(row => ({
+          id:          row.id,
+          incidentId:  row.incident_id,
+          generatedOn: row.created_at,
+          fileName:    row.file_name,
+          batchNumber: row.batch_number || '—',
+          actionTaken: row.action_taken,
+          evidenceImg: row.evidence_img || null
+        }));
+
+        // Merge any local entries not yet pushed to cloud
+        let localHistory = [];
+        try {
+          localHistory = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+        } catch {}
+
+        const dbFileNames = new Set(archive.map(h => h.fileName));
+        const unsynced = localHistory.filter(l => l.fileName && !dbFileNames.has(l.fileName));
+        if (unsynced.length > 0) {
+          archive = [...unsynced, ...archive].slice(0, 20);
+        }
+
+        localStorage.setItem(userArchiveKey, JSON.stringify(archive));
+      }
+    } catch (dbErr) {
+      console.warn(`${MODULE} Cloud defect archive fetch failed:`, dbErr);
+    }
+  }
+
+  // Fallback to local if cloud was empty or offline
+  if (archive.length === 0) {
+    archive = _getArchive();
+  }
+
   let archiveUpdated = false;
   for (const item of archive) {
     const matchedInc = _incidentsData.find(i =>
@@ -121,6 +168,7 @@ function _refreshPdfArchive() {
     }
   }
   if (archiveUpdated) {
+    localStorage.setItem(userArchiveKey, JSON.stringify(archive));
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
   }
   tbody.innerHTML = renderPdfArchiveRows(archive);
@@ -137,10 +185,17 @@ function _refreshPdfArchive() {
         true
       );
       if (!confirmed) return;
-      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+
+      if (_profile?.id) {
+        try {
+          await supabase.from('user_defect_archive').delete().eq('user_id', _profile.id);
+        } catch (e) {
+          console.warn(`${MODULE} Error clearing cloud defect archive:`, e);
+        }
+      }
       localStorage.removeItem(userArchiveKey);
       localStorage.removeItem(ARCHIVE_KEY);
-      _refreshPdfArchive();
+      await _refreshPdfArchive();
     };
   }
 
@@ -170,11 +225,19 @@ function _refreshPdfArchive() {
       );
       if (!confirmed) return;
 
-      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
+      if (_profile?.id && id) {
+        try {
+          await supabase.from('user_defect_archive').delete().eq('id', id);
+        } catch (e) {
+          console.warn(`${MODULE} Error deleting defect archive row:`, e);
+        }
+      }
+
       const raw = JSON.parse(localStorage.getItem(userArchiveKey) || localStorage.getItem(ARCHIVE_KEY) || '[]');
       const updated = raw.filter(a => a.id !== id);
       localStorage.setItem(userArchiveKey, JSON.stringify(updated));
-      _refreshPdfArchive();
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(updated));
+      await _refreshPdfArchive();
     });
   });
 }
@@ -234,32 +297,41 @@ async function _saveToArchive(incident, batch, incidentData) {
 
   const evidenceImg = incidentData?.imageData || incident?.evidence_url || null;
 
+  let dbId = `${Date.now()}`;
+  let generatedOn = new Date().toISOString();
+
+  // 1. Save reference + compressed image to Supabase (max 20 enforced by DB trigger)
+  if (_profile?.id) {
+    try {
+      const { data, error } = await supabase.from('user_defect_archive').insert({
+        user_id:      _profile.id,
+        incident_id:  incident?.id || null,
+        file_name:    fileName,
+        batch_number: batch?.batch_number || '—',
+        action_taken: actionTaken,
+        evidence_img: evidenceImg
+      }).select('id, created_at').maybeSingle();
+
+      if (!error && data?.id) {
+        dbId = data.id;
+        generatedOn = data.created_at;
+      }
+    } catch (dbErr) {
+      console.warn(`${MODULE} Supabase defect archive write error:`, dbErr);
+    }
+  }
+
   const entry = {
-    id:          `${Date.now()}`,
+    id:          dbId,
     incidentId:  incident?.id,
-    generatedOn: new Date().toISOString(),
+    generatedOn,
     fileName,
     batchNumber: batch?.batch_number || '—',
     actionTaken,
     evidenceImg
   };
 
-  // 1. Save reference + compressed image to Supabase (max 20 enforced by DB trigger)
-  if (_profile?.id) {
-    try {
-      await supabase.from('user_defect_archive').insert({
-        user_id:      _profile.id,
-        incident_id:  incident?.id || null,
-        file_name:    fileName,
-        batch_number: batch?.batch_number || '—',
-        action_taken: actionTaken
-      });
-    } catch (dbErr) {
-      console.warn(`${MODULE} Supabase defect archive write error:`, dbErr);
-    }
-  }
-
-  // 2. Local mirror fallback (max 20, no heavy images)
+  // 2. Local mirror fallback (max 20)
   let archive = _getArchive();
   archive.unshift(entry);
   const trimmed = archive.slice(0, 20);
@@ -291,9 +363,9 @@ function _getArchive() {
 
 async function _onIncidentSaved(savedIncident, batch, incidentData) {
   console.log(`${MODULE} incident saved:`, savedIncident?.id);
-  _saveToArchive(savedIncident, batch, incidentData);
+  await _saveToArchive(savedIncident, batch, incidentData);
   await _loadIncidents();
-  _refreshPdfArchive();
+  await _refreshPdfArchive();
 }
 
 // ─── Tab Styling ──────────────────────────────────────────────────────────────
