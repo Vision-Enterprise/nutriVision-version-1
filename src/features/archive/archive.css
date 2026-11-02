@@ -98,3 +98,25 @@
   align-items: center;
   gap: 4px;
 }
+
+/* Ensure table container has no double border */
+#archive-table-container .table-wrapper {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Sticky Action Column so buttons are always visible without horizontal scrolling */
+#archive-table-container .table th.th-actions,
+#archive-table-container .table td.td-actions {
+  position: sticky;
+  right: 0;
+  background-color: var(--color-surface, #ffffff);
+  z-index: 2;
+  box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+#archive-table-container .table thead th.th-actions {
+  background-color: var(--color-surface-alt, #f8fafc);
+  z-index: 3;
+}

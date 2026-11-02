@@ -164,8 +164,7 @@ export function renderHistoricalTable(depletedBatches, searchTerm = '') {
             <th>Commodity</th>
             <th>Total Units Dist.</th>
             <th>Date Depleted</th>
-            <th>Status</th>
-            <th style="text-align: right;">Actions</th>
+            <th class="th-actions" style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -192,13 +191,7 @@ export function renderHistoricalTable(depletedBatches, searchTerm = '') {
                 <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); white-space: nowrap;">
                   ${formatDate(b.updated_at)}
                 </td>
-                <td style="white-space: nowrap;">
-                  <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--color-surface-alt); border-radius: 4px; font-size: 12px; color: var(--color-text-muted);">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    Depleted
-                  </span>
-                </td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td class="td-actions" style="text-align: right; white-space: nowrap;">
                   <div class="table-actions">
                     <button class="btn-table-action ledger-btn" data-id="${b.id}" type="button" title="View release history for batch ${escapeHtml(b.batch_number)}">
                       <span class="icon icon--sm" style="font-size: 15px;" aria-hidden="true">receipt_long</span>
@@ -257,10 +250,8 @@ export function renderVoidedTable(voidedBatches, searchTerm = '', targetCategory
             <th>Commodity</th>
             <th>Reason Category</th>
             <th>Notes / Details</th>
-            <th>Voided By</th>
-            <th>Date Voided</th>
-            <th>Status</th>
-            <th style="text-align: right;">Actions</th>
+            <th>Date &amp; Voided By</th>
+            <th class="th-actions" style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -286,19 +277,16 @@ export function renderVoidedTable(voidedBatches, searchTerm = '', targetCategory
                 <td style="color: var(--color-text); font-size: var(--font-size-sm); max-width: 240px; word-break: break-word;">
                   ${escapeHtml(b.reasonDetails)}
                 </td>
-                <td style="white-space: nowrap; color: var(--color-text); font-weight: 500;">
-                  ${escapeHtml(b.voided_by_name || 'Admin')}
-                </td>
-                <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); white-space: nowrap;">
-                  ${formatDate(b.deleted_at)}
-                </td>
                 <td style="white-space: nowrap;">
-                  <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); color: var(--color-danger); border-radius: 4px; font-size: 12px; font-weight: 500;">
-                    <span class="icon" style="font-size: 13px;">cancel</span>
-                    Voided
-                  </span>
+                  <div style="font-size: var(--font-size-sm); color: var(--color-text); font-weight: 500;">
+                    ${formatDate(b.deleted_at)}
+                  </div>
+                  <div style="font-size: 11px; color: var(--color-text-muted); display: flex; align-items: center; gap: 3px; margin-top: 2px;">
+                    <span class="icon" style="font-size: 12px; color: var(--color-text-subtle);">person</span>
+                    ${escapeHtml(b.voided_by_name || 'Admin')}
+                  </div>
                 </td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td class="td-actions" style="text-align: right; white-space: nowrap;">
                   <div class="table-actions">
                     <button class="btn-table-action restore-btn" data-id="${b.id}" type="button" aria-label="Restore batch ${escapeHtml(b.batch_number)}" title="Restore batch ${escapeHtml(b.batch_number)}">
                       <span class="icon icon--sm" style="font-size: 15px;" aria-hidden="true">restore</span>
@@ -344,8 +332,7 @@ export function renderArchivedCommoditiesTable(commodities, searchTerm = '') {
             <th>Category</th>
             <th>Unit</th>
             <th>Date Archived</th>
-            <th>Status</th>
-            <th style="text-align: right;">Actions</th>
+            <th class="th-actions" style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -360,12 +347,7 @@ export function renderArchivedCommoditiesTable(commodities, searchTerm = '') {
               <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); white-space: nowrap;">
                 ${formatDate(c.deleted_at)}
               </td>
-              <td style="white-space: nowrap;">
-                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(245, 158, 11, 0.1); color: #d97706; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                  Archived
-                </span>
-              </td>
-              <td style="text-align: right; white-space: nowrap;">
+              <td class="td-actions" style="text-align: right; white-space: nowrap;">
                 <div class="table-actions">
                   <button class="btn-table-action restore-commodity-btn" data-id="${c.id}" data-name="${escapeHtml(c.name)}" type="button" aria-label="Restore commodity ${escapeHtml(c.name)}" title="Restore commodity ${escapeHtml(c.name)}">
                     <span class="icon icon--sm" style="font-size: 15px;" aria-hidden="true">restore</span>
@@ -472,10 +454,8 @@ export function renderAllArchiveTable({ voidedBatches, depletedBatches, archived
             <th>Item / Commodity</th>
             <th>Archive Type</th>
             <th>Details &amp; Reason</th>
-            <th>Actioned By</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th style="text-align: right;">Actions</th>
+            <th>Date &amp; Logged By</th>
+            <th class="th-actions" style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -526,18 +506,16 @@ export function renderAllArchiveTable({ voidedBatches, depletedBatches, archived
                 <td style="color: var(--color-text); font-size: var(--font-size-sm); max-width: 240px; word-break: break-word;">
                   ${escapeHtml(item.details)}
                 </td>
-                <td style="white-space: nowrap; color: var(--color-text); font-weight: 500;">
-                  ${escapeHtml(item.user)}
-                </td>
-                <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); white-space: nowrap;">
-                  ${formatDate(item.date)}
-                </td>
                 <td style="white-space: nowrap;">
-                  <span class="badge badge-${item.statusClass}" style="font-size: 11px; padding: 2px 7px;">
-                    ${item.statusLabel}
-                  </span>
+                  <div style="font-size: var(--font-size-sm); color: var(--color-text); font-weight: 500;">
+                    ${formatDate(item.date)}
+                  </div>
+                  <div style="font-size: 11px; color: var(--color-text-muted); display: flex; align-items: center; gap: 3px; margin-top: 2px;">
+                    <span class="icon" style="font-size: 12px; color: var(--color-text-subtle);">person</span>
+                    ${escapeHtml(item.user)}
+                  </div>
                 </td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td class="td-actions" style="text-align: right; white-space: nowrap;">
                   <div class="table-actions">
                     ${actionHtml}
                   </div>
