@@ -6,28 +6,222 @@
  */
 
 import { generateAdvisorSummary } from './advisor.service.js';
+import { formatDate, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { renderBatchCodeBadge } from '../batches/batches.render.js';
+
+function _esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+export function renderDrilldownContent(type, data) {
+  const drilldown = data.drilldown || {};
+
+  if (type === 'expired') {
+    const items = drilldown.expired || [];
+    if (items.length === 0) {
+      return `
+        <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fee2e2; border-radius:8px; padding:16px;">
+          <p style="margin:0; color:#15803d; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <span class="icon">check_circle</span> No expired batches found. All active inventory is within date!
+          </p>
+        </div>
+      `;
+    }
+    return `
+      <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fecaca; border-radius:8px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="icon" style="color:#dc2626;">error</span>
+            <strong style="color:#991b1b; font-size:14px;">Expired Batches (${items.length})</strong>
+            <span style="font-size:12px; color:#64748b;">Requires immediate quarantine or disposal</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/defects'" style="background:#dc2626; border-color:#dc2626; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+              <span class="icon" style="font-size:15px;">delete_forever</span> Log Defect / Quarantine
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
+              View in Batches
+            </button>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px;">
+          ${items.map(b => {
+            const days = getDaysRemaining(b.expirationDate);
+            return `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#fef2f2; border:1px solid #fee2e2; border-radius:6px; padding:8px 12px; gap:12px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <strong>${_esc(b.commodityName)}</strong>
+                  ${renderBatchCodeBadge(b.batchNumber)}
+                  <span style="font-size:12px; font-weight:600; color:#991b1b;">${b.quantity.toLocaleString()} ${_esc(b.unit)}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                  <span style="font-size:12px; color:#64748b;">${formatDate(b.expirationDate)}</span>
+                  <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:600; font-size:11px; padding:2px 8px; border-radius:9999px;">${Math.abs(days)}d overdue</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (type === 'near-expiry') {
+    const items = drilldown.nearExpiry || [];
+    if (items.length === 0) {
+      return `
+        <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fef3c7; border-radius:8px; padding:16px;">
+          <p style="margin:0; color:#15803d; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <span class="icon">check_circle</span> No batches nearing expiration within 90 days.
+          </p>
+        </div>
+      `;
+    }
+    return `
+      <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fde68a; border-radius:8px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="icon" style="color:#d97706;">warning</span>
+            <strong style="color:#92400e; font-size:14px;">Batches Nearing Expiry (${items.length})</strong>
+            <span style="font-size:12px; color:#64748b;">Priority release recommended under FEFO</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/releases'" style="background:#d97706; border-color:#d97706; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+              <span class="icon" style="font-size:15px;">local_shipping</span> Dispatch Batches
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'" style="font-size:12px;">
+              View in Batches
+            </button>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px;">
+          ${items.map(b => {
+            const days = getDaysRemaining(b.expirationDate);
+            return `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; padding:8px 12px; gap:12px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <strong>${_esc(b.commodityName)}</strong>
+                  ${renderBatchCodeBadge(b.batchNumber)}
+                  <span style="font-size:12px; font-weight:600; color:#92400e;">${b.quantity.toLocaleString()} ${_esc(b.unit)}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                  <span style="font-size:12px; color:#64748b;">${formatDate(b.expirationDate)}</span>
+                  <span class="badge" style="background:#fef3c7; color:#b45309; font-weight:600; font-size:11px; padding:2px 8px; border-radius:9999px;">in ${days}d</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (type === 'low-stock') {
+    const items = drilldown.lowStock || [];
+    if (items.length === 0) {
+      return `
+        <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fed7aa; border-radius:8px; padding:16px;">
+          <p style="margin:0; color:#15803d; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <span class="icon">check_circle</span> Stock levels are sufficient across all active commodities.
+          </p>
+        </div>
+      `;
+    }
+    return `
+      <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #fdba74; border-radius:8px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="icon" style="color:#ea580c;">inventory_2</span>
+            <strong style="color:#9a3412; font-size:14px;">Commodity Low Stock Alerts (${items.length})</strong>
+            <span style="font-size:12px; color:#64748b;">Replenishment or procurement requested</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/commodities'" style="background:#ea580c; border-color:#ea580c; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+            <span class="icon" style="font-size:15px;">add_box</span> Manage Commodities
+          </button>
+        </div>
+        <div style="display:grid; gap:8px;">
+          ${items.map(c => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#fff7ed; border:1px solid #ffedd5; border-radius:6px; padding:8px 12px; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <strong>${_esc(c.name)}</strong>
+                <span style="font-size:11px; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px;">${_esc(c.category)}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <strong style="font-size:13px; color:${c.totalQty === 0 ? '#dc2626' : '#ea580c'};">${c.totalQty.toLocaleString()} ${_esc(c.unit)}</strong>
+                <span class="badge" style="background:${c.totalQty === 0 ? '#fee2e2' : '#ffedd5'}; color:${c.totalQty === 0 ? '#991b1b' : '#9a3412'}; font-size:11px; font-weight:600; padding:2px 7px; border-radius:9999px;">${_esc(c.status)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (type === 'events') {
+    const items = drilldown.events || [];
+    if (items.length === 0) {
+      return `
+        <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #e9d5ff; border-radius:8px; padding:16px;">
+          <p style="margin:0; color:#64748b; font-weight:500; display:flex; align-items:center; gap:6px;">
+            <span class="icon">event_busy</span> No program events scheduled in the next 30 days.
+          </p>
+        </div>
+      `;
+    }
+    return `
+      <div class="advisor-drilldown-panel" style="background:#fff; border:1px solid #d8b4fe; border-radius:8px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="icon" style="color:#9333ea;">event</span>
+            <strong style="color:#6b21a8; font-size:14px;">Scheduled Program Events (${items.length})</strong>
+            <span style="font-size:12px; color:#64748b;">Upcoming municipal nutrition events</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.location.hash='#/calendar'" style="background:#9333ea; border-color:#9333ea; font-size:12px; gap:4px; display:inline-flex; align-items:center;">
+            <span class="icon" style="font-size:15px;">calendar_month</span> Open Program Calendar
+          </button>
+        </div>
+        <div style="display:grid; gap:8px;">
+          ${items.map(e => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#faf5ff; border:1px solid #f3e8ff; border-radius:6px; padding:8px 12px; gap:12px;">
+              <div>
+                <strong style="font-size:13px; color:#1e293b;">${_esc(e.title)}</strong>
+                <span style="font-size:11px; color:#64748b; margin-left:8px;">📍 ${_esc(e.location)}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <span style="font-size:12px; font-weight:600; color:#6b21a8;">${formatDate(e.startDate)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
 
 export function renderAdvisorLayout(data) {
   const summaryText = generateAdvisorSummary(data);
 
   const healthList = data.healthData.map(c => {
     let badgeHtml = '';
+    const unit = _esc(c.unit || 'Units');
     if (c.criticalQty > 0) {
-      badgeHtml = `<span class="badge-warning">${c.criticalQty.toLocaleString()} Critical</span>`;
+      badgeHtml = `<span class="badge" style="background: #fee2e2; color: #991b1b; font-weight: 600; padding: 2px 8px; font-size: 11px; border-radius: 9999px;">${c.criticalQty.toLocaleString()} ${unit} Expired</span>`;
     } else if (c.warningQty > 0) {
-      badgeHtml = `<span class="badge-warning">${c.warningQty.toLocaleString()} Near Expiry</span>`;
+      badgeHtml = `<span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 600; padding: 2px 8px; font-size: 11px; border-radius: 9999px;">${c.warningQty.toLocaleString()} ${unit} Near Expiry</span>`;
     } else {
-      badgeHtml = `<span class="badge-optimal">Optimal</span>`;
+      badgeHtml = `<span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 600; padding: 2px 8px; font-size: 11px; border-radius: 9999px;">Optimal Stock</span>`;
     }
     
     return `
-      <div class="advisor-commodity-item">
-        <div class="commodity-info">
-          <span class="commodity-name">${c.name}</span>
-          <span class="commodity-batches">${c.activeBatches} Active Batches</span>
+      <div class="advisor-commodity-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border-light);">
+        <div class="commodity-info" style="min-width: 0;">
+          <div class="commodity-name" style="font-weight: 600; font-size: 13px; color: var(--color-text);">${_esc(c.name)}</div>
+          <div class="commodity-batches" style="font-size: 11px; color: var(--color-text-muted);">${c.activeBatches} Active ${c.activeBatches === 1 ? 'Batch' : 'Batches'}</div>
         </div>
-        <div class="commodity-stats">
-          <span class="commodity-total">${c.totalQty.toLocaleString()} Units</span>
+        <div class="commodity-stats" style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
+          <span class="commodity-total" style="font-size: 13px; font-weight: 700; color: var(--color-text);">${c.totalQty.toLocaleString()} ${unit}</span>
           ${badgeHtml}
         </div>
       </div>
@@ -37,23 +231,40 @@ export function renderAdvisorLayout(data) {
   const actionsList = data.suggestedActions.length > 0 ? data.suggestedActions.map(a => `
     <div class="advisor-action-card advisor-action-type-${a.type}">
       <div class="advisor-action-content">
-        <h4>${a.title}</h4>
-        <p>${a.desc}</p>
+        <h4>${_esc(a.title)}</h4>
+        <p>${_esc(a.desc)}</p>
       </div>
       <button class="btn btn-ghost" onclick="window.location.hash='#/batches'">Act</button>
     </div>
   `).join('') : '<p style="color: var(--color-text-muted);">No urgent actions required.</p>';
 
-  const expiringList = data.expiringSoon.length > 0 ? data.expiringSoon.map(e => `
-    <div style="display: flex; justify-content: space-between; padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border-light);">
-      <div>
-        <strong>${e.name}</strong> <span style="color: var(--color-text-muted); font-size: var(--text-sm);">(${e.batch})</span>
+  const expiringList = data.expiringSoon.length > 0 ? data.expiringSoon.map(e => {
+    const isExpired = String(e.status).toLowerCase().includes('expire');
+    const days = getDaysRemaining(e.date);
+    const daysBadge = isExpired
+      ? `<span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px; white-space: nowrap;">${Math.abs(days)}d overdue</span>`
+      : `<span class="badge" style="background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px; white-space: nowrap;">in ${days}d</span>`;
+
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); gap: 12px;">
+        <div style="min-width: 0; flex: 1;">
+          <div style="font-weight: 600; font-size: 13px; color: var(--color-text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${_esc(e.name)}
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            ${renderBatchCodeBadge(e.batch)}
+            <span style="font-size: 11px; color: var(--color-text-muted); font-weight: 500;">${(e.quantity || 0).toLocaleString()} ${_esc(e.unit)}</span>
+          </div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap;">
+            ${formatDate(e.date)}
+          </div>
+          ${daysBadge}
+        </div>
       </div>
-      <div style="color: ${e.status === 'Expired' ? 'var(--color-danger)' : 'var(--color-warning)'}">
-        ${e.date}
-      </div>
-    </div>
-  `).join('') : '<p style="color: var(--color-text-muted);">No batches expiring within 90 days.</p>';
+    `;
+  }).join('') : '<p style="color: var(--color-text-muted); padding: var(--space-3) 0;">No batches expiring within 90 days.</p>';
 
   return `
     <!-- Top KPI Stat Cards -->
@@ -69,9 +280,9 @@ export function renderAdvisorLayout(data) {
         <div class="stat-card__footer">Requires replenishment</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__label">Critical Expiring</div>
+        <div class="stat-card__label">Expired Batches</div>
         <div class="stat-card__value stat-card__value--danger">${data.criticalExpiringCount}</div>
-        <div class="stat-card__footer">Immediate action needed</div>
+        <div class="stat-card__footer">Requires quarantine / disposal</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__label">Upcoming Events (30d)</div>
@@ -80,14 +291,52 @@ export function renderAdvisorLayout(data) {
       </div>
     </div>
 
-    <!-- System Summary Card -->
-    <div class="card" style="margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5);">
-      <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); color: var(--color-text-muted);">
-        <span class="icon icon--sm">fact_check</span>
-        <span style="font-weight: 700; font-size: var(--font-size-xs); letter-spacing: 0.08em; text-transform: uppercase;">Advisor Summary</span>
+    <!-- Enhanced Green Advisor Action Summary Card -->
+    <div class="card advisor-summary-card" style="margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5); background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #10b981; border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="icon" style="color: #059669; font-size: 22px;">fact_check</span>
+          <span style="font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #065f46;">Advisor Action Summary</span>
+        </div>
+        <span style="font-size: 11px; color: #047857; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+          <span class="icon" style="font-size: 14px;">touch_app</span> Click any status chip to inspect details
+        </span>
       </div>
-      <div style="border-left: 4px solid var(--color-primary); padding-left: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text); line-height: 1.6;">
-        ${summaryText}
+
+      <div style="font-size: 13.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;">
+        Currently managing <strong>${data.totalBatches} active commodity batches</strong>. Action required:
+      </div>
+
+      <!-- Color-Coded Interactive Chips -->
+      <div class="advisor-chips-container" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <button type="button" class="advisor-chip-btn advisor-chip--danger ${data.criticalExpiringCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="expired" title="Click to view expired batches">
+          <span class="icon" style="font-size: 16px;">error</span>
+          <span><strong>${data.criticalExpiringCount}</strong> Expired Batch${data.criticalExpiringCount === 1 ? '' : 'es'}</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--warning ${data.warningExpiringCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="near-expiry" title="Click to view batches nearing expiry">
+          <span class="icon" style="font-size: 16px;">warning</span>
+          <span><strong>${data.warningExpiringCount}</strong> Nearing Expiry (90d)</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--orange ${data.lowStockCount === 0 ? 'advisor-chip--inactive' : ''}" data-drilldown="low-stock" title="Click to view low stock commodities">
+          <span class="icon" style="font-size: 16px;">inventory_2</span>
+          <span><strong>${data.lowStockCount}</strong> Low Stock Alert${data.lowStockCount === 1 ? '' : 's'}</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+
+        <button type="button" class="advisor-chip-btn advisor-chip--purple" data-drilldown="events" title="Click to view scheduled events">
+          <span class="icon" style="font-size: 16px;">event</span>
+          <span><strong>${data.events.length}</strong> Program Event${data.events.length === 1 ? '' : 's'} (30d)</span>
+          <span class="chip-arrow icon" style="font-size: 15px;">expand_more</span>
+        </button>
+      </div>
+
+      <!-- Expandable Drilldown Drawer Tray -->
+      <div id="advisor-drilldown-tray" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #86efac;">
+        <div id="advisor-drilldown-content"></div>
       </div>
     </div>
 
@@ -108,8 +357,9 @@ export function renderAdvisorLayout(data) {
 
       <!-- Expiring Soon -->
       <div class="card" style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
-        <div class="card-header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-3);">
           <h3 class="card-title" style="margin: 0;">Expiring Soon (90 Days)</h3>
+          <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/batches'">Batches</button>
         </div>
         <div class="card-body" style="overflow-y: auto; max-height: 240px; flex: 1;">
           ${expiringList}
@@ -127,7 +377,7 @@ export function renderAdvisorLayout(data) {
       </div>
     </div>
     
-    <!-- Interactive Analytics Console -->
+<!-- Interactive Analytics Console -->
     <div class="card tv-console-card" style="margin-top: var(--space-4); width: 100%; min-width: 0; overflow: hidden; padding: 0;">
       <!-- Screen Header -->
       <div style="padding: var(--space-4) var(--space-5); background: linear-gradient(135deg, #f0fdf4, #f8fafc); border-bottom: 1px solid var(--color-border-light);">

@@ -247,4 +247,132 @@
   display: none !important;
 }
 
+/* Advisor Summary & Drilldown Chip Styles */
+.advisor-summary-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.advisor-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.advisor-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.advisor-chip-btn:hover {
+  transform: translateY(-1px);
+}
+
+.advisor-chip-btn .chip-arrow {
+  transition: transform 0.2s ease;
+}
+
+.advisor-chip-btn.active .chip-arrow {
+  transform: rotate(180deg);
+}
+
+/* Red Chip (Expired) */
+.advisor-chip--danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+.advisor-chip--danger:hover {
+  background: #fecaca;
+  border-color: #f87171;
+}
+.advisor-chip--danger.active {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+}
+
+/* Amber/Yellow Chip (Near Expiry) */
+.advisor-chip--warning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+.advisor-chip--warning:hover {
+  background: #fde68a;
+  border-color: #fbbf24;
+}
+.advisor-chip--warning.active {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+}
+
+/* Orange Chip (Low Stock) */
+.advisor-chip--orange {
+  background: #ffedd5;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+.advisor-chip--orange:hover {
+  background: #fed7aa;
+  border-color: #fb923c;
+}
+.advisor-chip--orange.active {
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+}
+
+/* Purple Chip (Events) */
+.advisor-chip--purple {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #d8b4fe;
+}
+.advisor-chip--purple:hover {
+  background: #e9d5ff;
+  border-color: #c084fc;
+}
+.advisor-chip--purple.active {
+  background: #9333ea !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.35);
+}
+
+.advisor-chip--inactive {
+  opacity: 0.7;
+}
+
+/* Drilldown Tray Animation */
+#advisor-drilldown-tray {
+  animation: fadeInDown 0.25s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
 
