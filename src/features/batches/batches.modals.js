@@ -279,8 +279,17 @@ export function openVoidBatchModal({ batch, profile, onSuccess }) {
             <span style="font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text);">${escapeHtml(profile?.full_name || 'Current User')}</span>
           </div>
           <div class="form-group">
-            <label for="field-void-reason" class="form-label form-label--required">Reason for voiding</label>
-            <textarea id="field-void-reason" name="void_reason" class="form-input" rows="3" required placeholder="e.g. Typo in batch code, Duplicate entry"></textarea>
+            <label for="field-void-category" class="form-label form-label--required">Reason for voiding</label>
+            <select id="field-void-category" name="void_category" class="form-input" required style="cursor: pointer;">
+              <option value="" disabled selected>-- Select reason --</option>
+              <option value="Expired Stock">Expired Stock</option>
+              <option value="Data Entry Error">Data Entry Error</option>
+              <option value="Other">Other (Specify Below)</option>
+            </select>
+          </div>
+          <div class="form-group" id="void-notes-group">
+            <label for="field-void-notes" class="form-label" id="field-void-notes-label">Additional Notes (Optional)</label>
+            <textarea id="field-void-notes" name="void_notes" class="form-input" rows="2" placeholder="e.g. Details or authorization notes..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -293,8 +302,27 @@ export function openVoidBatchModal({ batch, profile, onSuccess }) {
 
   document.body.appendChild(overlay);
 
-  const firstInput = document.getElementById('field-void-reason');
-  if (firstInput) firstInput.focus();
+  const categorySelect = document.getElementById('field-void-category');
+  const notesTextarea = document.getElementById('field-void-notes');
+  const notesLabel = document.getElementById('field-void-notes-label');
+
+  if (categorySelect) {
+    categorySelect.focus();
+    categorySelect.addEventListener('change', () => {
+      if (categorySelect.value === 'Other') {
+        notesLabel.innerHTML = 'Specify Reason <span style="color:var(--color-danger);">*</span>';
+        notesTextarea.required = true;
+        notesTextarea.placeholder = 'Please specify the exact reason...';
+        notesTextarea.focus();
+      } else {
+        notesLabel.textContent = 'Additional Notes (Optional)';
+        notesTextarea.required = false;
+        notesTextarea.placeholder = categorySelect.value === 'Expired Stock'
+          ? 'e.g. Expired batch disposed per sanitation protocol...'
+          : 'e.g. Typo in batch number or incorrect delivery date...';
+      }
+    });
+  }
 
   const closeBtn  = overlay.querySelector('.modal-close');
   const cancelBtn = document.getElementById('modal-cancel');
@@ -307,8 +335,19 @@ export function openVoidBatchModal({ batch, profile, onSuccess }) {
 
   document.getElementById('void-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const reason = document.getElementById('field-void-reason').value.trim();
-    if (!reason) { await SystemDialog.alert('Please provide a reason for voiding this record.'); return; }
+    const category = categorySelect.value;
+    const notes = notesTextarea.value.trim();
+    if (!category) {
+      await SystemDialog.alert('Please select a reason for voiding this record.');
+      categorySelect.focus();
+      return;
+    }
+    if (category === 'Other' && !notes) {
+      await SystemDialog.alert('Please specify the reason in the notes field.');
+      notesTextarea.focus();
+      return;
+    }
+    const reason = notes ? `${category}: ${notes}` : category;
 
     const submitBtn = e.target.querySelector('[type="submit"]');
     const originalText = submitBtn.textContent;

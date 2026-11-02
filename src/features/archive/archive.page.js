@@ -1,24 +1,51 @@
 /**
  * Data Archive & Audit Page (Controller)
  *
- * Coordinates archive tabs (Historical, Voided, and Archived Commodities),
- * live search, ledger details inspection, and restoration.
+ * Coordinates archive filters (Expired Stock, Data Entry Errors, Depleted, and Archived Commodities),
+ * live search, release ledger inspection, and record restorations.
  *
  * MVC Controller: delegates HTML to .render.js and modals to .modals.js.
  */
 
 import { fetchDepletedBatches, fetchVoidedBatches, fetchArchivedCommodities, restoreCommodity } from './archive.service.js';
-import { renderArchiveLayout, renderHistoricalTable, renderVoidedTable, renderArchivedCommoditiesTable } from './archive.render.js';
+import { 
+  renderArchiveLayout, 
+  renderHistoricalTable, 
+  renderVoidedTable, 
+  renderArchivedCommoditiesTable,
+  renderAllArchiveTable,
+  parseVoidReason 
+} from './archive.render.js';
 import { openLedgerModal, handleRestoreBatch } from './archive.modals.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import './archive.css';
 
 // ── State ───────────────────────────────────────────────────────────────────
 let _depletedBatches     = [];
 let _voidedBatches       = [];
 let _archivedCommodities = [];
 let _profile             = null;
-let _currentTab          = 'historical';
+let _currentFilter       = 'all';
 let _searchTerm          = '';
+
+function _getCounts() {
+  let expired = 0;
+  let dataError = 0;
+  let other = 0;
+
+  _voidedBatches.forEach(b => {
+    const parsed = parseVoidReason(b.void_reason);
+    if (parsed.category === 'Expired Stock') expired++;
+    else if (parsed.category === 'Data Entry Error') dataError++;
+    else other++;
+  });
+
+  const depleted = _depletedBatches.length;
+  const commodities = _archivedCommodities.length;
+  const all = _voidedBatches.length + depleted + commodities;
+
+  return { all, expired, dataError, other, depleted, commodities };
+}
 
 // ── Entry Point ─────────────────────────────────────────────────────────────
 export async function renderArchivePage(profile) {
@@ -29,8 +56,8 @@ export async function renderArchivePage(profile) {
 
   content.innerHTML = `
     <div class="page-header">
-      <h1 class="page-header__title">Data Archive & Audit Log</h1>
-      <p class="page-header__subtitle">Review depleted historical stock, audit voided batches, and manage archived commodities.</p>
+      <h1 class="page-header__title">Data Archive &amp; Audit Log</h1>
+      <p class="page-header__subtitle">Audit depleted batches, review expired stock and voided entries, and manage archived records.</p>
     </div>
     <div class="loading-overlay"><div class="spinner spinner-lg"></div></div>
   `;
@@ -49,19 +76,36 @@ export async function renderArchivePage(profile) {
 }
 
 // ── View Coordination ───────────────────────────────────────────────────────
-function _renderMainView(content) {
-  let tableHtml = '';
-  if (_currentTab === 'historical') {
-    tableHtml = renderHistoricalTable(_depletedBatches, _searchTerm);
-  } else if (_currentTab === 'voided') {
-    tableHtml = renderVoidedTable(_voidedBatches, _searchTerm);
-  } else if (_currentTab === 'commodities') {
-    tableHtml = renderArchivedCommoditiesTable(_archivedCommodities, _searchTerm);
+function _getTableHtml() {
+  if (_currentFilter === 'all') {
+    return renderAllArchiveTable({
+      voidedBatches: _voidedBatches,
+      depletedBatches: _depletedBatches,
+      archivedCommodities: _archivedCommodities,
+      searchTerm: _searchTerm
+    });
+  } else if (_currentFilter === 'expired') {
+    return renderVoidedTable(_voidedBatches, _searchTerm, 'Expired Stock');
+  } else if (_currentFilter === 'data-error') {
+    return renderVoidedTable(_voidedBatches, _searchTerm, 'Data Entry Error');
+  } else if (_currentFilter === 'other') {
+    return renderVoidedTable(_voidedBatches, _searchTerm, 'Other');
+  } else if (_currentFilter === 'depleted') {
+    return renderHistoricalTable(_depletedBatches, _searchTerm);
+  } else if (_currentFilter === 'commodities') {
+    return renderArchivedCommoditiesTable(_archivedCommodities, _searchTerm);
   }
+  return '';
+}
+
+function _renderMainView(content) {
+  const counts = _getCounts();
+  const tableHtml = _getTableHtml();
 
   content.innerHTML = renderArchiveLayout({
-    currentTab: _currentTab,
+    currentFilter: _currentFilter,
     searchTerm: _searchTerm,
+    counts,
     tableHtml
   });
 
@@ -71,34 +115,46 @@ function _renderMainView(content) {
 function _refreshTable() {
   const container = document.getElementById('archive-table-container');
   if (!container) return;
-
-  if (_currentTab === 'historical') {
-    container.innerHTML = renderHistoricalTable(_depletedBatches, _searchTerm);
-  } else if (_currentTab === 'voided') {
-    container.innerHTML = renderVoidedTable(_voidedBatches, _searchTerm);
-  } else if (_currentTab === 'commodities') {
-    container.innerHTML = renderArchivedCommoditiesTable(_archivedCommodities, _searchTerm);
-  }
+  container.innerHTML = _getTableHtml();
 }
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
 function _attachListeners(content) {
-  // Tab switching
-  content.querySelectorAll('.tab-btn').forEach(btn => {
+  // Pill button filters
+  content.querySelectorAll('.archive-pill').forEach(btn => {
     btn.addEventListener('click', e => {
-      _currentTab = e.currentTarget.dataset.tab;
-      _searchTerm = '';
-      _renderMainView(content);
+      const filter = e.currentTarget.dataset.filter;
+      if (_currentFilter === filter) return;
+      _currentFilter = filter;
+      
+      const select = document.getElementById('archive-filter-select');
+      if (select) select.value = filter;
+
+      content.querySelectorAll('.archive-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === filter));
+      _refreshTable();
     });
   });
 
-  // Search input
-  document.getElementById('archive-search')?.addEventListener('input', e => {
-    _searchTerm = e.target.value;
-    _refreshTable();
-  });
+  // Dropdown filter (Audit Logs style)
+  const filterSelect = document.getElementById('archive-filter-select');
+  if (filterSelect) {
+    filterSelect.addEventListener('change', e => {
+      _currentFilter = e.target.value;
+      content.querySelectorAll('.archive-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === _currentFilter));
+      _refreshTable();
+    });
+  }
 
-  // Ledger modal trigger
+  // Search input
+  const searchInput = document.getElementById('archive-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      _searchTerm = e.target.value;
+      _refreshTable();
+    });
+  }
+
+  // Ledger modal trigger (Depleted Batches)
   content.addEventListener('click', e => {
     const ledgerBtn = e.target.closest('.ledger-btn');
     if (ledgerBtn) {
@@ -107,7 +163,7 @@ function _attachListeners(content) {
     }
   });
 
-  // Restore voided batch
+  // Restore voided / expired batch
   content.addEventListener('click', async e => {
     const restoreBtn = e.target.closest('.restore-btn');
     if (restoreBtn) {
@@ -121,7 +177,7 @@ function _attachListeners(content) {
         buttonEl: restoreBtn,
         onSuccess: (restoredId) => {
           _voidedBatches = _voidedBatches.filter(b => b.id !== restoredId);
-          _refreshTable();
+          _renderMainView(content);
         }
       });
     }
@@ -145,7 +201,7 @@ function _attachListeners(content) {
       }
 
       _archivedCommodities = _archivedCommodities.filter(c => c.id !== id);
-      _refreshTable();
+      _renderMainView(content);
       await SystemDialog.alert(`Commodity "${name}" restored successfully.`);
     }
   });
