@@ -159,20 +159,14 @@ CREATE POLICY "batches_update"
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- SELECT: Administrators see all logs.
---         Nutrition personnel see only their own.
---
--- WHY restrict personnel to their own logs?
--- System-wide audit history is an admin-only feature.
--- Personnel should only see their own actions (for account transparency).
+-- SELECT: All authenticated users can view audit logs.
+-- System audit trail is transparent across the nutrition team.
+-- Main navigation to Audit Logs page remains restricted by role in the UI.
 CREATE POLICY "audit_logs_select"
   ON public.audit_logs
   FOR SELECT
   TO authenticated
-  USING (
-    user_id = auth.uid()
-    OR public.get_user_role() = 'administrator'
-  );
+  USING (true);
 
 -- INSERT: Any authenticated user can insert a log entry.
 -- The user_id must match the inserting user —
