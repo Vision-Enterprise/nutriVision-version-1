@@ -20,7 +20,8 @@ NutriVision digitizes the entire lifecycle of MNAO supplies:
 2. **Actionable Intelligence**: The **Inventory Advisor** monitors batches 24/7 and highlights items needing attention 30, 60, and 90 days before expiration.
 3. **Dedicated Human Milk Bank Management**: Tracks donor intake, pasteurization records, freezer storage location down to the shelf level, and infant recipient dispensing.
 4. **Complete Accountability**: Every single transaction—from receiving a box of Micronutrient Powder to dispensing milk—is permanently logged in a tamper-resistant audit trail.
-5. **Flexible Access**: Available both as a **fast, standalone desktop application** on office laptops/PCs and as a **cloud web application** for real-time synchronization.
+5. **Multi-User Real-Time Cloud Synchronization**: Built with a centralized cloud database (Supabase), ensuring that whenever an administrator or nutrition worker updates inventory on one device, all other staff and office computers immediately see the exact same stock levels in real time without conflicting records.
+6. **Dedicated Desktop & Web Access**: Available as a **convenient standalone desktop application** (`NutriVision.exe`) with built-in offline document OCR scanning, as well as a **web application** accessible from any modern browser.
 
 ---
 
@@ -329,8 +330,12 @@ Use this structured sequence during your presentation to MNAO leadership and sta
 
 ## 4. Anticipated Questions & Answers (FAQ)
 
-**Q1: What if our office loses internet connectivity?**
-> *NutriVision is packaged as a standalone desktop application (`NutriVision.exe`). It runs directly on your local computer, utilizing an embedded local web service engine so you can continue working smoothly.*
+**Q1: Does NutriVision require an internet connection?**
+> *Yes. NutriVision connects to a secure central cloud database (Supabase). An internet connection (office Wi-Fi or mobile data hotspot) is required to retrieve and synchronize live inventory data.*
+>
+> *This cloud-synchronized design is deliberate and vital for MNAO: if multiple staff members record deliveries, release batches to barangays, or dispense donor milk across different laptops and tablets, everyone sees the exact same updated quantities in real time. This completely prevents duplicate distributions, inventory discrepancies, and data conflicts.*
+>
+> *What the Desktop App (`NutriVision.exe`) provides is a dedicated native Windows workspace: instant launch without browser bookmarks, faster rendering, and an embedded local RapidOCR computer vision engine for document and invoice scanning.*
 
 **Q2: Can staff accidentally delete an active batch without anyone knowing?**
 > *No. NutriVision does not permit silent deletions. Deleting a batch requires selecting an official reason (Expired Stock, Data Entry Error, or Other with explanation). The record is preserved in the Data Archive, and the action is permanently written to the Central Audit Log with the staff member's name and timestamp.*
@@ -345,3 +350,4 @@ Use this structured sequence during your presentation to MNAO leadership and sta
 
 *Document prepared for Municipal Nutrition Action Office (MNAO), Municipality of Manolo Fortich, Bukidnon.*  
 *NutriVision Version 1.0 (Production Release)*
+
