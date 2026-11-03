@@ -24,3 +24,4 @@ CREATE POLICY "audit_logs_select"
   FOR SELECT
   TO authenticated
   USING (true);
+

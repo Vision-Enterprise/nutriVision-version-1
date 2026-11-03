@@ -48,7 +48,7 @@ export function renderMilkPageSkeleton() {
           <div class="milk-tabs" role="tablist">
             <button class="milk-tab milk-tab--active" data-tab="intake" role="tab" aria-selected="true">
               <span class="icon icon--sm" aria-hidden="true">receipt_long</span>
-              Log of Milk Received (FM.002.00)
+              Log of Milk Received
               <span class="milk-tab__count" id="count-donations">0</span>
             </button>
             <button class="milk-tab" data-tab="batches" role="tab" aria-selected="false">
@@ -1339,7 +1339,7 @@ export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQu
                style="width: 260px; font-size: 13px; padding: 5px 10px;">
         <select id="milk-audit-filter" class="form-input" style="width: 170px; font-size: 13px; padding: 5px 8px;">
           <option value="">All Milk Actions</option>
-          <option value="${AUDIT_ACTIONS.CREATE_MILK_DONATION}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_DONATION ? 'selected' : ''}>Intakes (FM.002.00)</option>
+          <option value="${AUDIT_ACTIONS.CREATE_MILK_DONATION}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_DONATION ? 'selected' : ''}>Milk Intakes</option>
           <option value="${AUDIT_ACTIONS.CREATE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_BATCH ? 'selected' : ''}>Batches Created</option>
           <option value="${AUDIT_ACTIONS.MOVE_MILK_SHELF}" ${filterAction === AUDIT_ACTIONS.MOVE_MILK_SHELF ? 'selected' : ''}>Shelf Relocations</option>
           <option value="${AUDIT_ACTIONS.DISPENSE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.DISPENSE_MILK_BATCH ? 'selected' : ''}>Milk Dispenses</option>

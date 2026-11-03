@@ -348,7 +348,7 @@ export async function createMilkDonation({
         AUDIT_ACTIONS.CREATE_MILK_DONATION,
         'milk_donation',
         data.id,
-        `Logged donor milk intake from "${donor_code.trim()}" (Form FM.002.00).`,
+        `Logged donor milk intake from "${donor_code.trim()}".`,
         { id: profileId, full_name: profileName }
       );
     }
