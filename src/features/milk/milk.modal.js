@@ -17,7 +17,9 @@ import {
   getBatchFreezerAndShelf,
   getFreezerShelfAllocations,
   getShelfLoad,
-  formatFreezerShelf
+  formatFreezerShelf,
+  addOneYearToDate,
+  isMilkBatchExpired
 } from './milk.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
@@ -123,9 +125,7 @@ function _shell(width, headerHtml, bodyHtml, footerHtml) {
 export async function openNewBatchModal({ onSave }) {
   const nextBatch  = await getNextBatchNumber();
   const today      = getLocalDateString();
-  const sixMonths  = new Date();
-  sixMonths.setMonth(sixMonths.getMonth() + 6);
-  const expiryStr  = getLocalDateString(sixMonths);
+  const expiryStr  = addOneYearToDate(today);
 
   const shelfOptions = SHELF_LOCATIONS.map(s =>
     `<option value="${s}">${s}</option>`
@@ -184,7 +184,7 @@ export async function openNewBatchModal({ onSave }) {
         Expiration Date
       </label>
       <input id="input-expiry-date" type="date" class="form-input" value="${expiryStr}" required>
-      <span class="form-hint">Default is 6 months from pasteurization date</span>
+      <span class="form-hint">Default is 1 year from pasteurization date</span>
     </div>
 
     <div class="form-group">
@@ -207,6 +207,15 @@ export async function openNewBatchModal({ onSave }) {
 
   const overlay = _mount('milk-modal-overlay', _shell('540px', header, body, footer));
 
+  // Auto-recalculate 1-year expiration date whenever pasteurization date changes
+  const datePastInput = overlay.querySelector('#input-date-past');
+  const expiryInput   = overlay.querySelector('#input-expiry-date');
+  datePastInput?.addEventListener('change', () => {
+    if (datePastInput.value && expiryInput) {
+      expiryInput.value = addOneYearToDate(datePastInput.value);
+    }
+  });
+
   // Close triggers
   overlay.querySelector('#batch-close-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
   overlay.querySelector('#batch-cancel-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
@@ -227,6 +236,12 @@ export async function openNewBatchModal({ onSave }) {
 
     if (!batchNo || !datePast || !totalBags || !expiry) {
       errorBox.textContent = 'Please fill in all required fields.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    if (expiry <= datePast) {
+      errorBox.textContent = 'Expiration date must be strictly after the date pasteurized.';
       errorBox.style.display = 'block';
       return;
     }
@@ -413,7 +428,7 @@ export function openNewDonationModal({ onSave }) {
 // ════════════════════════════════════════════════════════════════════════════
 export async function openDispenseModal({ preselectedBatchId = null, onSave }) {
   const { data: batches } = await fetchMilkBatches();
-  const available = (batches || []).filter(b => b.remaining_bags > 0);
+  const available = (batches || []).filter(b => b.remaining_bags > 0 && !isMilkBatchExpired(b));
 
   if (available.length === 0) {
     // Use system-native alert style — could be improved later
@@ -707,6 +722,7 @@ export function openEditBatchModal({ batch, shelves = [], freezers = [], batches
         <label class="form-label form-label--required" for="input-edit-expiry-date">Expiration Date</label>
         <input id="input-edit-expiry-date" type="date" class="form-input"
                value="${batch.expiry_date || ''}" required>
+        <span class="form-hint">Auto-adjusts to 1 year when pasteurization date changes</span>
       </div>
     </div>
 
@@ -730,6 +746,14 @@ export function openEditBatchModal({ batch, shelves = [], freezers = [], batches
 
   const overlay = _mount('milk-modal-overlay', _shell('540px', header, body, footer));
 
+  const editDatePastInput = overlay.querySelector('#input-edit-date-past');
+  const editExpiryInput   = overlay.querySelector('#input-edit-expiry-date');
+  editDatePastInput?.addEventListener('change', () => {
+    if (editDatePastInput.value && editExpiryInput) {
+      editExpiryInput.value = addOneYearToDate(editDatePastInput.value);
+    }
+  });
+
   overlay.querySelector('#edit-batch-close-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
   overlay.querySelector('#edit-batch-cancel-btn')?.addEventListener('click', () => _destroy('milk-modal-overlay'));
   overlay.addEventListener('click', e => { if (e.target === overlay) _destroy('milk-modal-overlay'); });
@@ -749,6 +773,12 @@ export function openEditBatchModal({ batch, shelves = [], freezers = [], batches
 
     if (!batchNo || !datePast || !totalBags || !expiry) {
       errorBox.textContent = 'Please fill in all required fields.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    if (expiry <= datePast) {
+      errorBox.textContent = 'Expiration date must be strictly after the date pasteurized.';
       errorBox.style.display = 'block';
       return;
     }

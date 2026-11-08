@@ -1,4 +1,5 @@
 import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
+import { getMilkBatchTrafficLight } from './milk.service.js';
 /**
  * Milk Bank — Official Print / PDF Export Generator
  * Formatted precisely for A4 Landscape print/PDF export matching official paper forms.
@@ -207,7 +208,12 @@ function generateMilkBatchesReportHTML(batches = []) {
     const b = batches[i] || null;
     let statusText = '';
     if (b) {
-      statusText = (b.remaining_bags || 0) <= 0 ? 'Depleted' : `Available (${b.remaining_bags})`;
+      if ((b.remaining_bags || 0) <= 0) {
+        statusText = 'Depleted';
+      } else {
+        const expStatus = getMilkBatchTrafficLight(b);
+        statusText = `${expStatus.label} (${b.remaining_bags})`;
+      }
     }
 
     rowsHtml.push(`
@@ -589,7 +595,13 @@ export function exportMilkBatchesCSV(batches = []) {
     ],
     ...batches.map((b, idx) => {
       const rem = Number(b.remaining_bags || 0);
-      const status = rem <= 0 ? 'Depleted' : (rem <= 3 ? 'Low Stock' : 'Available');
+      let status = 'Depleted';
+      if (rem > 0) {
+        const expStatus = getMilkBatchTrafficLight(b);
+        status = rem <= 3 && expStatus.key !== 'expired'
+          ? `${expStatus.label} · Low Stock`
+          : expStatus.label;
+      }
       return [
         idx + 1,
         b.batch_number || '',

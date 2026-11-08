@@ -34,7 +34,9 @@ import {
   getShelfLoad,
   getFreezerShelfAllocations,
   getBatchActualShelfInfo,
-  fetchMilkAuditLogs
+  fetchMilkAuditLogs,
+  addOneYearToDate,
+  isMilkBatchExpired
 } from './milk.service.js';
 
 import {
@@ -203,7 +205,7 @@ function _renderActiveSheet() {
       _setupCellBarSync();
     }
   } else if (_activeTab === 'dispense') {
-    const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+    const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
     contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch, _freezers);
     _bindDispatchesSheetEvents();
     _setupCellBarSync();
@@ -489,8 +491,6 @@ function _bindBatchesSheetEvents() {
   document.getElementById('btn-add-batch-row')?.addEventListener('click', async () => {
     const nextBatch = await getNextBatchNumber();
     const today = getLocalDateString();
-    const sixMonths = new Date();
-    sixMonths.setMonth(sixMonths.getMonth() + 6);
 
     const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
     const fName = activeFreezer ? activeFreezer.name : 'Upright Freezer A';
@@ -502,12 +502,40 @@ function _bindBatchesSheetEvents() {
     _draftBatches.push({
       batch_number: nextBatch,
       date_pasteurized: today,
-      expiry_date: getLocalDateString(sixMonths),
+      expiry_date: addOneYearToDate(today),
       freezer_shelf: formatFreezerShelf(fName, recShelf),
       total_bags: ''
     });
     _renderActiveSheet();
     _scrollToBottomDraft();
+  });
+
+  // Sync draft batch fields & auto-recalculate 1-year expiry when Date Pasteurized changes
+  document.querySelectorAll('.grid-row--draft').forEach(row => {
+    const idx = parseInt(row.dataset.draftIdx, 10);
+    const batchNoInp  = row.querySelector('.js-batch-no');
+    const datePastInp = row.querySelector('.js-batch-date-past');
+    const expiryInp   = row.querySelector('.js-batch-expiry');
+    const bagsInp     = row.querySelector('.js-batch-bags');
+
+    batchNoInp?.addEventListener('input', () => {
+      if (_draftBatches[idx]) _draftBatches[idx].batch_number = batchNoInp.value;
+    });
+    bagsInp?.addEventListener('input', () => {
+      if (_draftBatches[idx]) _draftBatches[idx].total_bags = bagsInp.value;
+    });
+    expiryInp?.addEventListener('change', () => {
+      if (_draftBatches[idx]) _draftBatches[idx].expiry_date = expiryInp.value;
+    });
+    datePastInp?.addEventListener('change', () => {
+      const nextDate = datePastInp.value;
+      if (_draftBatches[idx]) _draftBatches[idx].date_pasteurized = nextDate;
+      if (nextDate && expiryInp) {
+        const autoExp = addOneYearToDate(nextDate);
+        expiryInp.value = autoExp;
+        if (_draftBatches[idx]) _draftBatches[idx].expiry_date = autoExp;
+      }
+    });
   });
 
   // Dynamic freezer selection for draft rows: update Shelf dropdown options & recommend best shelf
@@ -731,8 +759,16 @@ function _bindBatchesSheetEvents() {
 
   // Quick Dispense: Jumps directly to Beneficiary Dispensing Ledger with batch preselected (NO MODAL)
   const jumpToDispense = (batchId) => {
-    _activeTab = 'dispense';
     const targetBatch = _batches.find(b => b.id === batchId);
+    if (targetBatch && isMilkBatchExpired(targetBatch)) {
+      MilkModal.alert(
+        `Batch "${targetBatch.batch_number}" is expired (${targetBatch.expiry_date}) and cannot be dispensed to infants.`,
+        'Expired Batch Blocked'
+      );
+      return;
+    }
+
+    _activeTab = 'dispense';
     const defaultQty = targetBatch ? (targetBatch.remaining_bags || 1) : 1;
     _draftDispatches.push({
       dispensed_date: getLocalDateString(),
@@ -764,11 +800,21 @@ function _bindBatchesSheetEvents() {
       return;
     }
 
+    // Push non-expired rows sequentially in shelf order at bottom of ledger
+    const validBatches = targetShelf.batches.filter(
+      item => item.batch && item.bags > 0 && !isMilkBatchExpired(item.batch)
+    );
+    if (validBatches.length === 0) {
+      MilkModal.alert(
+        `All batches currently stored on ${shelfName} are expired and blocked from infant dispensing.`,
+        'Expired Batches Blocked'
+      );
+      return;
+    }
+
     _activeTab = 'dispense';
     const today = getLocalDateString();
 
-    // Push rows sequentially in shelf order at bottom of ledger
-    const validBatches = targetShelf.batches.filter(item => item.batch && item.bags > 0);
     validBatches.forEach(item => {
       _draftDispatches.push({
         dispensed_date: today,
@@ -809,8 +855,6 @@ function _bindBatchesSheetEvents() {
       _batchesSubView = 'table';
       const nextBatch = await getNextBatchNumber();
       const today = getLocalDateString();
-      const sixMonths = new Date();
-      sixMonths.setMonth(sixMonths.getMonth() + 6);
 
       const activeFreezer = _freezers.find(f => f.id === _activeFreezerId) || _freezers[0];
       const fName = activeFreezer ? activeFreezer.name : 'Upright Freezer A';
@@ -822,7 +866,7 @@ function _bindBatchesSheetEvents() {
       _draftBatches.push({
         batch_number: nextBatch,
         date_pasteurized: today,
-        expiry_date: getLocalDateString(sixMonths),
+        expiry_date: addOneYearToDate(today),
         freezer_shelf: formatFreezerShelf(fName, recShelf),
         total_bags: ''
       });
@@ -1201,7 +1245,7 @@ function _bindDispatchesSheetEvents() {
   });
 
   document.getElementById('btn-add-dispatch-row')?.addEventListener('click', () => {
-    const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+    const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
     const fefo = getFefoPriorityBatch(_batches) || available[0];
     const defaultQty = fefo ? (fefo.remaining_bags || 1) : 1;
     _draftDispatches.push({
@@ -1222,7 +1266,7 @@ function _bindDispatchesSheetEvents() {
       const row = btn.closest('tr');
       const data = _collectDispatchRowData(row);
 
-      const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+      const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
       if (!(await _validateDispatchData(data, row, available))) {
         return;
       }
@@ -1262,7 +1306,7 @@ function _bindDispatchesSheetEvents() {
 
     const rows = document.querySelectorAll('.grid-row--draft');
     const validRows = [];
-    const available = _batches.filter(b => (b.remaining_bags || 0) > 0);
+    const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
 
     for (const row of rows) {
       const data = _collectDispatchRowData(row);
@@ -1400,6 +1444,14 @@ async function _validateDispatchData(data, row, availableBatches = []) {
 
   const selectedBatch = availableBatches.find(b => b.id === data.batch_id);
   if (!selectedBatch) {
+    const rawMatch = _batches.find(b => b.id === data.batch_id);
+    if (rawMatch && isMilkBatchExpired(rawMatch)) {
+      await MilkModal.alert(
+        `Batch "${rawMatch.batch_number}" is expired (${rawMatch.expiry_date}) and cannot be dispensed.`,
+        'Expired Batch Blocked'
+      );
+      return false;
+    }
     await MilkModal.alert('Selected batch is not available in stock.', 'Out of Stock');
     return false;
   }

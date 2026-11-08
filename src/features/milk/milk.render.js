@@ -6,8 +6,14 @@
  */
 
 import { BARANGAYS, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
-import { getBatchFreezerAndShelf, getFreezerShelfAllocations, getBatchActualShelfInfo } from './milk.service.js';
-import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import {
+  getBatchFreezerAndShelf,
+  getFreezerShelfAllocations,
+  getBatchActualShelfInfo,
+  getMilkBatchTrafficLight,
+  isMilkBatchExpired
+} from './milk.service.js';
+import { getLocalDateString, getDaysRemaining } from '../../shared/utils/date.utils.js';
 
 /**
  * 2-Section Page Skeleton:
@@ -104,12 +110,16 @@ export function renderMetrics(metrics) {
     </div>
 
     <div class="stat-card milk-stat-card--blue">
-      <div class="stat-card__label">Expiring ≤ 30 Days</div>
+      <div class="stat-card__label">Near Expiry (≤ 90 Days)</div>
       <div class="stat-card__value ${metrics.expiringSoonBags > 0 ? 'stat-card__value--warning' : ''}">
         ${metrics.expiringSoonBags}
         <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-medium);color:var(--color-text-muted);">Bags</span>
       </div>
-      <div class="stat-card__footer">FEFO priority — dispatch these first</div>
+      <div class="stat-card__footer">
+        ${metrics.expiredBags > 0
+          ? `<span style="color:var(--color-exp-expired);font-weight:600;">${metrics.expiredBags} expired bag(s) blocked from dispatch</span>`
+          : 'FEFO priority — dispatch these first'}
+      </div>
     </div>
 
     <div class="stat-card milk-stat-card--blue">
@@ -462,8 +472,16 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
   const savedHtml = batches.map((b, index) => {
     const isFefo = fefoBatch && fefoBatch.id === b.id;
     const statusBadge = getBatchStatusBadge(b);
-    const daysLeft = calculateDaysRemaining(b.expiry_date);
-    const expiryClass = daysLeft <= 0 ? 'text-danger fw-bold' : (daysLeft <= 30 ? 'text-warning fw-bold' : '');
+    const traffic = getMilkBatchTrafficLight(b);
+    const daysLeft = traffic.daysRemaining;
+    const isExpired = isMilkBatchExpired(b);
+    const daysColor = daysLeft === null
+      ? 'var(--color-text-muted)'
+      : (daysLeft <= 0
+          ? 'var(--color-exp-expired)'
+          : (daysLeft <= 90
+              ? 'var(--color-exp-near)'
+              : (daysLeft <= 180 ? 'var(--color-exp-moderate)' : 'var(--color-text-muted)')));
     const actualLoc = getBatchActualShelfInfo(b, batches, activeFreezers);
     const savedLoc = getBatchFreezerAndShelf(b, activeFreezers);
 
@@ -476,10 +494,14 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td>${formatDate(b.date_pasteurized)}</td>
         <td>
-          <span class="badge ${expiryClass ? 'badge--warning' : 'badge--secondary'}">
-            ${formatDate(b.expiry_date)}
-            ${daysLeft !== null ? `(${daysLeft > 0 ? daysLeft + 'd left' : 'Expired'})` : ''}
-          </span>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-weight:500;">${formatDate(b.expiry_date)}</span>
+            ${daysLeft !== null && (b.remaining_bags || 0) > 0 ? `
+              <span style="font-size:11px;font-weight:600;color:${daysColor};">
+                ${daysLeft > 0 ? `${daysLeft}d left` : (daysLeft === 0 ? 'Expires today' : `${Math.abs(daysLeft)}d ago`)}
+              </span>
+            ` : ''}
+          </div>
         </td>
         <td>
           <select class="milk-shelf-select js-update-freezer" data-batch-id="${b.id}" aria-label="Freezer">
@@ -500,20 +522,26 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
         </td>
         <td class="text-center">${b.total_bags}</td>
         <td class="text-center">
-          <strong style="color:${b.remaining_bags > 0 ? '#0284c7' : 'var(--color-text-muted)'};font-size:14px;">
+          <strong style="color:${b.remaining_bags > 0 ? (isExpired ? 'var(--color-exp-expired)' : '#0284c7') : 'var(--color-text-muted)'};font-size:14px;">
             ${b.remaining_bags}
           </strong>
         </td>
         <td class="text-center">${statusBadge}</td>
         <td class="grid-actions-cell" style="text-align:center;">
-          ${b.remaining_bags > 0 ? `
-            <button class="btn btn-secondary btn-sm js-quick-dispense-btn"
-                    data-batch-id="${b.id}" data-batch-no="${b.batch_number}"
-                    style="padding:4px 8px;font-size:12px;">
-              <span class="icon icon--sm" style="font-size:15px;">volunteer_activism</span>
-              Dispense
-            </button>
-          ` : '<span class="text-muted text-xs">Depleted</span>'}
+          ${b.remaining_bags <= 0 ? '<span class="text-muted text-xs">Depleted</span>' : (
+            isExpired ? `
+              <span class="badge badge-expired" title="Expired pasteurized milk is blocked from infant dispensing">
+                <span class="icon icon--sm" style="font-size:13px;">block</span> Blocked
+              </span>
+            ` : `
+              <button class="btn btn-secondary btn-sm js-quick-dispense-btn"
+                      data-batch-id="${b.id}" data-batch-no="${b.batch_number}"
+                      style="padding:4px 8px;font-size:12px;">
+                <span class="icon icon--sm" style="font-size:15px;">volunteer_activism</span>
+                Dispense
+              </button>
+            `
+          )}
         </td>
       </tr>
     `;
@@ -703,27 +731,36 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
       const b = it.batch;
       const isPriority = fefoBatch && fefoBatch.id === b.id;
       const isSelected = selectedBatch && selectedBatch.id === b.id;
-      const isLow = (b.remaining_bags || 0) <= 3;
+      const traffic = getMilkBatchTrafficLight(b);
+      const boxTrafficMap = {
+        good: 'batch-box--good',
+        moderate: 'batch-box--moderate',
+        near_expiry: 'batch-box--near-expiry',
+        expired: 'batch-box--expired'
+      };
 
-      let variantClass = 'batch-box--normal';
-      if (isPriority) variantClass = 'batch-box--priority';
-      else if (isLow) variantClass = 'batch-box--low';
-
+      let variantClass = boxTrafficMap[traffic.key] || 'batch-box--good';
+      if (isPriority) variantClass += ' batch-box--fefo-ring';
       if (isSelected) variantClass += ' batch-box--selected';
+
+      const daysTag = traffic.daysRemaining !== null
+        ? (traffic.daysRemaining > 0 ? `${traffic.daysRemaining}d` : 'EXP')
+        : '';
 
       return `
         <div class="batch-box ${variantClass} js-freezer-batch-box"
              draggable="true"
              data-batch-id="${b.id}"
              data-shelf-name="${escapeHtml(shelfObj.shelfName)}"
-             title="Drag and drop to move ${escapeHtml(b.batch_number)} to another shelf (${it.bags} bags on this shelf)">
+             title="${escapeHtml(b.batch_number)} · ${traffic.label}${daysTag ? ` (${daysTag})` : ''} · ${it.bags} bag(s) on ${escapeHtml(shelfObj.shelfName)}">
           <span class="batch-box__no" style="display:inline-flex;align-items:center;gap:2px;">
             <span class="icon icon--sm" style="font-size:11px;opacity:0.5;cursor:grab;">drag_indicator</span>${escapeHtml(b.batch_number)}
           </span>
           <span class="batch-box__bags">
-            ${it.bags} ${it.bags === 1 ? 'bag' : 'bags'}
+            ${it.bags} ${it.bags === 1 ? 'bag' : 'bags'}${daysTag ? ` · <strong>${daysTag}</strong>` : ''}
             ${it.isExcess ? '<span style="font-size:9.5px;color:#d97706;font-weight:700;">(excess)</span>' : ''}
           </span>
+          ${isPriority ? '<span class="batch-box__fefo-tag">★ FEFO</span>' : ''}
         </div>
       `;
     });
@@ -766,6 +803,13 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
   let detailsCardContent = '';
   if (selectedBatch) {
     const isPriorityBatch = fefoBatch && fefoBatch.id === selectedBatch.id;
+    const selTraffic = getMilkBatchTrafficLight(selectedBatch);
+    const selExpired = isMilkBatchExpired(selectedBatch);
+    const selDaysText = selTraffic.daysRemaining !== null
+      ? (selTraffic.daysRemaining > 0
+          ? `${selTraffic.daysRemaining}d remaining`
+          : (selTraffic.daysRemaining === 0 ? 'Expires today' : `Expired ${Math.abs(selTraffic.daysRemaining)}d ago`))
+      : '';
     const loc = getBatchFreezerAndShelf(selectedBatch, freezers);
 
     // Find all shelves where this batch is placed due to overflow
@@ -787,11 +831,14 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
           <h2 class="details-card-title">Batch Details</h2>
           <p class="details-card-subtitle">Targeted retrieval to minimize freezer door time.</p>
         </div>
-        ${isPriorityBatch ? `
-          <span class="priority-pick-badge">
-            <span class="icon" style="font-size:14px;">bolt</span> Priority Pick
-          </span>
-        ` : ''}
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+          <span class="badge ${selTraffic.cssClass}">${escapeHtml(selTraffic.label)}</span>
+          ${isPriorityBatch ? `
+            <span class="priority-pick-badge">
+              <span class="icon" style="font-size:14px;">bolt</span> Priority Pick
+            </span>
+          ` : ''}
+        </div>
       </div>
 
       <div class="details-inner-card">
@@ -813,7 +860,10 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Expiration Date</span>
-          <span class="details-field-val details-field-val--expiry">${formatDate(selectedBatch.expiry_date)}</span>
+          <span class="details-field-val details-field-val--expiry">
+            ${formatDate(selectedBatch.expiry_date)}
+            ${selDaysText ? `<span style="display:block;font-size:11.5px;font-weight:600;margin-top:2px;color:${selExpired ? 'var(--color-exp-expired)' : 'var(--color-text-muted)'};">${escapeHtml(selDaysText)}</span>` : ''}
+          </span>
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Donor / Remarks</span>
@@ -828,14 +878,25 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
         <button class="btn btn-outline-danger js-freezer-delete-batch" data-batch-id="${selectedBatch.id}" type="button">
           <span class="icon icon--sm">delete</span> Delete
         </button>
-        <button class="btn btn-primary js-quick-dispense-btn" data-batch-id="${selectedBatch.id}" type="button"
-                style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
-          <span class="icon icon--sm">volunteer_activism</span> Dispense Bags
-        </button>
+        ${selExpired ? `
+          <button class="btn btn-secondary" type="button" disabled
+                  title="Expired human milk batches cannot be dispensed to infants"
+                  style="margin-left:auto;gap:6px;opacity:0.65;cursor:not-allowed;color:var(--color-exp-expired);">
+            <span class="icon icon--sm">block</span> Expired — Blocked
+          </button>
+        ` : `
+          <button class="btn btn-primary js-quick-dispense-btn" data-batch-id="${selectedBatch.id}" type="button"
+                  style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
+            <span class="icon icon--sm">volunteer_activism</span> Dispense Bags
+          </button>
+        `}
       </div>
     `;
   } else if (selectedShelfObj) {
     const shelfItems = selectedShelfObj.items;
+    const dispensableShelfBags = shelfItems
+      .filter(it => !isMilkBatchExpired(it.batch))
+      .reduce((sum, it) => sum + (it.bags || 0), 0);
 
     detailsCardContent = `
       <div class="details-card-header">
@@ -877,13 +938,17 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
             Batches on this shelf:
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            ${shelfItems.map(it => `
-              <button class="freezer-batch-pill js-freezer-batch-box" data-batch-id="${it.batch.id}" style="cursor:pointer;border:1px solid #bae6fd;">
-                <strong style="color:#0369a1;font-family:monospace;">${escapeHtml(it.batch.batch_number)}</strong>
-                <span>·</span>
-                <span>${it.bags} bags</span>
-              </button>
-            `).join('')}
+            ${shelfItems.map(it => {
+              const t = getMilkBatchTrafficLight(it.batch);
+              return `
+                <button class="freezer-batch-pill js-freezer-batch-box" data-batch-id="${it.batch.id}" style="cursor:pointer;border:1px solid #bae6fd;">
+                  <strong style="color:#0369a1;font-family:monospace;">${escapeHtml(it.batch.batch_number)}</strong>
+                  <span>·</span>
+                  <span>${it.bags} bags</span>
+                  <span class="badge ${t.cssClass}" style="font-size:10px;padding:1px 6px;">${escapeHtml(t.label)}</span>
+                </button>
+              `;
+            }).join('')}
           </div>
         </div>
       ` : `
@@ -893,12 +958,19 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
       `}
 
       <div class="details-actions-row">
-        ${shelfItems.length > 0 ? `
-          <button class="btn btn-primary js-dispense-shelf-btn" data-shelf-name="${escapeHtml(selectedShelf)}" type="button"
-                  style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
-            <span class="icon icon--sm">volunteer_activism</span> Dispense From Shelf (${selectedShelfBags} bags)
-          </button>
-        ` : ''}
+        ${shelfItems.length > 0 ? (
+          dispensableShelfBags > 0 ? `
+            <button class="btn btn-primary js-dispense-shelf-btn" data-shelf-name="${escapeHtml(selectedShelf)}" type="button"
+                    style="background:#0284c7;border-color:#0284c7;margin-left:auto;gap:6px;">
+              <span class="icon icon--sm">volunteer_activism</span> Dispense From Shelf (${dispensableShelfBags} bags)
+            </button>
+          ` : `
+            <button class="btn btn-secondary" type="button" disabled
+                    style="margin-left:auto;gap:6px;opacity:0.65;cursor:not-allowed;color:var(--color-exp-expired);">
+              <span class="icon icon--sm">block</span> All Batches Expired
+            </button>
+          `
+        ) : ''}
       </div>
     `;
   } else {
@@ -971,6 +1043,14 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
               <span class="digital-twin-status-label">${escapeHtml(statusSub)}</span>
               <span class="digital-twin-status-val">${escapeHtml(statusText)}</span>
             </div>
+          </div>
+
+          <!-- Traffic-Light Shelf-Life Legend -->
+          <div class="digital-twin-traffic-legend" aria-label="Shelf-life traffic-light legend">
+            <span class="traffic-legend-item"><span class="traffic-legend-dot traffic-legend-dot--good"></span>Good (&gt;180d)</span>
+            <span class="traffic-legend-item"><span class="traffic-legend-dot traffic-legend-dot--moderate"></span>Moderate (91–180d)</span>
+            <span class="traffic-legend-item"><span class="traffic-legend-dot traffic-legend-dot--near"></span>Near Expiry (≤90d)</span>
+            <span class="traffic-legend-item"><span class="traffic-legend-dot traffic-legend-dot--expired"></span>Expired</span>
           </div>
 
           <!-- Vertical Scroll Pane for Shelves (NO empty placeholder boxes) -->
@@ -1166,26 +1246,25 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function getBatchStatusBadge(batch) {
-  if (batch.remaining_bags <= 0) {
+  if ((batch.remaining_bags || 0) <= 0) {
     return `<span class="badge badge--dark">Depleted</span>`;
   }
-  const days = calculateDaysRemaining(batch.expiry_date);
-  if (days !== null && days <= 0) {
-    return `<span class="badge badge--danger">Expired</span>`;
-  }
-  if (batch.remaining_bags <= 3) {
-    return `<span class="badge badge--warning">Low Stock (${batch.remaining_bags})</span>`;
-  }
-  return `<span class="badge badge--success">Available (${batch.remaining_bags})</span>`;
+  const traffic = getMilkBatchTrafficLight(batch);
+  const isExpired = isMilkBatchExpired(batch);
+  const lowStockSub = (!isExpired && batch.remaining_bags <= 3)
+    ? `<span style="font-size:10.5px;font-weight:600;color:#c2410c;">Low Stock (${batch.remaining_bags})</span>`
+    : '';
+  return `
+    <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;">
+      <span class="badge ${traffic.cssClass}">${escapeHtml(traffic.label)}</span>
+      ${lowStockSub}
+    </div>
+  `;
 }
 
 function calculateDaysRemaining(dateStr) {
   if (!dateStr) return null;
-  const target = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffMs = target - today;
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return getDaysRemaining(dateStr);
 }
 
 function formatDate(dateStr) {

@@ -4,10 +4,60 @@
  */
 
 import { supabase } from '../../core/supabase.js';
-import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
-import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import { AUDIT_ACTIONS, EXPIRATION_THRESHOLDS, EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { getLocalDateString, getDaysRemaining, getExpirationStatus } from '../../shared/utils/date.utils.js';
 
 const MODULE = '[MilkBankService]';
+
+/**
+ * Computes a local YYYY-MM-DD date string strictly 1 year after the given pasteurization date.
+ * Handles leap-day dates (e.g. Feb 29 -> Feb 28 on non-leap year) cleanly without UTC drift.
+ */
+export function addOneYearToDate(dateStr) {
+  const base = dateStr || getLocalDateString();
+  const [y, m, d] = String(base).split('-').map(Number);
+  if (!y || !m || !d) {
+    const fallback = new Date();
+    fallback.setFullYear(fallback.getFullYear() + 1);
+    return getLocalDateString(fallback);
+  }
+  const nextYear = new Date(y + 1, m - 1, d);
+  if (nextYear.getMonth() !== m - 1) {
+    nextYear.setDate(0);
+  }
+  return getLocalDateString(nextYear);
+}
+
+/**
+ * Returns true if a pasteurized milk batch has reached or passed its expiration date (<= 0 days remaining).
+ */
+export function isMilkBatchExpired(batch) {
+  if (!batch || !batch.expiry_date) return false;
+  return getDaysRemaining(batch.expiry_date) <= 0;
+}
+
+/**
+ * Returns NutriVision's standard 4-tier Traffic-Light status object for a milk batch:
+ * { key: 'good'|'moderate'|'near_expiry'|'expired', label, cssClass, daysRemaining }
+ */
+export function getMilkBatchTrafficLight(batch) {
+  if (!batch || !batch.expiry_date) {
+    return { key: 'good', label: EXPIRATION_STATUS.GOOD, cssClass: 'badge-good', daysRemaining: null };
+  }
+  const daysRemaining = getDaysRemaining(batch.expiry_date);
+  const label = getExpirationStatus(batch.expiry_date);
+
+  if (label === EXPIRATION_STATUS.EXPIRED) {
+    return { key: 'expired', label, cssClass: 'badge-expired', daysRemaining };
+  }
+  if (label === EXPIRATION_STATUS.NEAR_EXPIRY) {
+    return { key: 'near_expiry', label, cssClass: 'badge-near-expiry', daysRemaining };
+  }
+  if (label === EXPIRATION_STATUS.MODERATE) {
+    return { key: 'moderate', label, cssClass: 'badge-moderate', daysRemaining };
+  }
+  return { key: 'good', label, cssClass: 'badge-good', daysRemaining };
+}
 
 export const SHELF_LOCATIONS = [
   'Shelf 1',
@@ -104,19 +154,23 @@ export async function fetchMilkMetrics() {
     const dispatches = dispatchesRes.data || [];
 
     const now = new Date();
-    const thirtyDaysAhead = new Date();
-    thirtyDaysAhead.setDate(now.getDate() + 30);
 
-    const availableBags = batches.reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
+    const availableBags = batches
+      .filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b))
+      .reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
     const rawBags = donations.filter(d => d.status === 'stored_raw').length;
 
     const expiringSoonBags = batches
       .filter(b => {
         if (!b.remaining_bags || b.remaining_bags <= 0) return false;
-        const exp = new Date(b.expiry_date);
-        return exp >= now && exp <= thirtyDaysAhead;
+        const days = getDaysRemaining(b.expiry_date);
+        return days > 0 && days <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS;
       })
       .reduce((sum, b) => sum + b.remaining_bags, 0);
+
+    const expiredBags = batches
+      .filter(b => (b.remaining_bags || 0) > 0 && isMilkBatchExpired(b))
+      .reduce((sum, b) => sum + (b.remaining_bags || 0), 0);
 
     // Current calendar month dispatches
     const currentMonth = now.getMonth();
@@ -132,6 +186,7 @@ export async function fetchMilkMetrics() {
       availableBags,
       rawBags,
       expiringSoonBags,
+      expiredBags,
       dispensedThisMonth
     };
   } catch (err) {
@@ -140,6 +195,7 @@ export async function fetchMilkMetrics() {
       availableBags: 0,
       rawBags: 0,
       expiringSoonBags: 0,
+      expiredBags: 0,
       dispensedThisMonth: 0
     };
   }
@@ -386,6 +442,9 @@ export async function dispenseMilk({
       .single();
 
     if (batchError || !batch) throw new Error('Selected batch not found');
+    if (isMilkBatchExpired(batch)) {
+      throw new Error(`Cannot dispense expired batch ${batch.batch_number} (expired on ${batch.expiry_date}).`);
+    }
     if (batch.remaining_bags < qty) {
       throw new Error(`Insufficient stock. Only ${batch.remaining_bags} bags available in ${batch.batch_number}.`);
     }
@@ -1033,7 +1092,9 @@ export async function createMilkBatchesBulk(batchList, profileId, profileName = 
  * Find the FEFO priority batch (earliest expiration among active batches with remaining bags)
  */
 export function getFefoPriorityBatch(batches = []) {
-  const available = (batches || []).filter(b => (b.remaining_bags || 0) > 0 && b.expiry_date);
+  const available = (batches || []).filter(
+    b => (b.remaining_bags || 0) > 0 && b.expiry_date && !isMilkBatchExpired(b)
+  );
   if (available.length === 0) return null;
 
   return available.slice().sort((a, b) => {
