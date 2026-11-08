@@ -21,6 +21,7 @@ import {
   getFirstNameForGreeting,
   renderAvatarInnerHTML,
 } from '../utils/profile.utils.js';
+import { mountModuleGuideSystem } from './guide.component.js';
 
 // Feature page render functions
 import { renderCalendarPage }            from '../../features/calendar/calendar.page.js';
@@ -364,6 +365,9 @@ export function renderShell(profile, onLogout) {
 
   // Start the router — handles the current hash and listens for changes
   router.start();
+
+  // Mount contextual [ⓘ Guide] buttons & right-side Help Drawer across all pages (#95)
+  mountModuleGuideSystem(profile);
 }
 
 /**
