@@ -304,8 +304,11 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
            </div>
          </div>
          <div class="workspace-footer">
-            <div>
-               <span id="summary-commodities" style="font-weight:600; color:var(--text-main);">0</span> Unique Commodities
+            <div id="summary-commodities-wrap" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+               <span><strong id="summary-batches" style="font-weight:600; color:var(--text-main);">0</strong> Batches</span>
+               <span style="color:var(--color-border, #cbd5e1);">·</span>
+               <span><strong id="summary-commodities" style="font-weight:600; color:var(--text-main);">0</strong> Commodities</span>
+               <span id="summary-commodities-breakdown" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:6px;"></span>
             </div>
             <div>
                <span id="summary-units" style="font-weight:600; color:var(--text-main);">0</span> Total Units
@@ -561,23 +564,25 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
  * Computes deterministic Batch Code or returns incomplete/blocked state.
  */
 function computeRowCode(commodityId, commodityName, unit, expDate, deliveryDate = null, supplier = null) {
+  const cleanName = String(commodityName || '').trim();
+  const isNewCommodity = Boolean(cleanName && !commodityId);
   try {
-    if (!commodityName) {
-      return { code: '[ INCOMPLETE ]', isComplete: false };
+    if (!cleanName) {
+      return { code: '[ INCOMPLETE ]', isComplete: false, isNewCommodity: false };
     }
     if (!unit || !expDate || !deliveryDate) {
-      return { code: '[ INCOMPLETE ]', isComplete: false };
+      return { code: '[ INCOMPLETE ]', isComplete: false, isNewCommodity };
     }
-    const sku = generateCommoditySKU(commodityName, unit);
+    const sku = generateCommoditySKU(cleanName, unit);
     const code = generateBatchCode(sku, expDate, deliveryDate, supplier);
     return { 
       sku, 
       code, 
       isComplete: true, 
-      isNewCommodity: !commodityId 
+      isNewCommodity 
     };
   } catch (err) {
-    return { code: '[ INCOMPLETE ]', isComplete: false, error: err.message };
+    return { code: '[ INCOMPLETE ]', isComplete: false, isNewCommodity, error: err.message };
   }
 }
 
@@ -645,10 +650,20 @@ function updateRowLiveCode(tr, row) {
     batchInput.style.fontFamily = 'monospace';
     row.sku = '';
     row.batchCode = '';
-    tr.style.backgroundColor = '';
-    tr.style.borderLeft = '';
-    if (dupNotice) {
-      dupNotice.style.display = 'none';
+    if (result.isNewCommodity) {
+      tr.style.backgroundColor = '#f0f9ff';
+      tr.style.borderLeft = '4px solid #0284c7';
+      if (dupNotice) {
+        dupNotice.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>New commodity (auto-registers on save)</span>`;
+        dupNotice.style.color = '#0284c7';
+        dupNotice.style.display = 'flex';
+      }
+    } else {
+      tr.style.backgroundColor = '';
+      tr.style.borderLeft = '';
+      if (dupNotice) {
+        dupNotice.style.display = 'none';
+      }
     }
   }
 }
@@ -662,8 +677,7 @@ function renderBulkTable() {
 
   if (bulkRows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
-    document.getElementById('summary-commodities').textContent = '0';
-    document.getElementById('summary-units').textContent = '0';
+    updateFooters();
     validateTableRows();
     return;
   }
@@ -1088,24 +1102,55 @@ function syncBulkState() {
 }
 
 /**
- * Updates summary counts in workspace footer.
+ * Updates summary counts in workspace footer (#113: explicit New vs Existing commodity breakdown).
  */
 function updateFooters() {
   let totalQty = 0;
-  let uniqueComms = new Set();
+  const newComms = new Set();
+  const existingComms = new Set();
 
   bulkRows.forEach(r => {
-    if (r.commodityId || r.commodityName) {
-      uniqueComms.add((r.commodityId || r.commodityName).toLowerCase());
+    const cleanName = String(r.commodityName || '').trim();
+    if (r.commodityId) {
+      existingComms.add(String(r.commodityId).toLowerCase());
+    } else if (cleanName) {
+      const matched = availableCommodities.find(c => c.name.toLowerCase() === cleanName.toLowerCase());
+      if (matched) {
+        existingComms.add(String(matched.id).toLowerCase());
+      } else {
+        newComms.add(cleanName.toLowerCase());
+      }
     }
     const q = parseInt(r.qty, 10);
     if (!isNaN(q) && q > 0) totalQty += q;
   });
 
+  const totalComms = newComms.size + existingComms.size;
+  const batchesEl = document.getElementById('summary-batches');
   const commEl = document.getElementById('summary-commodities');
+  const breakdownEl = document.getElementById('summary-commodities-breakdown');
   const unitEl = document.getElementById('summary-units');
-  if (commEl) commEl.textContent = uniqueComms.size;
-  if (unitEl) unitEl.textContent = totalQty;
+
+  if (batchesEl) batchesEl.textContent = bulkRows.length.toLocaleString();
+  if (commEl) commEl.textContent = totalComms.toLocaleString();
+  if (unitEl) unitEl.textContent = totalQty.toLocaleString();
+
+  if (breakdownEl) {
+    if (totalComms === 0) {
+      breakdownEl.innerHTML = '';
+    } else {
+      breakdownEl.innerHTML = `
+        <span title="Flagged in blue — new commodities that will auto-register on save"
+              style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">
+          ${newComms.size} New (Flagged)
+        </span>
+        <span title="Commodities already registered in the MNAO catalog"
+              style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
+          ${existingComms.size} Existing
+        </span>
+      `;
+    }
+  }
 }
 
 /**
