@@ -167,8 +167,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
     <tr class="grid-row--draft" data-draft-idx="${idx}">
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
-        <input type="text" class="grid-cell-input grid-cell-input--mono js-donor-code"
-               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. 24-672-760" aria-label="Donor Name / Code" autofocus>
+        <input type="text" class="grid-cell-input js-donor-code"
+               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. Maria Santos" aria-label="Donor Name" autofocus>
       </td>
       <td>
         <input type="date" class="grid-cell-input js-donor-exp-date"
@@ -287,7 +287,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         <thead>
           <tr>
             <th rowspan="2" style="width:45px;text-align:center;">#</th>
-            <th rowspan="2" style="min-width:140px;">Donor Name / Code *</th>
+            <th rowspan="2" style="min-width:170px;">Donor Name *</th>
             <th colspan="2" style="text-align:center;border-bottom:1px solid var(--color-border);">Milk Expression</th>
             <th colspan="2" style="text-align:center;border-bottom:1px solid var(--color-border);">Transport</th>
             <th rowspan="2" style="min-width:110px;text-align:center;">Condition @ Donor</th>

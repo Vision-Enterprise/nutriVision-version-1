@@ -438,7 +438,7 @@ async function _validateDonationData(data, row) {
     const input = row.querySelector('.js-donor-code');
     input?.classList.add('cell-invalid');
     input?.focus();
-    await MilkModal.alert('Please enter a Donor Name or Donor Code (e.g. 24-672-760).', 'Validation Required');
+    await MilkModal.alert('Please enter the Donor Name (e.g. Maria Santos).', 'Validation Required');
     return false;
   }
 

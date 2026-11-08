@@ -154,7 +154,7 @@ function generateMilkIntakeReportHTML(donations = []) {
         <thead>
           <tr>
             <th rowspan="2" style="width: 25px;">#</th>
-            <th rowspan="2" style="width: 110px;">Donor name / Code</th>
+            <th rowspan="2" style="width: 125px;">Donor Name</th>
             <th colspan="1">Milk expression</th>
             <th colspan="2">Transport</th>
             <th rowspan="2" style="width: 90px;">Condition of milk when collected from donor</th>
@@ -547,7 +547,7 @@ export function exportMilkIntakeCSV(donations = []) {
   const rows = [
     [
       '#',
-      'Donor Name / Code',
+      'Donor Name',
       'Expression Date',
       'Expression Time',
       'Transport Date',

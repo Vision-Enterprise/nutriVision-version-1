@@ -190,7 +190,7 @@ export async function openNewBatchModal({ onSave }) {
     <div class="form-group">
       <label class="form-label" for="input-batch-remarks">Remarks / Donor Pool Notes</label>
       <input id="input-batch-remarks" type="text" class="form-input"
-             placeholder="e.g. Pooled from donors 25-185 and 25-237">
+             placeholder="e.g. Pooled from donors Maria Santos and Ana Cruz">
     </div>
   `;
 
@@ -296,11 +296,10 @@ export function openNewDonationModal({ onSave }) {
 
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label form-label--required" for="input-donor-code">Donor Code / Bag Range</label>
+        <label class="form-label form-label--required" for="input-donor-code">Donor Name</label>
         <input id="input-donor-code" type="text" class="form-input"
-               placeholder="e.g. 25-185-236" required
-               style="font-family:monospace;font-weight:700;">
-        <span class="form-hint">As written in paper log (e.g. 25-33-59)</span>
+               placeholder="e.g. Maria Santos" required>
+        <span class="form-hint">Full name of the milk donor</span>
       </div>
       <div class="form-group">
         <label class="form-label form-label--required" for="input-intake-bags">Bags Received</label>
@@ -729,7 +728,7 @@ export function openEditBatchModal({ batch, shelves = [], freezers = [], batches
     <div class="form-group">
       <label class="form-label" for="input-edit-batch-remarks">Remarks / Donor Pool Notes</label>
       <input id="input-edit-batch-remarks" type="text" class="form-input"
-             value="${batch.remarks || ''}" placeholder="e.g. Pooled from donors 25-185">
+             value="${batch.remarks || ''}" placeholder="e.g. Pooled from donors Maria Santos and Ana Cruz">
     </div>
   `;
 

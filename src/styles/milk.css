@@ -532,12 +532,12 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 }
 
 .milk-donor-code {
-  font-family: monospace;
+  font-family: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text);
   background: #f1f5f9;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
   border: 1px solid #e2e8f0;
 }
