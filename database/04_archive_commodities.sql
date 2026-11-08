@@ -27,6 +27,7 @@ CREATE POLICY "commodities_select_all"
   USING (true);
 
 -- 3. Security Definer RPC for 100% reliable archiving from any authenticated account
+-- Blocks archiving if active in-stock batches (quantity > 0) still exist (#100).
 CREATE OR REPLACE FUNCTION public.archive_commodity(commodity_id UUID, reason TEXT DEFAULT NULL)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -34,6 +35,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.batches b
+    WHERE b.commodity_id = archive_commodity.commodity_id
+      AND b.deleted_at IS NULL
+      AND COALESCE(b.record_status, 'Active') = 'Active'
+      AND b.quantity > 0
+  ) THEN
+    RAISE EXCEPTION 'Cannot archive commodity while active in-stock batches exist. Distribute or void remaining batches first.';
+  END IF;
+
   UPDATE public.commodities
   SET deleted_at = NOW(),
       updated_at = NOW(),

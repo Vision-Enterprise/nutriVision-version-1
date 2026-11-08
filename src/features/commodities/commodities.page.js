@@ -5,7 +5,7 @@
  * MVC Controller: delegates HTML rendering to .render.js and modal flows to .modals.js.
  */
 
-import { fetchCommodities, deleteCommodity } from './commodities.service.js';
+import { fetchCommodities, deleteCommodity, fetchActiveStockForCommodity } from './commodities.service.js';
 import { renderCommoditiesLayout, renderTable, renderEmpty, renderErrorAlert } from './commodities.render.js';
 import { openCommodityModal } from './commodities.modals.js';
 import { openCommodityGraphModal } from './commodity-graph.modal.js';
@@ -172,8 +172,29 @@ function _attachPageListeners(content) {
 }
 
 async function _handleDelete(commodity) {
+  const stockCheck = await fetchActiveStockForCommodity(commodity.id);
+  if (stockCheck.error) {
+    await SystemDialog.alert(stockCheck.error);
+    return;
+  }
+
+  if (stockCheck.activeBatchCount > 0) {
+    const unitLabel = commodity.unit || 'units';
+    const previewCodes = stockCheck.batchNumbers.slice(0, 4).join(', ');
+    const moreText = stockCheck.batchNumbers.length > 4 ? ` (+${stockCheck.batchNumbers.length - 4} more)` : '';
+    await SystemDialog.alert(
+      `Cannot archive "${commodity.name}" (${commodity.commodity_code}).\n\n` +
+      `This commodity still has ${stockCheck.activeBatchCount} active batch${stockCheck.activeBatchCount !== 1 ? 'es' : ''} ` +
+      `with ${stockCheck.totalUnits.toLocaleString()} ${unitLabel} in stock` +
+      `${previewCodes ? `:\n• ${previewCodes}${moreText}` : '.'}\n\n` +
+      `Please distribute, dispose, or void its active batches first so physical stock is never hidden.`
+    );
+    return;
+  }
+
   const confirmed = await SystemDialog.confirm(
-    `Archive "${commodity.name}" (${commodity.commodity_code})?\n\nThis will remove it from active inventory across all accounts and move it to the system archive.`
+    `Archive "${commodity.name}" (${commodity.commodity_code})?\n\n` +
+    `Verified 0 active batches in stock. This will move the commodity to Archived Commodities while preserving all historical batch records.`
   );
   if (!confirmed) return;
 
@@ -181,7 +202,8 @@ async function _handleDelete(commodity) {
     commodity.id,
     commodity.name,
     commodity.commodity_code,
-    _profile
+    _profile,
+    commodity.unit || 'units'
   );
 
   if (error) {

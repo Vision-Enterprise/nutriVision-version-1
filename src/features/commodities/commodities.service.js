@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '../../core/supabase.js';
-import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
 
 const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
@@ -215,16 +215,77 @@ export async function updateCommodity(id, formData, profile) {
 // ── Delete (Soft) ───────────────────────────────────────────────────────────
 
 /**
+ * Check if a commodity currently has active, in-stock batches (quantity > 0).
+ * Used to guard against hiding physical warehouse stock when archiving a commodity (#100).
+ *
+ * @param {string} commodityId
+ * @returns {Promise<{ activeBatchCount: number, totalUnits: number, batchNumbers: string[], error: string|null }>}
+ */
+export async function fetchActiveStockForCommodity(commodityId) {
+  try {
+    const { data, error } = await supabase
+      .from('batches')
+      .select('id, batch_number, quantity, record_status, deleted_at')
+      .eq('commodity_id', commodityId)
+      .is('deleted_at', null)
+      .gt('quantity', 0);
+
+    if (error) throw error;
+
+    const activeBatches = (data || []).filter(
+      b => !b.record_status || b.record_status === RECORD_STATUS.ACTIVE
+    );
+
+    const totalUnits = activeBatches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
+    const batchNumbers = activeBatches.map(b => b.batch_number).filter(Boolean);
+
+    return {
+      activeBatchCount: activeBatches.length,
+      totalUnits,
+      batchNumbers,
+      error: null,
+    };
+  } catch (err) {
+    console.error('[CommoditiesService] fetchActiveStockForCommodity:', err);
+    return {
+      activeBatchCount: 0,
+      totalUnits: 0,
+      batchNumbers: [],
+      error: 'Could not verify active batch stock for this commodity.',
+    };
+  }
+}
+
+/**
  * Soft-delete a commodity by setting deleted_at to NOW().
+ * Blocks archiving if active in-stock batches (qty > 0) still exist (#100).
  * The record stays in the DB for audit purposes — hard deletes are never done.
  * @param {string} id
  * @param {string} name
  * @param {string} code
  * @param {Object} profile
+ * @param {string} [unit='units']
  * @returns {Promise<{ error: string|null }>}
  */
-export async function deleteCommodity(id, name, code, profile) {
+export async function deleteCommodity(id, name, code, profile, unit = 'units') {
   try {
+    // 0. Guard: prevent archiving commodities that still hold active physical stock (#100)
+    const stockCheck = await fetchActiveStockForCommodity(id);
+    if (stockCheck.error) {
+      return { error: stockCheck.error };
+    }
+    if (stockCheck.activeBatchCount > 0) {
+      const sampleCodes = stockCheck.batchNumbers.slice(0, 3).join(', ');
+      const moreSuffix = stockCheck.batchNumbers.length > 3 ? `, +${stockCheck.batchNumbers.length - 3} more` : '';
+      return {
+        error:
+          `Cannot archive "${name}" (${code}) while ${stockCheck.activeBatchCount} active batch` +
+          `${stockCheck.activeBatchCount !== 1 ? 'es' : ''} (${stockCheck.totalUnits.toLocaleString()} ${unit}) remain in stock` +
+          `${sampleCodes ? ` [${sampleCodes}${moreSuffix}]` : ''}. ` +
+          `Please distribute, dispose, or void the remaining batches first.`
+      };
+    }
+
     // 1. Attempt RPC first (Security Definer, bypasses RLS)
     const { error: rpcErr } = await supabase.rpc('archive_commodity', { commodity_id: id });
     if (!rpcErr) {
