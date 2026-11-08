@@ -114,19 +114,18 @@ export function renderCalendarLayout() {
                   Assign to me
                 </button>
               </div>
-              <input
-                id="cal-field-pic"
-                class="form-input"
-                type="text"
-                list="cal-staff-suggestions"
-                autocomplete="off"
-                required
-                placeholder="Select MNAO staff or type BNS / barangay focal person..."
-              />
-              <datalist id="cal-staff-suggestions"></datalist>
-              <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px;">
-                Pick from suggested MNAO personnel or enter any external coordinator / BNS name.
-              </span>
+              <select id="cal-field-pic" class="form-select" required>
+                <option value="">Select Person in Charge...</option>
+              </select>
+              <div id="cal-field-pic-custom-wrap" style="display: none; margin-top: 8px;">
+                <input
+                  id="cal-field-pic-custom"
+                  class="form-input"
+                  type="text"
+                  placeholder="Enter external coordinator, BNS, or focal person name..."
+                  autocomplete="off"
+                />
+              </div>
               <span class="form-error" id="cal-error-pic"></span>
             </div>
 

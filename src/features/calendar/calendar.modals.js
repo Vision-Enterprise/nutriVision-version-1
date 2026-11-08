@@ -22,17 +22,31 @@ import { getLocalDateString } from '../../shared/utils/date.utils.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 
 async function _populateStaffSuggestions(profile) {
-  const datalist = document.getElementById('cal-staff-suggestions');
-  if (!datalist) return;
+  const select = document.getElementById('cal-field-pic');
+  if (!select) return;
   const names = await fetchStaffSuggestions(profile);
-  datalist.innerHTML = names
-    .map(name => `<option value="${escapeHtml(name)}"></option>`)
-    .join('');
+  const currentVal = select.value;
+  const ownName = String(profile?.full_name ?? '').trim();
+
+  let html = '<option value="">Select Person in Charge...</option>';
+  names.forEach(name => {
+    const isYou = ownName && name.toLowerCase() === ownName.toLowerCase();
+    const label = isYou ? `${escapeHtml(name)} (You)` : escapeHtml(name);
+    html += `<option value="${escapeHtml(name)}">${label}</option>`;
+  });
+  html += '<option value="__custom__">+ Other / Enter Custom Name (BNS, Focal Person)...</option>';
+
+  select.innerHTML = html;
+
+  if (currentVal) {
+    select.value = currentVal;
+  }
 }
 
 function _clearFormValidation() {
-  ['cal-field-title', 'cal-field-pic', 'cal-field-date'].forEach(id => {
-    document.getElementById(id)?.classList.remove('form-input--error');
+  ['cal-field-title', 'cal-field-pic', 'cal-field-pic-custom', 'cal-field-date'].forEach(id => {
+    const el = document.getElementById(id);
+    el?.classList.remove('form-input--error', 'form-select--error');
   });
   ['cal-error-title', 'cal-error-pic', 'cal-error-date'].forEach(id => {
     const el = document.getElementById(id);
@@ -41,9 +55,16 @@ function _clearFormValidation() {
 }
 
 function _setFieldError(inputId, errorId, message) {
-  document.getElementById(inputId)?.classList.add('form-input--error');
-  const el = document.getElementById(errorId);
-  if (el) el.textContent = message;
+  const el = document.getElementById(inputId);
+  if (el) {
+    if (el.tagName === 'SELECT') {
+      el.classList.add('form-select--error');
+    } else {
+      el.classList.add('form-input--error');
+    }
+  }
+  const errEl = document.getElementById(errorId);
+  if (errEl) errEl.textContent = message;
 }
 
 export function showDetailModal(info, calendarRef, profile) {
@@ -103,12 +124,12 @@ export function showDetailModal(info, calendarRef, profile) {
   }
 }
 
-export function openEventFormModal({ mode = 'add', event = null, profile = null } = {}) {
+export async function openEventFormModal({ mode = 'add', event = null, profile = null } = {}) {
   const overlay = document.getElementById('cal-add-overlay');
   if (!overlay) return;
 
   _clearFormValidation();
-  _populateStaffSuggestions(profile);
+  await _populateStaffSuggestions(profile);
 
   const isEdit = mode === 'edit' && Boolean(event?.id);
 
@@ -126,24 +147,51 @@ export function openEventFormModal({ mode = 'add', event = null, profile = null 
   const form = document.getElementById('cal-add-form');
   if (form) form.reset();
 
-  const idInput    = document.getElementById('cal-field-id');
-  const titleInput = document.getElementById('cal-field-title');
-  const picInput   = document.getElementById('cal-field-pic');
-  const dateInput  = document.getElementById('cal-field-date');
-  const timeInput  = document.getElementById('cal-field-time');
-  const descInput  = document.getElementById('cal-field-desc');
+  const idInput       = document.getElementById('cal-field-id');
+  const titleInput    = document.getElementById('cal-field-title');
+  const picSelect     = document.getElementById('cal-field-pic');
+  const picCustomWrap = document.getElementById('cal-field-pic-custom-wrap');
+  const picCustomInp  = document.getElementById('cal-field-pic-custom');
+  const dateInput     = document.getElementById('cal-field-date');
+  const timeInput     = document.getElementById('cal-field-time');
+  const descInput     = document.getElementById('cal-field-desc');
 
-  if (idInput)    idInput.value    = isEdit ? event.id : '';
-  if (titleInput) titleInput.value = isEdit ? (event.title || '') : '';
-  if (picInput)   picInput.value   = isEdit ? (event.person_in_charge || '') : '';
-  if (dateInput)  dateInput.value  = isEdit ? (event.start_date || getLocalDateString()) : getLocalDateString();
-  if (timeInput)  timeInput.value  = isEdit ? (event.start_time ? String(event.start_time).slice(0, 5) : '') : '';
-  if (descInput)  descInput.value  = isEdit ? (event.description || '') : '';
+  if (idInput)       idInput.value       = isEdit ? event.id : '';
+  if (titleInput)    titleInput.value    = isEdit ? (event.title || '') : '';
+  if (dateInput)     dateInput.value     = isEdit ? (event.start_date || getLocalDateString()) : getLocalDateString();
+  if (timeInput)     timeInput.value     = isEdit ? (event.start_time ? String(event.start_time).slice(0, 5) : '') : '';
+  if (descInput)     descInput.value     = isEdit ? (event.description || '') : '';
+
+  const targetPic = isEdit ? String(event.person_in_charge || '').trim() : '';
+  if (picSelect) {
+    if (!targetPic) {
+      picSelect.value = '';
+      if (picCustomWrap) picCustomWrap.style.display = 'none';
+      if (picCustomInp)  picCustomInp.value = '';
+    } else {
+      let matchedOption = false;
+      for (const opt of picSelect.options) {
+        if (opt.value && opt.value.toLowerCase() === targetPic.toLowerCase()) {
+          picSelect.value = opt.value;
+          matchedOption = true;
+          break;
+        }
+      }
+      if (matchedOption) {
+        if (picCustomWrap) picCustomWrap.style.display = 'none';
+        if (picCustomInp)  picCustomInp.value = '';
+      } else {
+        picSelect.value = '__custom__';
+        if (picCustomWrap) picCustomWrap.style.display = 'block';
+        if (picCustomInp)  picCustomInp.value = targetPic;
+      }
+    }
+  }
 
   overlay.style.display = 'flex';
   setTimeout(() => {
-    if (isEdit && !event.person_in_charge) {
-      picInput?.focus();
+    if (isEdit && !targetPic) {
+      picSelect?.focus();
     } else {
       titleInput?.focus();
     }
@@ -179,23 +227,74 @@ export function attachModalListeners(calendarRef, profile) {
     document.getElementById('cal-add-overlay').style.display = 'none';
   });
 
+  // Person in Charge dropdown change
+  const picSelect = document.getElementById('cal-field-pic');
+  const picCustomWrap = document.getElementById('cal-field-pic-custom-wrap');
+  const picCustomInp = document.getElementById('cal-field-pic-custom');
+
+  picSelect?.addEventListener('change', () => {
+    picSelect.classList.remove('form-select--error', 'form-input--error');
+    const errEl = document.getElementById('cal-error-pic');
+    if (errEl) errEl.textContent = '';
+
+    if (picSelect.value === '__custom__') {
+      if (picCustomWrap) picCustomWrap.style.display = 'block';
+      picCustomInp?.focus();
+    } else {
+      if (picCustomWrap) picCustomWrap.style.display = 'none';
+      if (picCustomInp)  picCustomInp.value = '';
+    }
+  });
+
+  picCustomInp?.addEventListener('input', () => {
+    picCustomInp.classList.remove('form-input--error');
+    const errEl = document.getElementById('cal-error-pic');
+    if (errEl) errEl.textContent = '';
+  });
+
   // Quick-fill current user into Person in Charge
   document.getElementById('cal-assign-me-btn')?.addEventListener('click', () => {
-    const picInput = document.getElementById('cal-field-pic');
-    if (picInput && profile?.full_name) {
-      picInput.value = profile.full_name;
-      picInput.classList.remove('form-input--error');
-      const errEl = document.getElementById('cal-error-pic');
-      if (errEl) errEl.textContent = '';
-      picInput.focus();
+    const select = document.getElementById('cal-field-pic');
+    const customWrap = document.getElementById('cal-field-pic-custom-wrap');
+    const customInp = document.getElementById('cal-field-pic-custom');
+    if (!select || !profile?.full_name) return;
+
+    const myName = profile.full_name.trim();
+    let found = false;
+    for (const opt of select.options) {
+      if (opt.value && opt.value.toLowerCase() === myName.toLowerCase()) {
+        select.value = opt.value;
+        found = true;
+        break;
+      }
     }
+
+    if (!found) {
+      const newOpt = document.createElement('option');
+      newOpt.value = myName;
+      newOpt.textContent = `${myName} (You)`;
+      const customOpt = select.querySelector('option[value="__custom__"]');
+      if (customOpt) {
+        select.insertBefore(newOpt, customOpt);
+      } else {
+        select.appendChild(newOpt);
+      }
+      select.value = myName;
+    }
+
+    if (customWrap) customWrap.style.display = 'none';
+    if (customInp)  customInp.value = '';
+    select.classList.remove('form-select--error', 'form-input--error');
+    const errEl = document.getElementById('cal-error-pic');
+    if (errEl) errEl.textContent = '';
+    select.focus();
   });
 
   // Clear field errors on typing
   [
-    ['cal-field-title', 'cal-error-title'],
-    ['cal-field-pic',   'cal-error-pic'],
-    ['cal-field-date',  'cal-error-date'],
+    ['cal-field-title',      'cal-error-title'],
+    ['cal-field-pic-custom', 'cal-error-pic'],
+    ['cal-field-date',       'cal-error-date'],
   ].forEach(([inputId, errId]) => {
     document.getElementById(inputId)?.addEventListener('input', () => {
       document.getElementById(inputId)?.classList.remove('form-input--error');
@@ -209,26 +308,41 @@ export function attachModalListeners(calendarRef, profile) {
     e.preventDefault();
     _clearFormValidation();
 
-    const eventId    = document.getElementById('cal-field-id')?.value.trim() || '';
-    const title      = document.getElementById('cal-field-title')?.value.trim() || '';
-    const pic        = document.getElementById('cal-field-pic')?.value.trim() || '';
-    const startDate  = document.getElementById('cal-field-date')?.value || '';
-    const startTime  = document.getElementById('cal-field-time')?.value || null;
-    const desc       = document.getElementById('cal-field-desc')?.value.trim() || null;
+    const eventId       = document.getElementById('cal-field-id')?.value.trim() || '';
+    const title         = document.getElementById('cal-field-title')?.value.trim() || '';
+    const selectVal     = document.getElementById('cal-field-pic')?.value || '';
+    const customInp     = document.getElementById('cal-field-pic-custom');
+    const startDate     = document.getElementById('cal-field-date')?.value || '';
+    const startTime     = document.getElementById('cal-field-time')?.value || null;
+    const desc          = document.getElementById('cal-field-desc')?.value.trim() || null;
 
+    let pic = '';
     let hasError = false;
+
     if (!title) {
       _setFieldError('cal-field-title', 'cal-error-title', 'Event title is required.');
       hasError = true;
     }
-    if (!pic) {
-      _setFieldError('cal-field-pic', 'cal-error-pic', 'Person in Charge is required.');
-      hasError = true;
+
+    if (selectVal === '__custom__') {
+      pic = customInp?.value.trim() || '';
+      if (!pic) {
+        _setFieldError('cal-field-pic-custom', 'cal-error-pic', 'Please enter the external coordinator or BNS name.');
+        hasError = true;
+      }
+    } else {
+      pic = selectVal.trim();
+      if (!pic) {
+        _setFieldError('cal-field-pic', 'cal-error-pic', 'Please select a Person in Charge.');
+        hasError = true;
+      }
     }
+
     if (!startDate) {
       _setFieldError('cal-field-date', 'cal-error-date', 'Event date is required.');
       hasError = true;
     }
+
     if (hasError) return;
 
     const btn = document.getElementById('cal-add-submit');
