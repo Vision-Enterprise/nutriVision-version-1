@@ -179,7 +179,7 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     const expDate = document.getElementById('field-expiration-date')?.value;
     const supplier = document.getElementById('field-supplier')?.value;
     const batchInput = document.getElementById('field-batch-number');
-    if (!commId || !expDate || !batchInput) return;
+    if (!commId || !expDate || !delDate || !batchInput) return;
     const comm = commodities.find(c => c.id === commId);
     if (!comm) return;
     try {

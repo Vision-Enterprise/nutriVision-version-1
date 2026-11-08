@@ -170,6 +170,16 @@ export async function fetchActiveCommodities() {
  */
 export async function createBatch(formData, profile) {
   try {
+    if (!formData?.delivery_date || !String(formData.delivery_date).trim()) {
+      return { batch: null, error: 'Delivery date is required.' };
+    }
+    if (!formData?.expiration_date || !String(formData.expiration_date).trim()) {
+      return { batch: null, error: 'Expiration date is required.' };
+    }
+    if (formData.expiration_date <= formData.delivery_date) {
+      return { batch: null, error: 'Expiration date must be after delivery date.' };
+    }
+
     const { data, error } = await supabase
       .from('batches')
       .insert({
@@ -223,6 +233,16 @@ export async function createBatch(formData, profile) {
  */
 export async function updateBatch(id, formData, profile) {
   try {
+    if (!formData?.delivery_date || !String(formData.delivery_date).trim()) {
+      return { batch: null, error: 'Delivery date is required.' };
+    }
+    if (!formData?.expiration_date || !String(formData.expiration_date).trim()) {
+      return { batch: null, error: 'Expiration date is required.' };
+    }
+    if (formData.expiration_date <= formData.delivery_date) {
+      return { batch: null, error: 'Expiration date must be after delivery date.' };
+    }
+
     const { data, error } = await supabase
       .from('batches')
       .update({

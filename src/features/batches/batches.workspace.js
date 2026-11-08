@@ -201,7 +201,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       </div>
       <div class="workspace-actions">
          <button id="workspace-cancel-btn" style="background:transparent; border:none; font-weight:600; color:var(--text-muted); cursor:pointer; padding:10px 16px;">Cancel / Exit</button>
-         <button id="workspace-save-btn" class="btn-elevated" disabled title="Fill in all mandatory units and expiration dates to enable.">Register All Batches</button>
+         <button id="workspace-save-btn" class="btn-elevated" disabled title="Fill in all mandatory fields (Commodity, Category, Unit, Qty, Delivery Date, and Expiration Date) to enable.">Register All Batches</button>
       </div>
     </div>
 
@@ -233,14 +233,14 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
            <table class="headless-grid">
               <thead>
                  <tr>
-                    <th style="min-width:200px;">Commodity</th>
-                    <th style="min-width:145px;">Category</th>
-                    <th style="min-width:110px;">Unit</th>
+                    <th style="min-width:200px;">Commodity <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:145px;">Category <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:110px;">Unit <span style="color:#ef4444;">*</span></th>
                     <th style="min-width:250px;">Batch Code</th>
-                    <th style="min-width:85px;">Qty</th>
-                    <th style="min-width:130px;">Del. Date</th>
-                    <th style="min-width:135px;">Exp. Date</th>
-                    <th style="min-width:150px;">Supplier</th>
+                    <th style="min-width:85px;">Qty <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:130px;">Del. Date <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:135px;">Exp. Date <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:150px;">Supplier <span style="font-weight:400; color:var(--text-muted); font-size:11px;">(optional)</span></th>
                     <th style="min-width:180px;">Notes <span style="font-weight:400; color:var(--text-muted); font-size:11px;">(optional)</span></th>
                     <th style="min-width:76px; text-align:center;">Actions</th>
                  </tr>
@@ -256,7 +256,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
                  Add New Row Manually
               </button>
               <div id="validation-status-pill" style="font-size:12px; font-weight:600; color:var(--text-muted);">
-                 All rows must have valid Unit and Expiration Date
+                 All rows must have valid Commodity, Category, Unit, Qty, Delivery Date, and Expiration Date
               </div>
            </div>
          </div>
@@ -298,7 +298,8 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
           unit = '';
         }
 
-        const finalDeliveryDate = (r.deliveryDate && r.deliveryDate >= today) ? r.deliveryDate : today;
+        const rawDel = String(r.deliveryDate || '').trim();
+        const finalDeliveryDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDel) ? rawDel : today;
 
         bulkRows.push({
           id: Date.now() + Math.random(),
@@ -462,7 +463,7 @@ function computeRowCode(commodityId, commodityName, unit, expDate, deliveryDate 
     if (!commodityName) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
     }
-    if (!unit || !expDate) {
+    if (!unit || !expDate || !deliveryDate) {
       return { code: '[ INCOMPLETE ]', isComplete: false };
     }
     const sku = generateCommoditySKU(commodityName, unit);
@@ -558,7 +559,7 @@ function renderBulkTable() {
   if (!tbody) return;
 
   if (bulkRows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="padding:48px; text-align:center; color:var(--text-muted);">No data available. Extract from receipt scanner or add manually.</td></tr>`;
     document.getElementById('summary-commodities').textContent = '0';
     document.getElementById('summary-units').textContent = '0';
     validateTableRows();
@@ -644,10 +645,10 @@ function renderBulkTable() {
             <input type="number" class="headless-input ws-input-qty" id="ws-qty-${rowKey}" name="qty_${rowKey}" aria-label="Quantity" value="${escapeHtml(row.qty)}" min="1" placeholder="0" />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-del" id="ws-del-${rowKey}" name="delivery_date_${rowKey}" aria-label="Delivery Date" value="${escapeHtml(row.deliveryDate)}" min="${getToday()}" />
+            <input type="date" class="headless-input ws-input-del" id="ws-del-${rowKey}" name="delivery_date_${rowKey}" aria-label="Delivery Date" value="${escapeHtml(row.deliveryDate)}" required />
          </td>
          <td>
-            <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" min="${getToday()}" />
+            <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" min="${getToday()}" required />
          </td>
          <td>
             <input type="text" class="headless-input ws-input-sup" id="ws-sup-${rowKey}" name="supplier_${rowKey}" aria-label="Supplier" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
@@ -1019,10 +1020,12 @@ export function validateTableRows() {
       qtyInput?.classList.remove('cell-invalid');
     }
 
-    // 5. Strict Delivery Date Check (cannot be empty, cannot be in the past)
+    // 5. Strict Delivery Date Check (#104 — mandatory, valid YYYY-MM-DD, and must be before Expiration Date)
     const delInput = tr.querySelector('.ws-input-del');
-    const todayStr = getToday();
-    const isDelValid = row.deliveryDate && row.deliveryDate >= todayStr;
+    const cleanDel = String(row.deliveryDate || '').trim();
+    const isDelFormatOk = /^\d{4}-\d{2}-\d{2}$/.test(cleanDel);
+    const isDelBeforeExp = !isExpValid || cleanDel < String(row.expDate || '').trim();
+    const isDelValid = isDelFormatOk && isDelBeforeExp;
     if (!isDelValid) {
       delInput?.classList.add('cell-invalid');
       rowValid = false;
@@ -1046,7 +1049,7 @@ export function validateTableRows() {
       if (statusPill) {
         statusPill.textContent = rows.length === 0 
           ? 'No batch rows available.'
-          : `${invalidCount} row(s) require attention (Category, Unit, and Expiration Date are mandatory).`;
+          : `${invalidCount} row(s) require attention (Category, Unit, Delivery Date, and Expiration Date are mandatory).`;
         statusPill.style.color = '#ef4444';
       }
     } else {
@@ -1075,7 +1078,7 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
   syncBulkState();
 
   if (!validateTableRows()) {
-    return SystemDialog.alert('Cannot register batches: One or more rows have invalid Delivery Dates (cannot be in the past), missing Expiration Dates, Units, or Quantities.');
+    return SystemDialog.alert('Cannot register batches: Every row must have a valid Commodity, Category, Unit, Quantity, Delivery Date, and Expiration Date (after Delivery Date).');
   }
 
   // Duplicate signature fingerprint detection
