@@ -278,41 +278,26 @@ export function renderBatchSelectorTable(batches, selectedIds = new Set()) {
 }
 
 /**
- * Render a single cart item row.
+ * Render a single cart item row (#102: full commodity name & batch code always visible).
  * @param {Object} batch
  * @param {number} qty - Quantity currently entered for this batch
- * @param {boolean} [isExpanded=false] - Whether full unwrapped commodity name is expanded (#102)
  */
-export function renderCartItem(batch, qty = 1, isExpanded = false) {
+export function renderCartItem(batch, qty = 1) {
   const unit = escapeHtml(batch.commodities?.unit ?? '');
   const fullName = batch.commodities?.name ?? '—';
   return `
-    <div class="bulk-cart-item${isExpanded ? ' is-expanded' : ''}" id="cart-item-${batch.id}" data-batch-id="${batch.id}">
-      <div class="bulk-cart-item__info"
-           role="button"
-           tabindex="0"
-           aria-expanded="${isExpanded ? 'true' : 'false'}"
-           title="${escapeHtml(fullName)} — Click to ${isExpanded ? 'collapse' : 'view full name'}">
-        <span class="bulk-cart-item__name">${escapeHtml(fullName)}</span>
-        <span class="bulk-cart-item__code">${escapeHtml(batch.batch_number)}</span>
-      </div>
-      <div class="bulk-cart-item__controls">
-        <input type="number"
-               class="form-input bulk-cart-qty"
-               id="cart-qty-${batch.id}"
-               data-batch-id="${batch.id}"
-               data-max="${batch.quantity}"
-               value="${Math.min(qty, batch.quantity)}"
-               min="1"
-               max="${batch.quantity}"
-               aria-label="Quantity for ${escapeHtml(batch.batch_number)}"
-               style="width:80px; text-align:center;" />
-        <span class="bulk-cart-item__max">/ ${batch.quantity.toLocaleString()} ${unit}</span>
+    <div class="bulk-cart-item" id="cart-item-${batch.id}" data-batch-id="${batch.id}">
+      <div class="bulk-cart-item__top">
+        <div class="bulk-cart-item__info">
+          <span class="bulk-cart-item__name">${escapeHtml(fullName)}</span>
+          <span class="bulk-cart-item__code">${escapeHtml(batch.batch_number)}</span>
+        </div>
         <button class="btn btn-ghost btn-sm bulk-cart-remove"
                 data-batch-id="${batch.id}"
                 type="button"
+                title="Remove from cart"
                 aria-label="Remove ${escapeHtml(batch.batch_number)} from cart"
-                style="color:var(--color-danger); padding:var(--space-1);">
+                style="color:var(--color-danger); padding:var(--space-1); flex-shrink:0; margin-top:-2px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2.5"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -320,6 +305,22 @@ export function renderCartItem(batch, qty = 1, isExpanded = false) {
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
+      </div>
+      <div class="bulk-cart-item__controls">
+        <span class="bulk-cart-item__qty-label">Release Qty</span>
+        <div class="bulk-cart-item__qty-group">
+          <input type="number"
+                 class="form-input bulk-cart-qty"
+                 id="cart-qty-${batch.id}"
+                 data-batch-id="${batch.id}"
+                 data-max="${batch.quantity}"
+                 value="${Math.min(qty, batch.quantity)}"
+                 min="1"
+                 max="${batch.quantity}"
+                 aria-label="Quantity for ${escapeHtml(batch.batch_number)}"
+                 style="width:84px; text-align:center;" />
+          <span class="bulk-cart-item__max">/ ${batch.quantity.toLocaleString()} ${unit}</span>
+        </div>
       </div>
     </div>`;
 }

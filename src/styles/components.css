@@ -1346,7 +1346,7 @@
 /* ── Split body ─────────────────────────────────────────────────── */
 .bulk-release-body {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 430px);
   gap: var(--space-4);
   flex: 1;
   min-height: 0;
@@ -1456,13 +1456,13 @@
   letter-spacing: 0.03em;
 }
 
-/* ── Cart items ─────────────────────────────────────────────────── */
+/* ── Cart items (#102: always show full commodity name & batch code once selected) ── */
 .bulk-cart-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -1474,82 +1474,63 @@
   to   { opacity: 1; transform: translateX(0);   }
 }
 
+.bulk-cart-item__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .bulk-cart-item__info {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
   min-width: 0;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  padding: 2px 4px;
-  margin: -2px -4px;
-  transition: background-color 0.15s ease;
-}
-
-.bulk-cart-item__info:hover,
-.bulk-cart-item__info:focus-visible {
-  background-color: rgba(5, 150, 105, 0.07);
-  outline: none;
 }
 
 .bulk-cart-item__name {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .bulk-cart-item__code {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Expanded state on click (#102) — reveals full commodity name & batch code regardless of zoom */
-.bulk-cart-item.is-expanded {
-  flex-wrap: wrap;
-  align-items: flex-start;
-  background: var(--color-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.10);
-}
-
-.bulk-cart-item.is-expanded .bulk-cart-item__info {
-  flex: 1 1 100%;
-  margin-bottom: 4px;
-}
-
-.bulk-cart-item.is-expanded .bulk-cart-item__name {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
-  max-width: none;
-  word-break: break-word;
-  line-height: 1.35;
-}
-
-.bulk-cart-item.is-expanded .bulk-cart-item__code {
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
   word-break: break-all;
-}
-
-.bulk-cart-item.is-expanded .bulk-cart-item__controls {
-  margin-left: auto;
+  line-height: 1.3;
 }
 
 .bulk-cart-item__controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  flex-shrink: 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.bulk-cart-item__qty-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.bulk-cart-item__qty-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 .bulk-cart-item__max {
