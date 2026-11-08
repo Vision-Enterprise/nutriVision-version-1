@@ -452,6 +452,10 @@ export const MODULE_GUIDES = {
         label: 'Tab 4 — Audit Trail',
         detail: 'Read-only chronological log of all Milk Bank actions with action filter and Export PDF official print preview.',
       },
+      {
+        label: 'Tab 5 — Analytics & Distribution',
+        detail: 'Executive distribution charts across barangays, individual Top Donor Mothers volume charts, award recognition podium (1st, 2nd, 3rd), and printable Award Giving summary PDF.',
+      },
     ],
     howToUse: [
       {
@@ -465,6 +469,10 @@ export const MODULE_GUIDES = {
       {
         stepTitle: 'Dispense Pasteurized Milk to Infants',
         detail: 'In Freezer Inventory, click Dispense on a valid non-expired batch, record recipient infant details, barangay, indication, and mL dispensed.',
+      },
+      {
+        stepTitle: 'Review Distribution & Honor Top Donors',
+        detail: 'Open Analytics & Distribution to review barangay infant dispensing charts, award citations for top donor mothers, and export official Award Giving summary PDFs.',
       },
       {
         stepTitle: 'Export Official Milk Bank PDFs',
@@ -750,3 +758,4 @@ export const MODULE_GUIDES = {
     ],
   },
 };
+

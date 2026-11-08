@@ -72,6 +72,10 @@ export function renderMilkPageSkeleton() {
               Audit Trail
               <span class="milk-tab__count" id="count-milk-audit">0</span>
             </button>
+            <button class="milk-tab" data-tab="analytics" role="tab" aria-selected="false">
+              <span class="icon icon--sm" aria-hidden="true">insights</span>
+              Analytics &amp; Distribution
+            </button>
           </div>
         </div>
 

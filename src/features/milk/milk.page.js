@@ -58,11 +58,17 @@ import {
   showMilkBatchesPrintPreview,
   showMilkDispensingPrintPreview,
   showMilkAuditPrintPreview,
+  showMilkAnalyticsPrintPreview,
   exportMilkIntakeCSV,
   exportMilkBatchesCSV,
   exportMilkDispensingCSV,
   exportMilkAuditCSV
 } from './milk.pdf.js';
+import {
+  computeMilkAnalytics,
+  renderMilkAnalyticsSheet,
+  mountMilkAnalyticsCharts
+} from './milk.analytics.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
@@ -99,6 +105,11 @@ let _draftDonations = [];
 let _draftBatches = [];
 let _draftDispatches = [];
 
+// Analytics & Distribution State (#88)
+let _analyticsPeriod = 'all';
+let _analyticsCustomStart = '';
+let _analyticsCustomEnd = '';
+
 /**
  * Main entry point called by router
  */
@@ -110,6 +121,9 @@ export async function renderMilkPage(profile) {
   _auditSearch = '';
   _selectedBatch = null;
   _selectedShelf = null;
+  _analyticsPeriod = 'all';
+  _analyticsCustomStart = '';
+  _analyticsCustomEnd = '';
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -213,6 +227,20 @@ function _renderActiveSheet() {
   } else if (_activeTab === 'audit') {
     contentArea.innerHTML = renderMilkAuditSheet(_auditLogs, _auditFilter, _auditSearch);
     _bindAuditSheetEvents();
+  } else if (_activeTab === 'analytics') {
+    const analyticsData = computeMilkAnalytics({
+      donations: _donations,
+      dispatches: _dispatches,
+      batches: _batches,
+      period: _analyticsPeriod,
+      customStart: _analyticsCustomStart,
+      customEnd: _analyticsCustomEnd,
+    });
+    contentArea.innerHTML = renderMilkAnalyticsSheet(analyticsData);
+    _bindAnalyticsSheetEvents(analyticsData);
+    setTimeout(() => {
+      mountMilkAnalyticsCharts(analyticsData);
+    }, 40);
   }
 
   _bindHorizontalScrollSupport();
@@ -272,6 +300,35 @@ function _bindAuditSheetEvents() {
       filterAction: _auditFilter,
       searchQuery: _auditSearch,
     });
+  });
+}
+
+function _bindAnalyticsSheetEvents(analyticsData) {
+  const periodSel = document.getElementById('milk-analytics-period');
+  const customDatesWrap = document.getElementById('milk-analytics-custom-dates');
+  const startInp = document.getElementById('milk-analytics-start');
+  const endInp = document.getElementById('milk-analytics-end');
+  const applyBtn = document.getElementById('milk-analytics-apply-btn');
+  const exportBtn = document.getElementById('btn-export-milk-awards-pdf');
+
+  periodSel?.addEventListener('change', (e) => {
+    _analyticsPeriod = e.target.value;
+    if (_analyticsPeriod === 'custom') {
+      if (customDatesWrap) customDatesWrap.style.display = 'flex';
+    } else {
+      if (customDatesWrap) customDatesWrap.style.display = 'none';
+      _renderActiveSheet();
+    }
+  });
+
+  applyBtn?.addEventListener('click', () => {
+    _analyticsCustomStart = startInp?.value || '';
+    _analyticsCustomEnd = endInp?.value || '';
+    _renderActiveSheet();
+  });
+
+  exportBtn?.addEventListener('click', () => {
+    showMilkAnalyticsPrintPreview(analyticsData, _profile);
   });
 }
 
