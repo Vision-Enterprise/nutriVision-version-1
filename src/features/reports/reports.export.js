@@ -77,7 +77,7 @@ export function exportToCSV(data, modelId, filters = {}) {
 
     let totalUnits = 0;
     data.forEach(b => {
-      const status = b.expiry_status || getExpirationStatus(b.expiration_date);
+      const status = b.expiry_status || getExpirationStatus(b.expiration_date, b);
       const daysLeft = b.days_left !== undefined ? b.days_left : getDaysRemaining(b.expiration_date);
       totalUnits += Number(b.quantity || 0);
 

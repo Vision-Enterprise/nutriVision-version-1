@@ -8,6 +8,7 @@
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import { generateCommoditySKU, generateBatchCode } from '../../shared/utils/code-generator.util.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
 const LEGACY_BATCH_SKU_RE  = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)-/i;
@@ -114,9 +115,7 @@ export async function fetchBatches() {
         delivery_date, expiration_date,
         supplier, notes, commodity_id,
         record_status, deleted_at,
-        commodities (
-          id, name, commodity_code, unit, deleted_at
-        )
+        commodities ( * )
       `)
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
@@ -129,6 +128,10 @@ export async function fetchBatches() {
       b.deleted_at === null &&
       (!b.commodities || b.commodities.deleted_at === null)
     );
+
+    batches.forEach(b => {
+      if (b.commodities) hydrateCommodityShelfLife(b.commodities);
+    });
 
     await upgradeLegacyBatchCodes(batches);
 
@@ -147,13 +150,14 @@ export async function fetchActiveCommodities() {
   try {
     const { data, error } = await supabase
       .from('commodities')
-      .select('id, name, commodity_code, unit')
+      .select('*')
       .is('deleted_at', null)
       .order('name');
 
     if (error) throw error;
-    await _upgradeLegacyCommodityCodes(data || []);
-    return { commodities: data, error: null };
+    const list = (data || []).map(c => hydrateCommodityShelfLife(c));
+    await _upgradeLegacyCommodityCodes(list);
+    return { commodities: list, error: null };
   } catch (err) {
     console.error('[BatchService] fetchActiveCommodities:', err);
     return { commodities: [], error: 'Failed to load commodities.' };
@@ -196,7 +200,7 @@ export async function createBatch(formData, profile) {
         id, batch_number, quantity,
         delivery_date, expiration_date,
         supplier, notes, commodity_id,
-        commodities ( id, name, commodity_code, unit )
+        commodities ( * )
       `)
       .single();
 
@@ -206,6 +210,8 @@ export async function createBatch(formData, profile) {
       }
       throw error;
     }
+
+    if (data?.commodities) hydrateCommodityShelfLife(data.commodities);
 
     await supabase.from('audit_logs').insert({
       user_id:     profile.id,
@@ -261,7 +267,7 @@ export async function updateBatch(id, formData, profile) {
         id, batch_number, quantity,
         delivery_date, expiration_date,
         supplier, notes, commodity_id,
-        commodities ( id, name, commodity_code, unit )
+        commodities ( * )
       `)
       .single();
 
@@ -271,6 +277,8 @@ export async function updateBatch(id, formData, profile) {
       }
       throw error;
     }
+
+    if (data?.commodities) hydrateCommodityShelfLife(data.commodities);
 
     await supabase.from('audit_logs').insert({
       user_id:     profile.id,
@@ -381,11 +389,12 @@ export async function releaseBatch(batchId, batchNumber, commodityName, quantity
         id, batch_number, quantity,
         delivery_date, expiration_date,
         supplier, notes, commodity_id, record_status,
-        commodities ( id, name, commodity_code, unit )
+        commodities ( * )
       `)
       .single();
 
     if (updateError) throw updateError;
+    if (updatedBatch?.commodities) hydrateCommodityShelfLife(updatedBatch.commodities);
 
     // 3. Log audit action
     await supabase.from('audit_logs').insert({

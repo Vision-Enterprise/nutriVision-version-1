@@ -1,6 +1,7 @@
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 export async function fetchAdvisorData() {
   try {
@@ -8,15 +9,12 @@ export async function fetchAdvisorData() {
     const { data: rawCommodities, error: commError } = await supabase
       .from('commodities')
       .select(`
-        id, 
-        name, 
-        category,
-        unit,
-        deleted_at,
+        *,
         batches (
           id,
           batch_number,
           quantity,
+          delivery_date,
           expiration_date,
           deleted_at,
           record_status
@@ -27,7 +25,9 @@ export async function fetchAdvisorData() {
       
     if (commError) throw commError;
 
-    const commodities = (rawCommodities || []).filter(c => !c.deleted_at);
+    const commodities = (rawCommodities || [])
+      .filter(c => !c.deleted_at)
+      .map(c => hydrateCommodityShelfLife(c));
 
     // 2. Fetch upcoming events (next 30 days, active only)
     const today = new Date();
@@ -99,7 +99,7 @@ export async function fetchAdvisorData() {
       
       activeBatches.forEach(b => {
         if (!b.expiration_date) return;
-        const status = getExpirationStatus(b.expiration_date);
+        const status = getExpirationStatus(b.expiration_date, { ...b, commodities: c });
         if (status === EXPIRATION_STATUS.EXPIRED) {
           criticalQty += (b.quantity || 0);
         } else if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
@@ -120,7 +120,7 @@ export async function fetchAdvisorData() {
       // Check expirations on active batches with stock
       activeBatches.forEach(b => {
         if (!b.expiration_date) return;
-        const status = getExpirationStatus(b.expiration_date);
+        const status = getExpirationStatus(b.expiration_date, { ...b, commodities: c });
         
         if (status === EXPIRATION_STATUS.EXPIRED) {
           criticalExpiringCount++;

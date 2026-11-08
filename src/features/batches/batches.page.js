@@ -99,7 +99,7 @@ function _applyFilters() {
   return _batches.filter(b => {
     const matchComm   = _filterComm === 'all' || b.commodity_id === _filterComm;
     const matchStatus = _filterStatus === 'all'
-      || getExpirationStatus(b.expiration_date) === _filterStatus;
+      || getExpirationStatus(b.expiration_date, b) === _filterStatus;
     const matchSearch = !q
       || (b.batch_number ?? '').toLowerCase().includes(q)
       || (b.commodities?.name ?? '').toLowerCase().includes(q);
@@ -130,11 +130,22 @@ function _attachPageListeners() {
       commodities: _commodities,
       profile: _profile,
       onSaveComplete: async () => {
-        const reloadRes = await fetchBatches();
+        const [reloadRes, commRes] = await Promise.all([
+          fetchBatches(),
+          fetchActiveCommodities(),
+        ]);
+        if (!commRes.error) {
+          _commodities = commRes.commodities;
+        }
         if (!reloadRes.error) {
           _batches = reloadRes.batches;
-          _refreshTable();
-          _updateSubtitle();
+          const content = document.getElementById('page-content');
+          if (content) {
+            _renderMainView(content);
+          } else {
+            _refreshTable();
+            _updateSubtitle();
+          }
         } else {
           window.location.reload();
         }

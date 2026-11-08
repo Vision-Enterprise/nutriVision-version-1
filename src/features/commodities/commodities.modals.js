@@ -10,6 +10,13 @@ import { escapeHtml, getDynamicCategories, getDynamicUnits } from './commodities
 import { createCommodity, updateCommodity } from './commodities.service.js';
 import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
 import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
+import { SHELF_LIFE_MODES } from '../../shared/constants/app.constants.js';
+import {
+  SHELF_LIFE_PROFILES,
+  resolveShelfLifePolicy,
+  formatPolicyRanges,
+  isNutribunName,
+} from '../../shared/utils/shelf-life.utils.js';
 
 let _activeModalEscHandler = null;
 let _activeComboboxes = [];
@@ -32,9 +39,11 @@ const KNOWN_UNITS = [
   { regex: /\b(?:jars?)\b/i, unit: 'Jar' },
   { regex: /\b(?:tubes?)\b/i, unit: 'Tube' },
   { regex: /\b(?:tins?|cans?)\b/i, unit: 'Can' },
+  { regex: /\b(?:e-?nutri[\s-]?buns?|nutri[\s-]?buns?|buns?|loaves|loaf)\b/i, unit: 'Piece' },
 ];
 
 const KNOWN_CATEGORIES = [
+  { regex: /\b(?:e-?nutri[\s-]?buns?|nutri[\s-]?buns?|breads?|buns?|pastry|pastries|bakery|pandecoco|pandesal)\b/i, category: 'Bakery / Perishables' },
   { regex: /\b(?:vitamin|retinol|ascorbic|cholecalciferol|tocopherol)\b/i, category: 'Vitamins' },
   { regex: /\b(?:iron|zinc|calcium|folic|ferrous|iodine|potassium|magnesium)\b/i, category: 'Minerals' },
   { regex: /\b(?:rutf|rusf|paste|eezeepaste|f-75|f-100|therapeutic|rehydration)\b/i, category: 'Therapeutics' },
@@ -128,6 +137,16 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   const isEdit = mode === 'edit';
   const title  = isEdit ? 'Edit Commodity' : 'Add Commodity';
   let isManualCodeOverride = isEdit && Boolean(commodity?.commodity_code);
+  let isManualPolicyOverride = isEdit;
+
+  const initialPolicy = isEdit
+    ? resolveShelfLifePolicy(commodity)
+    : SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD];
+  const initialCustomGood  = initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? initialPolicy.goodDays : 30;
+  const initialCustomNear  = initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? initialPolicy.nearExpiryDays : 10;
+  const initialCustomShelf = initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM && initialPolicy.defaultShelfLifeDays
+    ? initialPolicy.defaultShelfLifeDays
+    : '';
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -140,7 +159,7 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   const units      = getDynamicUnits(commodities);
 
   overlay.innerHTML = `
-    <div class="modal" style="max-width: 520px; width: 100%;">
+    <div class="modal" style="max-width: 560px; width: 100%;">
       <div class="modal-header">
         <h2 class="modal-title">${title}</h2>
         <button id="modal-close-btn" class="modal-close" type="button" aria-label="Close">
@@ -209,6 +228,48 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
             </div>
           </div>
 
+          <!-- Shelf-Life & Expiration Status Policy (#98) -->
+          <div class="form-group" style="background: var(--color-surface-alt); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: var(--space-3);">
+            <label for="field-shelf-policy" class="form-label" style="margin-bottom: var(--space-1); display:flex; align-items:center; justify-content:space-between;">
+              <span>Shelf-Life &amp; Status Policy</span>
+              <span style="font-size: 11px; font-weight: 500; color: var(--color-text-muted);">FEFO Traffic-Light Basis</span>
+            </label>
+            <select id="field-shelf-policy" name="shelf_policy_mode" class="form-input" style="cursor: pointer;">
+              <option value="${SHELF_LIFE_MODES.STANDARD}" ${initialPolicy.mode === SHELF_LIFE_MODES.STANDARD ? 'selected' : ''}>
+                Standard Shelf-Stable (Good &gt;180d, Mod 91–180d, Near ≤90d)
+              </option>
+              <option value="${SHELF_LIFE_MODES.WEEKLY_PERISHABLE}" ${initialPolicy.mode === SHELF_LIFE_MODES.WEEKLY_PERISHABLE ? 'selected' : ''}>
+                Weekly Perishable / Nutribun (7-Day Dispatch)
+              </option>
+              <option value="${SHELF_LIFE_MODES.CHILLED_SHORT}" ${initialPolicy.mode === SHELF_LIFE_MODES.CHILLED_SHORT ? 'selected' : ''}>
+                Chilled / Short-Term Perishable (14-Day RSL%)
+              </option>
+              <option value="${SHELF_LIFE_MODES.CUSTOM}" ${initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? 'selected' : ''}>
+                Custom Thresholds (Configure Days)
+              </option>
+            </select>
+
+            <!-- Custom Threshold Inputs -->
+            <div id="shelf-custom-fields" style="display: ${initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2); margin-top: var(--space-3);">
+              <div>
+                <label for="field-custom-good" class="form-label form-label--required" style="font-size: 11px; margin-bottom: 3px;">Good Above (d)</label>
+                <input type="number" id="field-custom-good" class="form-input" min="2" max="3650" step="1" value="${initialCustomGood}" placeholder="e.g. 30" />
+              </div>
+              <div>
+                <label for="field-custom-near" class="form-label form-label--required" style="font-size: 11px; margin-bottom: 3px;">Near Expiry ≤ (d)</label>
+                <input type="number" id="field-custom-near" class="form-input" min="1" max="3649" step="1" value="${initialCustomNear}" placeholder="e.g. 10" />
+              </div>
+              <div>
+                <label for="field-custom-shelf" class="form-label" style="font-size: 11px; margin-bottom: 3px;">Auto-Exp (+d)</label>
+                <input type="number" id="field-custom-shelf" class="form-input" min="1" max="3650" step="1" value="${initialCustomShelf}" placeholder="Manual" title="Optional: auto-fills Expiration Date = Delivery Date + N days during intake" />
+              </div>
+            </div>
+            <span class="form-error" id="error-shelf-custom" role="alert"></span>
+
+            <!-- Live 4-Tier Traffic-Light Preview -->
+            <div id="shelf-policy-preview" style="margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px dashed var(--color-border); font-size: 11.5px; color: var(--color-text-muted); line-height: 1.5;"></div>
+          </div>
+
           <!-- Description -->
           <div class="form-group">
             <label for="field-description" class="form-label">Description <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
@@ -255,6 +316,63 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   const codeInput     = document.getElementById('field-code');
   const badgeText     = document.getElementById('code-badge-text');
   const syncBtn       = document.getElementById('btn-sync-code');
+  const policySelect  = document.getElementById('field-shelf-policy');
+  const customWrap    = document.getElementById('shelf-custom-fields');
+  const customGoodIn  = document.getElementById('field-custom-good');
+  const customNearIn  = document.getElementById('field-custom-near');
+  const customShelfIn = document.getElementById('field-custom-shelf');
+  const policyPreview = document.getElementById('shelf-policy-preview');
+
+  function getActivePolicyDraft() {
+    const selMode = policySelect?.value || SHELF_LIFE_MODES.STANDARD;
+    if (selMode === SHELF_LIFE_MODES.CUSTOM) {
+      const good = parseInt(customGoodIn?.value, 10);
+      const near = parseInt(customNearIn?.value, 10);
+      const shelf = customShelfIn?.value?.trim() ? parseInt(customShelfIn.value, 10) : null;
+      return {
+        mode: SHELF_LIFE_MODES.CUSTOM,
+        goodDays: !isNaN(good) && good > 0 ? good : 30,
+        nearExpiryDays: !isNaN(near) && near > 0 ? near : 10,
+        defaultShelfLifeDays: shelf && !isNaN(shelf) && shelf > 0 ? shelf : null,
+      };
+    }
+    return SHELF_LIFE_PROFILES[selMode] || SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD];
+  }
+
+  function updatePolicyPreview() {
+    const selMode = policySelect?.value || SHELF_LIFE_MODES.STANDARD;
+    if (customWrap) {
+      customWrap.style.display = selMode === SHELF_LIFE_MODES.CUSTOM ? 'grid' : 'none';
+    }
+    if (!policyPreview) return;
+    const draft = getActivePolicyDraft();
+    const ranges = formatPolicyRanges(draft);
+    policyPreview.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px;">
+        <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-good" style="font-size:10px; padding:1px 6px; margin:0;">Good</span> ${escapeHtml(ranges.goodRange)}</span>
+        <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-moderate" style="font-size:10px; padding:1px 6px; margin:0;">Moderate</span> ${escapeHtml(ranges.moderateRange)}</span>
+        <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-near-expiry" style="font-size:10px; padding:1px 6px; margin:0;">Near Expiry</span> ${escapeHtml(ranges.nearRange)}</span>
+        <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-expired" style="font-size:10px; padding:1px 6px; margin:0;">Expired</span> ${escapeHtml(ranges.expiredRange)}</span>
+      </div>
+      <div style="font-size:11px; color:var(--color-text-secondary);">${escapeHtml(ranges.autoExpText)}</div>
+    `;
+  }
+
+  updatePolicyPreview();
+
+  policySelect?.addEventListener('change', () => {
+    isManualPolicyOverride = true;
+    const errCustom = document.getElementById('error-shelf-custom');
+    if (errCustom) errCustom.textContent = '';
+    updatePolicyPreview();
+  });
+  [customGoodIn, customNearIn, customShelfIn].forEach(inp => {
+    inp?.addEventListener('input', () => {
+      const errCustom = document.getElementById('error-shelf-custom');
+      if (errCustom) errCustom.textContent = '';
+      updatePolicyPreview();
+    });
+  });
 
   // Focus Name input first so staff can start typing immediately
   setTimeout(() => nameInput?.focus(), 50);
@@ -312,6 +430,17 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
         categoryInput.classList.remove('form-input--error');
         const errCat = document.getElementById('error-category');
         if (errCat) errCat.textContent = '';
+      }
+    }
+
+    // 2b. Auto-select 7-Day Weekly Perishable policy when typing Nutribun in Add mode
+    if (!isManualPolicyOverride && policySelect) {
+      if (isNutribunName(rawName)) {
+        policySelect.value = SHELF_LIFE_MODES.WEEKLY_PERISHABLE;
+        updatePolicyPreview();
+      } else if (policySelect.value === SHELF_LIFE_MODES.WEEKLY_PERISHABLE) {
+        policySelect.value = SHELF_LIFE_MODES.STANDARD;
+        updatePolicyPreview();
       }
     }
 
@@ -411,6 +540,40 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
       valid = false;
     }
 
+    const selPolicyMode = policySelect?.value || SHELF_LIFE_MODES.STANDARD;
+    if (selPolicyMode === SHELF_LIFE_MODES.CUSTOM) {
+      const goodVal = parseInt(customGoodIn?.value, 10);
+      const nearVal = parseInt(customNearIn?.value, 10);
+      const shelfRaw = customShelfIn?.value?.trim() || '';
+      const shelfVal = shelfRaw ? parseInt(shelfRaw, 10) : null;
+
+      if (isNaN(nearVal) || nearVal < 1) {
+        setFieldError('field-custom-near', 'error-shelf-custom', 'Near Expiry threshold must be at least 1 day.');
+        valid = false;
+      } else if (isNaN(goodVal) || goodVal <= nearVal) {
+        setFieldError('field-custom-good', 'error-shelf-custom', 'Good threshold must be greater than Near Expiry days.');
+        valid = false;
+      } else if (shelfRaw && (isNaN(shelfVal) || shelfVal < 1)) {
+        setFieldError('field-custom-shelf', 'error-shelf-custom', 'Auto-Expiry days must be a positive number or left blank.');
+        valid = false;
+      } else {
+        formData.shelf_life_config = {
+          mode: SHELF_LIFE_MODES.CUSTOM,
+          goodDays: goodVal,
+          nearExpiryDays: nearVal,
+          defaultShelfLifeDays: shelfVal,
+        };
+      }
+    } else {
+      const preset = SHELF_LIFE_PROFILES[selPolicyMode] || SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD];
+      formData.shelf_life_config = {
+        mode: preset.mode,
+        goodDays: preset.goodDays,
+        nearExpiryDays: preset.nearExpiryDays,
+        defaultShelfLifeDays: preset.defaultShelfLifeDays,
+      };
+    }
+
     if (!valid) return;
 
     clearFieldErrors();
@@ -447,7 +610,7 @@ function clearFieldErrors() {
   document.querySelectorAll('.form-input--error').forEach(el =>
     el.classList.remove('form-input--error')
   );
-  ['error-code', 'error-name', 'error-category', 'error-unit'].forEach(id => {
+  ['error-code', 'error-name', 'error-category', 'error-unit', 'error-shelf-custom'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });

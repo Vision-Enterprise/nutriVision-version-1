@@ -8,7 +8,7 @@
  */
 
 import { supabase }              from '../../core/supabase.js';
-import { EXPIRATION_THRESHOLDS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import {
   syncFromSupabase,
   syncPendingWrites,
@@ -17,23 +17,24 @@ import {
 } from './calendar.service.js';
 import { renderCalendarLayout } from './calendar.render.js';
 import { showDetailModal, attachModalListeners } from './calendar.modals.js';
-import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import { getLocalDateString, getExpirationStatus } from '../../shared/utils/date.utils.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 let _calendar      = null;
 let _profile       = null;
 let _realtimeSub   = null;
 let _onlineHandler = null;
 
-function getExpColor(dateStr) {
+function getExpColor(dateStr, batch = null) {
   if (!dateStr) return null;
-  const diff = (new Date(dateStr) - new Date()) / 86400000;
-  if (diff <= 0) {
+  const status = getExpirationStatus(dateStr, batch);
+  if (status === EXPIRATION_STATUS.EXPIRED) {
     return { bg: '#dc2626', border: '#b91c1c', textColor: '#ffffff' };
   }
-  if (diff <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS) {
+  if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
     return { bg: '#ea580c', border: '#c2410c', textColor: '#ffffff' };
   }
-  if (diff <= EXPIRATION_THRESHOLDS.GOOD_DAYS) {
+  if (status === EXPIRATION_STATUS.MODERATE) {
     return { bg: '#eab308', border: '#ca8a04', textColor: '#713f12' };
   }
   return { bg: '#059669', border: '#047857', textColor: '#ffffff' };
@@ -58,7 +59,7 @@ async function loadAllEvents(info, successCb, failCb) {
     // 1. Batch events from Supabase (strictly active batches with available stock)
     const { data: rawBatches } = await supabase
       .from('batches')
-      .select('id, batch_number, quantity, delivery_date, expiration_date, supplier, record_status, deleted_at, commodities(name, unit, deleted_at)')
+      .select('id, batch_number, quantity, delivery_date, expiration_date, supplier, record_status, deleted_at, commodities(*)')
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
       .gt('quantity', 0)
@@ -71,6 +72,9 @@ async function loadAllEvents(info, successCb, failCb) {
       (b.quantity || 0) > 0 &&
       (!b.commodities || b.commodities.deleted_at === null)
     );
+    batches.forEach(b => {
+      if (b.commodities) hydrateCommodityShelfLife(b.commodities);
+    });
 
     const batchEvents = [];
     (batches || []).forEach(b => {
@@ -88,7 +92,7 @@ async function loadAllEvents(info, successCb, failCb) {
         });
       }
       if (b.expiration_date) {
-        const col = getExpColor(b.expiration_date);
+        const col = getExpColor(b.expiration_date, b);
         batchEvents.push({
           id:              `exp-${b.id}`,
           title:           name,

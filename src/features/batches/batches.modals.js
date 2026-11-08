@@ -12,7 +12,8 @@ import { updateBatch, voidBatch, releaseBatch } from './batches.service.js';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { setupCreatableCombobox } from '../../shared/components/combobox.component.js';
-import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import { getLocalDateString, addDaysToDateString } from '../../shared/utils/date.utils.js';
+import { resolveShelfLifePolicy } from '../../shared/utils/shelf-life.utils.js';
 import { generateBatchCode, generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
 
 let _activeBatchModalEscHandler = null;
@@ -173,10 +174,22 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     e.target.setSelectionRange(pos, pos);
   });
 
+  const commSelectEl = document.getElementById('field-commodity');
+  const delDateEl    = document.getElementById('field-delivery-date');
+  const expDateEl    = document.getElementById('field-expiration-date');
+
+  // Track if current expiration matches automatic shelf-life window so Delivery Date edits stay synced
+  const initComm = commodities.find(c => c.id === batch?.commodity_id);
+  const initPolicy = resolveShelfLifePolicy(initComm || batch);
+  let lastAutoExp = initPolicy.defaultShelfLifeDays && batch?.delivery_date
+    ? addDaysToDateString(batch.delivery_date, initPolicy.defaultShelfLifeDays)
+    : null;
+  let isExpLinkedToPolicy = Boolean(lastAutoExp && batch?.expiration_date === lastAutoExp);
+
   const syncEditBatchCode = () => {
-    const commId = document.getElementById('field-commodity')?.value;
-    const delDate = document.getElementById('field-delivery-date')?.value;
-    const expDate = document.getElementById('field-expiration-date')?.value;
+    const commId = commSelectEl?.value;
+    const delDate = delDateEl?.value;
+    const expDate = expDateEl?.value;
     const supplier = document.getElementById('field-supplier')?.value;
     const batchInput = document.getElementById('field-batch-number');
     if (!commId || !expDate || !delDate || !batchInput) return;
@@ -188,13 +201,44 @@ export function openEditBatchModal({ batch, commodities, profile, onSuccess }) {
     } catch {}
   };
 
-  ['field-commodity', 'field-delivery-date', 'field-expiration-date', 'field-supplier'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('change', syncEditBatchCode);
-      el.addEventListener('input', syncEditBatchCode);
+  const syncPolicyAutoExpiry = () => {
+    const comm = commodities.find(c => c.id === commSelectEl?.value);
+    const delDate = delDateEl?.value;
+    if (!comm || !delDate || !expDateEl) return;
+    const policy = resolveShelfLifePolicy(comm);
+    if (policy.defaultShelfLifeDays && (!expDateEl.value || isExpLinkedToPolicy)) {
+      const computed = addDaysToDateString(delDate, policy.defaultShelfLifeDays);
+      if (computed) {
+        expDateEl.value = computed;
+        lastAutoExp = computed;
+        isExpLinkedToPolicy = true;
+      }
     }
+  };
+
+  commSelectEl?.addEventListener('change', () => {
+    isExpLinkedToPolicy = true;
+    syncPolicyAutoExpiry();
+    syncEditBatchCode();
   });
+  delDateEl?.addEventListener('change', () => {
+    syncPolicyAutoExpiry();
+    syncEditBatchCode();
+  });
+  delDateEl?.addEventListener('input', () => {
+    syncPolicyAutoExpiry();
+    syncEditBatchCode();
+  });
+  expDateEl?.addEventListener('input', () => {
+    isExpLinkedToPolicy = Boolean(lastAutoExp && expDateEl.value === lastAutoExp);
+    syncEditBatchCode();
+  });
+  expDateEl?.addEventListener('change', () => {
+    isExpLinkedToPolicy = Boolean(lastAutoExp && expDateEl.value === lastAutoExp);
+    syncEditBatchCode();
+  });
+  document.getElementById('field-supplier')?.addEventListener('input', syncEditBatchCode);
+  document.getElementById('field-supplier')?.addEventListener('change', syncEditBatchCode);
 
   // Upgrade legacy batch code on modal open if it lacks -DEL
   if (batch?.batch_number && !batch.batch_number.includes('-DEL')) {

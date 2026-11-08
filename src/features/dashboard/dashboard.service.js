@@ -7,6 +7,7 @@
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 /**
  * Fetch top-level dashboard statistics and expiration summary.
@@ -41,11 +42,12 @@ export async function fetchDashboardStats() {
       .from('batches')
       .select(`
         id,
+        delivery_date,
         expiration_date,
         quantity,
         record_status,
         deleted_at,
-        commodities ( id, deleted_at )
+        commodities ( * )
       `)
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
@@ -60,6 +62,10 @@ export async function fetchDashboardStats() {
       (!b.commodities || b.commodities.deleted_at === null)
     );
 
+    batches.forEach(b => {
+      if (b.commodities) hydrateCommodityShelfLife(b.commodities);
+    });
+
     // 3. Compute expiration breakdown
     const summary = {
       [EXPIRATION_STATUS.GOOD]: 0,
@@ -69,7 +75,7 @@ export async function fetchDashboardStats() {
     };
 
     batches.forEach(batch => {
-      const status = getExpirationStatus(batch.expiration_date);
+      const status = getExpirationStatus(batch.expiration_date, batch);
       summary[status]++;
     });
 
@@ -169,10 +175,11 @@ export async function fetchChartData() {
         id,
         batch_number,
         quantity,
+        delivery_date,
         expiration_date,
         record_status,
         deleted_at,
-        commodities ( id, name, unit, deleted_at )
+        commodities ( * )
       `)
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
@@ -186,6 +193,10 @@ export async function fetchChartData() {
       (b.quantity || 0) > 0 &&
       (!b.commodities || b.commodities.deleted_at === null)
     );
+
+    batches.forEach(b => {
+      if (b.commodities) hydrateCommodityShelfLife(b.commodities);
+    });
 
     return { releases: releases || [], batches, error: null };
   } catch (err) {

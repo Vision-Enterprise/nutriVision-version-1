@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Bulk Release Service
  *
  * Handles all Supabase interactions for the Bulk Release feature.
@@ -7,6 +7,7 @@
 
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
@@ -23,9 +24,7 @@ export async function fetchActiveBatchesForRelease() {
         delivery_date, expiration_date,
         supplier, notes, commodity_id,
         record_status, deleted_at,
-        commodities (
-          id, name, commodity_code, unit, deleted_at
-        )
+        commodities ( * )
       `)
       .is('deleted_at', null)
       .eq('record_status', RECORD_STATUS.ACTIVE)
@@ -37,6 +36,9 @@ export async function fetchActiveBatchesForRelease() {
     const batches = (data || []).filter(
       b => b.deleted_at === null && (!b.commodities || b.commodities.deleted_at === null)
     );
+    batches.forEach(b => {
+      if (b.commodities) hydrateCommodityShelfLife(b.commodities);
+    });
 
     return { batches, error: null };
   } catch (err) {

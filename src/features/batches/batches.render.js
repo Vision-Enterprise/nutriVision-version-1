@@ -7,6 +7,7 @@
 
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { resolveShelfLifePolicy, formatPolicyRanges } from '../../shared/utils/shelf-life.utils.js';
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -127,10 +128,13 @@ export function renderBatchesLayout({ batches, commodities, filtered, filterComm
     <!-- Expiry Legend -->
     <div style="display:flex; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4); font-size: var(--font-size-sm); color: var(--color-text-muted); background: var(--color-surface); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--color-border); align-items: center;">
       <strong style="color: var(--color-text); margin-right: var(--space-2);">Expiration Guide:</strong>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-good" style="margin:0;">Good</span> > 6 Months</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-moderate" style="margin:0;">Moderate</span> 3-6 Months</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-near-expiry" style="margin:0;">Near Expiry</span> 0-3 Months</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-expired" style="margin:0;">Expired</span> < 0 Days</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-good" style="margin:0;">Good</span> &gt; 6 Months</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-moderate" style="margin:0;">Moderate</span> 3–6 Months</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-near-expiry" style="margin:0;">Near Expiry</span> 1–90 Days</div>
+      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-expired" style="margin:0;">Expired</span> &le; 0 Days</div>
+      <span style="font-size: 11.5px; color: var(--color-text-muted); margin-left: auto;">
+        Perishables (e.g. 7-Day Nutribun) use their Commodity Shelf-Life Policy
+      </span>
     </div>
 
     <!-- Filters -->
@@ -197,11 +201,17 @@ export function renderTable(batches) {
         </thead>
         <tbody>
           ${batches.map(b => {
-            const status  = getExpirationStatus(b.expiration_date);
+            const policy  = resolveShelfLifePolicy(b);
+            const ranges  = formatPolicyRanges(policy);
+            const status  = getExpirationStatus(b.expiration_date, b);
             const days    = getDaysRemaining(b.expiration_date);
             const daysStr = days <= 0
               ? `${Math.abs(days)}d ago`
               : `in ${days}d`;
+            const policyTooltip = `${policy.shortLabel} — Good: ${ranges.goodRange} | Moderate: ${ranges.moderateRange} | Near: ${ranges.nearRange}`;
+            const policyTag = policy.badgeLabel
+              ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; font-size:10px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="${escapeHtml(policyTooltip)}">${escapeHtml(policy.badgeLabel)}</span>`
+              : '';
 
             return `
               <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view supplier & notes">
@@ -215,7 +225,7 @@ export function renderTable(batches) {
                   <br>
                   <span style="display:inline-block; margin-top:2px; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:0.74rem; font-weight:var(--font-weight-bold); color:var(--color-primary); letter-spacing:0.03em;">
                     ${escapeHtml(b.commodities?.commodity_code ?? '')}
-                  </span>
+                  </span>${policyTag}
                 </td>
                 <td style="font-weight:var(--font-weight-medium); white-space:nowrap;">
                   ${b.quantity.toLocaleString()} ${escapeHtml(b.commodities?.unit ?? '')}
@@ -232,7 +242,7 @@ export function renderTable(batches) {
                   </span>
                 </td>
                 <td style="white-space:nowrap;">
-                  <span class="badge ${statusBadgeClass(status)}">${status}</span>
+                  <span class="badge ${statusBadgeClass(status)}" title="${escapeHtml(policyTooltip)}">${status}</span>
                 </td>
                 <td style="text-align:right; white-space:nowrap;">
                   <div class="table-actions">

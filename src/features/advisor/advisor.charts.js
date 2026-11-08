@@ -14,6 +14,9 @@
  */
 
 import ApexCharts from 'apexcharts';
+import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { resolveShelfLifePolicy } from '../../shared/utils/shelf-life.utils.js';
 
 let tvChartInstance = null;
 let currentChartData = null;
@@ -459,12 +462,11 @@ export function renderAdvChart(channel, chartData, _expSummary) {
     title = `Which items are expiring soon?${prodLabel}`;
     subtitle = 'Identifies urgent batches in storage requiring immediate distribution before expiration';
 
-    const now = new Date();
     const horizons = {
-      critical: { label: 'Expiring This Month (<=30d)', qty: 0, color: '#dc2626' },
-      near:     { label: 'Expiring in 1–3 Months',       qty: 0, color: '#ea580c' },
-      moderate: { label: 'Expiring in 3–6 Months',       qty: 0, color: '#eab308' },
-      good:     { label: 'Safe (> 6 Months)',            qty: 0, color: '#059669' },
+      critical: { label: 'Critical / Immediate Dispatch', qty: 0, color: '#dc2626' },
+      near:     { label: 'Near Expiry Window',            qty: 0, color: '#ea580c' },
+      moderate: { label: 'Moderate Shelf Life',           qty: 0, color: '#eab308' },
+      good:     { label: 'Safe / Optimal Shelf Life',     qty: 0, color: '#059669' },
     };
 
     let totalStock = 0;
@@ -472,14 +474,22 @@ export function renderAdvChart(channel, chartData, _expSummary) {
       if (!b.expiration_date) return;
       if (commodityFilter !== 'all' && b.commodities?.name !== commodityFilter) return;
 
-      const diffDays = Math.ceil((new Date(b.expiration_date) - now) / (1000 * 60 * 60 * 24));
+      const diffDays = getDaysRemaining(b.expiration_date);
+      const policy = resolveShelfLifePolicy(b);
+      const status = getExpirationStatus(b.expiration_date, b);
+      const criticalCutoff = Math.max(1, Math.floor(policy.nearExpiryDays / 3));
       const qty = b.quantity || 0;
       totalStock += qty;
 
-      if (diffDays <= 30) horizons.critical.qty += qty;
-      else if (diffDays <= 90) horizons.near.qty += qty;
-      else if (diffDays <= 180) horizons.moderate.qty += qty;
-      else horizons.good.qty += qty;
+      if (status === EXPIRATION_STATUS.EXPIRED || (status === EXPIRATION_STATUS.NEAR_EXPIRY && diffDays <= criticalCutoff)) {
+        horizons.critical.qty += qty;
+      } else if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
+        horizons.near.qty += qty;
+      } else if (status === EXPIRATION_STATUS.MODERATE) {
+        horizons.moderate.qty += qty;
+      } else {
+        horizons.good.qty += qty;
+      }
     });
 
     tickerTotal = `${totalStock.toLocaleString()} units in stock`;
@@ -490,11 +500,11 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         : 'All safe';
 
     if (horizons.critical.qty > 0) {
-      insightHtml = `<strong>Urgent Restock Action:</strong> <strong>${horizons.critical.qty.toLocaleString()} units</strong> expire within 30 days! Prioritize immediate release to barangays to prevent waste.`;
+      insightHtml = `<strong>Urgent Dispatch Action:</strong> <strong>${horizons.critical.qty.toLocaleString()} units</strong> have reached their critical expiration window! Prioritize immediate FEFO release to barangays to prevent spoilage.`;
     } else if (horizons.near.qty > 0) {
-      insightHtml = `<strong>Notice:</strong> <strong>${horizons.near.qty.toLocaleString()} units</strong> will expire in 1–3 months. Plan allocation for upcoming community feeding programs.`;
+      insightHtml = `<strong>Notice:</strong> <strong>${horizons.near.qty.toLocaleString()} units</strong> are in their Near-Expiry window. Plan allocation for upcoming community feeding programs.`;
     } else if (totalStock > 0) {
-      insightHtml = `<strong>Optimal Health:</strong> All <strong>${totalStock.toLocaleString()} units</strong> currently have over 3 months of shelf life. Zero immediate expiry risks detected.`;
+      insightHtml = `<strong>Optimal Health:</strong> All <strong>${totalStock.toLocaleString()} units</strong> are within Good or Moderate shelf-life thresholds. Zero immediate expiry risks detected.`;
     } else {
       insightHtml = `<strong>Notice:</strong> No inventory batches found matching the selected commodity filter.`;
     }

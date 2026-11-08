@@ -12,6 +12,7 @@
 import './commodity-graph.css';
 import { fetchCommodityLineage } from './commodities.service.js';
 import { formatDate, getDaysRemaining, getExpirationStatus } from '../../shared/utils/date.utils.js';
+import { resolveShelfLifePolicy, formatPolicyRanges } from '../../shared/utils/shelf-life.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 
 function escapeHtml(str) {
@@ -104,6 +105,9 @@ export async function openCommodityGraphModal(commodityId) {
     const batchDef = (b.defects || []).reduce((dSum, d) => dSum + (Number(d.quantity_affected) || 0), 0);
     return sum + batchDef;
   }, 0);
+
+  const commPolicy = resolveShelfLifePolicy(commodity);
+  const commRanges = formatPolicyRanges(commPolicy);
 
   // 4. Render Graph Shell
   const dialog = overlay.querySelector('.cgraph-modal-dialog');
@@ -213,13 +217,13 @@ export async function openCommodityGraphModal(commodityId) {
                 </div>
               </div>
             ` : batches.map(b => {
-              const status = getExpirationStatus(b.expiration_date);
+              const status = getExpirationStatus(b.expiration_date, { ...b, commodities: commodity });
               const days = getDaysRemaining(b.expiration_date);
               const daysStr = days <= 0
                 ? `<span style="color:var(--color-exp-expired); font-weight:700;">Expired ${Math.abs(days)}d ago</span>`
-                : days <= 90
+                : status === EXPIRATION_STATUS.NEAR_EXPIRY
                 ? `<span style="color:var(--color-exp-near); font-weight:700;">Expires in ${days}d</span>`
-                : days <= 180
+                : status === EXPIRATION_STATUS.MODERATE
                 ? `<span style="color:var(--color-exp-moderate); font-weight:600;">Expires in ${days}d</span>`
                 : `<span style="color:var(--color-exp-good); font-weight:600;">Expires in ${days}d</span>`;
 
@@ -332,10 +336,10 @@ export async function openCommodityGraphModal(commodityId) {
     <!-- Modal Footer / Legend -->
     <footer class="cgraph-footer">
       <div class="cgraph-legend-group">
-        <span style="font-weight:600; color:var(--color-text-dark);">Legend:</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--good"></span> Good (&gt;6 Months)</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--moderate"></span> Moderate (3-6 Months)</span>
-        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--near"></span> Near Expiry (0-3 Months)</span>
+        <span style="font-weight:600; color:var(--color-text-dark);">Legend (${escapeHtml(commPolicy.shortLabel)}):</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--good"></span> Good (${escapeHtml(commRanges.goodRange)})</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--moderate"></span> Moderate (${escapeHtml(commRanges.moderateRange)})</span>
+        <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--near"></span> Near Expiry (${escapeHtml(commRanges.nearRange)})</span>
         <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--expired"></span> Expired</span>
         <span class="cgraph-legend-item"><span class="cgraph-legend-dot cgraph-legend-dot--dist"></span> Barangay Distribution</span>
       </div>

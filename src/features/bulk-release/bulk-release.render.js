@@ -222,7 +222,7 @@ export function renderBatchSelectorTable(batches, selectedIds = new Set()) {
       </thead>
       <tbody>
         ${batches.map(b => {
-          const status  = getExpirationStatus(b.expiration_date);
+          const status  = getExpirationStatus(b.expiration_date, b);
           const days    = getDaysRemaining(b.expiration_date);
           const expired = days <= 0;
           const daysStr = expired ? `${Math.abs(days)}d ago` : `${days}d`;

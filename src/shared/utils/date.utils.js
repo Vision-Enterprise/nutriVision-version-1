@@ -5,6 +5,7 @@
  */
 
 import { EXPIRATION_THRESHOLDS, EXPIRATION_STATUS } from '../constants/app.constants.js';
+import { resolveShelfLifePolicy } from './shelf-life.utils.js';
 
 /**
  * Format a timestamp into a readable date string.
@@ -66,27 +67,57 @@ export function getDaysRemaining(targetDate) {
 }
 
 /**
- * Determine the expiration status based on days remaining.
+ * Determine the expiration status based on days remaining and optional commodity/batch policy (#98).
  *
- * @param {string|Date} expirationDate 
+ * Defaults to standard shelf-stable thresholds (Good >180d, Moderate 91-180d, Near <=90d)
+ * when no context is passed, and dynamically applies per-commodity policies (e.g., 7-day
+ * DOST-FNRI Nutribun weekly dispatch or custom RSL thresholds) when batch/commodity context is provided.
+ *
+ * @param {string|Date} expirationDate
+ * @param {Object|null} [context=null] - Optional batch or commodity object
  * @returns {string} - From EXPIRATION_STATUS constants
  */
-export function getExpirationStatus(expirationDate) {
+export function getExpirationStatus(expirationDate, context = null) {
   if (!expirationDate) return EXPIRATION_STATUS.GOOD;
   
   const daysRemaining = getDaysRemaining(expirationDate);
+  const policy = context ? resolveShelfLifePolicy(context) : null;
+  const nearExpiryDays = policy ? policy.nearExpiryDays : EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS;
+  const goodDays = policy ? policy.goodDays : EXPIRATION_THRESHOLDS.GOOD_DAYS;
   
   if (daysRemaining <= 0) {
     return EXPIRATION_STATUS.EXPIRED;
   }
-  if (daysRemaining <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS) {
+  if (daysRemaining <= nearExpiryDays) {
     return EXPIRATION_STATUS.NEAR_EXPIRY;
   }
-  if (daysRemaining <= EXPIRATION_THRESHOLDS.GOOD_DAYS) {
+  if (daysRemaining <= goodDays) {
     return EXPIRATION_STATUS.MODERATE;
   }
   
   return EXPIRATION_STATUS.GOOD;
+}
+
+/**
+ * Adds whole calendar days to a YYYY-MM-DD local date string without UTC drift.
+ *
+ * @param {string} dateStr - YYYY-MM-DD
+ * @param {number} days - Number of days to add
+ * @returns {string} - YYYY-MM-DD
+ */
+export function addDaysToDateString(dateStr, days) {
+  const numDays = parseInt(days, 10);
+  if (!dateStr || isNaN(numDays)) return '';
+  const match = String(dateStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  let d;
+  if (match) {
+    d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  } else {
+    d = new Date(dateStr);
+  }
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + numDays);
+  return getLocalDateString(d);
 }
 
 /**

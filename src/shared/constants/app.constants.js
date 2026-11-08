@@ -46,6 +46,20 @@ export const EXPIRATION_THRESHOLDS = {
   NEAR_EXPIRY_DAYS: 90,
 };
 
+// ── Per-Commodity Shelf-Life Policy Modes (#98) ────────────────────────────
+//
+// Supports heterogeneous warehouse inventory (shelf-stable micronutrients vs.
+// 7-day DOST-FNRI Enhanced Nutribun & chilled short-term perishables).
+// Grounded in USAID DELIVER (90d/180d), WFP Logistics Operational Guide (RSL%),
+// Hertog et al. (2014), and DOST-FNRI E-Nutribun shelf-life guidelines.
+
+export const SHELF_LIFE_MODES = {
+  STANDARD:          'standard',
+  WEEKLY_PERISHABLE: 'weekly_perishable',
+  CHILLED_SHORT:     'chilled_short',
+  CUSTOM:            'custom',
+};
+
 // ── Expiration Status Labels ───────────────────────────────────────────────
 //
 // Used in badge text, aria-labels, and any UI that displays status.
@@ -122,6 +136,7 @@ export const COMMODITY_CATEGORIES = [
   'Minerals',
   'Supplements',
   'Therapeutics',
+  'Bakery / Perishables',
   'Equipment',
   'Other',
 ];

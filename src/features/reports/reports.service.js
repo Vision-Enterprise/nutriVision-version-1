@@ -2,6 +2,7 @@ import { supabase } from '../../core/supabase.js';
 import { RECORD_STATUS, EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { upgradeLegacyBatchCodes } from '../batches/batches.service.js';
+import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 /**
  * Helper to fetch profiles for name mapping.
@@ -26,7 +27,7 @@ export async function fetchBatchInventoryReport(filters = {}) {
       .from('batches')
       .select(`
         id, batch_number, quantity, delivery_date, expiration_date, supplier, notes, commodity_id, record_status,
-        commodities!inner ( id, name, commodity_code, unit, category, deleted_at )
+        commodities!inner ( * )
       `)
       .eq('record_status', RECORD_STATUS.ACTIVE)
       .is('deleted_at', null)
@@ -35,13 +36,14 @@ export async function fetchBatchInventoryReport(filters = {}) {
     if (error) throw error;
 
     const cleanBatches = (data || []).filter(b => b.commodities && !b.commodities.deleted_at);
+    cleanBatches.forEach(b => hydrateCommodityShelfLife(b.commodities));
     await upgradeLegacyBatchCodes(cleanBatches);
 
     const statusFilter = filters.expiryStatus || 'all';
 
     const filtered = cleanBatches
       .map(b => {
-        const status = getExpirationStatus(b.expiration_date);
+        const status = getExpirationStatus(b.expiration_date, b);
         const daysLeft = getDaysRemaining(b.expiration_date);
         return {
           ...b,
@@ -139,8 +141,8 @@ export async function fetchAllocationBalances(filters = {}) {
       supabase
         .from('batches')
         .select(`
-          id, quantity, expiration_date, record_status, deleted_at,
-          commodities!inner ( id, name, commodity_code, unit, category, deleted_at )
+          id, quantity, delivery_date, expiration_date, record_status, deleted_at,
+          commodities!inner ( * )
         `)
         .eq('record_status', RECORD_STATUS.ACTIVE)
         .is('deleted_at', null),
@@ -166,6 +168,7 @@ export async function fetchAllocationBalances(filters = {}) {
     const validData = (batchesRes.data || []).filter(b => {
       const comm = b.commodities;
       if (!comm || comm.deleted_at) return false;
+      hydrateCommodityShelfLife(comm);
       if (filters.commodityId && filters.commodityId !== 'all') {
         if (comm.id !== filters.commodityId) return false;
       }
@@ -188,7 +191,7 @@ export async function fetchAllocationBalances(filters = {}) {
       grouped[cId].totalQuantity += batch.quantity;
       grouped[cId].batchCount += 1;
 
-      const status = getExpirationStatus(batch.expiration_date);
+      const status = getExpirationStatus(batch.expiration_date, batch);
       if (status === EXPIRATION_STATUS.NEAR_EXPIRY || status === EXPIRATION_STATUS.EXPIRED) {
         grouped[cId].nearExpiryCount += 1;
       }

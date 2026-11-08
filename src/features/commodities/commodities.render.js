@@ -6,6 +6,7 @@
  */
 
 import { COMMODITY_CATEGORIES, COMMODITY_UNITS } from '../../shared/constants/app.constants.js';
+import { resolveShelfLifePolicy, formatPolicyRanges } from '../../shared/utils/shelf-life.utils.js';
 
 function formatShortDate(dateString) {
   if (!dateString) return 'N/A';
@@ -123,12 +124,18 @@ export function renderTable(commodities) {
           </tr>
         </thead>
         <tbody>
-          ${commodities.map(c => `
-            <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description">
+          ${commodities.map(c => {
+            const policy = resolveShelfLifePolicy(c);
+            const ranges = formatPolicyRanges(policy);
+            const policyPill = policy.badgeLabel
+              ? `<span style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="${escapeHtml(policy.label)}">${escapeHtml(policy.badgeLabel)}</span>`
+              : '';
+            return `
+            <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description & shelf-life policy">
               <td>
                 <code class="code-badge">${escapeHtml(c.commodity_code)}</code>
               </td>
-              <td style="font-weight: var(--font-weight-medium);">${escapeHtml(c.name)}</td>
+              <td style="font-weight: var(--font-weight-medium);">${escapeHtml(c.name)}${policyPill}</td>
               <td>${escapeHtml(c.category)}</td>
               <td>${escapeHtml(c.unit)}</td>
               <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; white-space: nowrap;">
@@ -169,15 +176,28 @@ export function renderTable(commodities) {
             </tr>
             <tr class="commodity-desc-row" id="desc-${c.id}" style="display: none; background: var(--color-surface-alt);">
               <td colspan="6" style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle);">
-                <div style="display: flex; gap: var(--space-2); align-items: flex-start;">
-                  <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
-                  <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
-                    ${c.description ? escapeHtml(c.description) : '<em>No description provided.</em>'}
+                <div style="display: flex; flex-wrap: wrap; gap: var(--space-5); align-items: flex-start;">
+                  <div style="display: flex; gap: var(--space-2); align-items: flex-start; min-width: 260px;">
+                    <span class="icon icon--sm" style="color: var(--color-primary); margin-top: 2px;">schedule</span>
+                    <div style="font-size: var(--font-size-sm); line-height: 1.5;">
+                      <strong style="color: var(--color-text-secondary);">Shelf-Life Policy:</strong>
+                      <span style="color: var(--color-text); font-weight: 600;">${escapeHtml(policy.shortLabel)}</span>
+                      <div style="font-size: 11.5px; color: var(--color-text-muted); margin-top: 2px;">
+                        Good: ${escapeHtml(ranges.goodRange)} &bull; Moderate: ${escapeHtml(ranges.moderateRange)} &bull; Near: ${escapeHtml(ranges.nearRange)}
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: var(--space-2); align-items: flex-start; flex: 1; min-width: 240px;">
+                    <span class="icon icon--sm" style="color: var(--color-text-muted); margin-top: 2px;">info</span>
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); line-height: 1.5; white-space: pre-wrap;">
+                      ${c.description ? escapeHtml(c.description) : '<em>No description provided.</em>'}
+                    </div>
                   </div>
                 </div>
               </td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
     </div>

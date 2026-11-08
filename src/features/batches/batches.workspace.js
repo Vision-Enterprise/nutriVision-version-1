@@ -23,7 +23,13 @@ import {
   generateDuplicateSignature,
   extractExpYYMM 
 } from '../../shared/utils/code-generator.util.js';
-import { getLocalDateString } from '../../shared/utils/date.utils.js';
+import { getLocalDateString, addDaysToDateString } from '../../shared/utils/date.utils.js';
+import { SHELF_LIFE_MODES } from '../../shared/constants/app.constants.js';
+import {
+  resolveShelfLifePolicy,
+  isNutribunName,
+  SHELF_LIFE_PROFILES,
+} from '../../shared/utils/shelf-life.utils.js';
 
 let bulkRows = [];
 let availableCommodities = [];
@@ -48,6 +54,7 @@ function checkBatchExistsInDb(commodityId, commodityName, batchCode) {
 }
 
 const KNOWN_CATEGORIES = [
+  { regex: /\b(?:e-?nutri[\s-]?buns?|nutri[\s-]?buns?|breads?|buns?|pastry|pastries|bakery|pandecoco|pandesal)\b/i, category: 'Bakery / Perishables' },
   { regex: /\b(?:vitamin|retinol|ascorbic|cholecalciferol|tocopherol)\b/i, category: 'Vitamins' },
   { regex: /\b(?:iron|zinc|calcium|folic|ferrous|iodine|potassium|magnesium)\b/i, category: 'Minerals' },
   { regex: /\b(?:rutf|rusf|paste|eezeepaste|f-75|f-100|therapeutic|rehydration)\b/i, category: 'Therapeutics' },
@@ -56,10 +63,35 @@ const KNOWN_CATEGORIES = [
   { regex: /\b(?:maternal|mms|mum|iron-folic)\b/i, category: 'Maternal Health' },
 ];
 
+const KNOWN_UNITS = [
+  { regex: /\b(?:tablets?|tabs?)\b/i, unit: 'Tablet' },
+  { regex: /\b(?:capsules?|caps?)\b/i, unit: 'Capsule' },
+  { regex: /\b(?:sachets?)\b/i, unit: 'Sachet' },
+  { regex: /\b(?:bottles?|bots?)\b/i, unit: 'Bottle' },
+  { regex: /\b(?:boxes|box)\b/i, unit: 'Box' },
+  { regex: /\b(?:packs?|pks?)\b/i, unit: 'Pack' },
+  { regex: /\b(?:pieces?|pcs?)\b/i, unit: 'Piece' },
+  { regex: /\b(?:kilograms?|kgs?)\b/i, unit: 'Kilogram' },
+  { regex: /\b(?:grams?|gms?)\b/i, unit: 'Gram' },
+  { regex: /\b(?:liters?|litres?)\b/i, unit: 'Liter' },
+  { regex: /\b(?:milliliters?|mls?)\b/i, unit: 'Milliliter' },
+  { regex: /\b(?:jars?)\b/i, unit: 'Jar' },
+  { regex: /\b(?:tins?|cans?)\b/i, unit: 'Can' },
+  { regex: /\b(?:e-?nutri[\s-]?buns?|nutri[\s-]?buns?|buns?|loaves|loaf)\b/i, unit: 'Piece' },
+];
+
 function extractCategoryFromName(name) {
   if (!name) return null;
   for (const item of KNOWN_CATEGORIES) {
     if (item.regex.test(name)) return item.category;
+  }
+  return null;
+}
+
+function extractUnitFromName(name) {
+  if (!name) return null;
+  for (const item of KNOWN_UNITS) {
+    if (item.regex.test(name)) return item.unit;
   }
   return null;
 }
@@ -297,9 +329,24 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
         if (['UNT', 'TBD', 'N/A', 'NA', 'NONE', '-'].includes(upperUnit)) {
           unit = '';
         }
+        if (!unit && commName) {
+          unit = extractUnitFromName(commName) || '';
+        }
 
         const rawDel = String(r.deliveryDate || '').trim();
         const finalDeliveryDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDel) ? rawDel : today;
+
+        const rowPolicy = resolveShelfLifePolicy({
+          commodity: matched,
+          commodityName: commName,
+          category: cat,
+        });
+        let finalExpDate = r.expDate || '';
+        let expAutoComputed = false;
+        if (!finalExpDate && rowPolicy.defaultShelfLifeDays) {
+          finalExpDate = addDaysToDateString(finalDeliveryDate, rowPolicy.defaultShelfLifeDays);
+          expAutoComputed = Boolean(finalExpDate);
+        }
 
         bulkRows.push({
           id: Date.now() + Math.random(),
@@ -309,7 +356,8 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
           unit: unit,
           qty: r.qty || '',
           deliveryDate: finalDeliveryDate,
-          expDate: r.expDate || '',
+          expDate: finalExpDate,
+          expAutoComputed,
           supplier: r.supplier || '',
           notes: ''
         });
@@ -568,6 +616,17 @@ function renderBulkTable() {
 
   tbody.innerHTML = bulkRows.map((row, index) => {
     const codeResult = computeRowCode(row.commodityId, row.commodityName, row.unit, row.expDate, row.deliveryDate, row.supplier);
+    const matchedComm = row.commodityId
+      ? availableCommodities.find(c => c.id === row.commodityId)
+      : availableCommodities.find(c => c.name.toLowerCase() === (row.commodityName || '').toLowerCase());
+    const rowPolicy = resolveShelfLifePolicy({
+      commodity: matchedComm,
+      commodityName: row.commodityName,
+      category: row.category,
+    });
+    const expHintHtml = rowPolicy.defaultShelfLifeDays
+      ? `<div class="ws-exp-policy-hint" style="display:block; font-size:10px; font-weight:600; color:#b45309; margin-top:2px; line-height:1.2;">+${rowPolicy.defaultShelfLifeDays}d (${escapeHtml(rowPolicy.shortLabel)})</div>`
+      : `<div class="ws-exp-policy-hint" style="display:none; font-size:10px; font-weight:600; color:#b45309; margin-top:2px; line-height:1.2;"></div>`;
 
     // Determine display code and row state
     const isNewComm = Boolean(codeResult.isNewCommodity);
@@ -649,6 +708,7 @@ function renderBulkTable() {
          </td>
          <td>
             <input type="date" class="headless-input ws-input-exp" id="ws-exp-${rowKey}" name="expiration_date_${rowKey}" aria-label="Expiration Date" value="${escapeHtml(row.expDate)}" min="${getToday()}" required />
+            ${expHintHtml}
          </td>
          <td>
             <input type="text" class="headless-input ws-input-sup" id="ws-sup-${rowKey}" name="supplier_${rowKey}" aria-label="Supplier" value="${escapeHtml(row.supplier)}" placeholder="Supplier/Donor..." />
@@ -714,6 +774,44 @@ function bindRowEvents() {
       onSelect: (val) => handleCommInput(val),
     });
 
+    function syncRowShelfLifeAutoExpiry() {
+      const matched = row.commodityId
+        ? availableCommodities.find(c => c.id === row.commodityId)
+        : availableCommodities.find(c => c.name.toLowerCase() === (row.commodityName || '').toLowerCase());
+      const policy = resolveShelfLifePolicy({
+        commodity: matched,
+        commodityName: row.commodityName,
+        category: row.category,
+      });
+      const expHint = tr.querySelector('.ws-exp-policy-hint');
+
+      if (policy.defaultShelfLifeDays) {
+        if (!row.expDate || row.expAutoComputed) {
+          const baseDel = row.deliveryDate || getToday();
+          const computedExp = addDaysToDateString(baseDel, policy.defaultShelfLifeDays);
+          if (computedExp) {
+            row.expDate = computedExp;
+            row.expAutoComputed = true;
+            if (expInput) expInput.value = computedExp;
+          }
+        }
+        if (expHint) {
+          expHint.textContent = `+${policy.defaultShelfLifeDays}d (${policy.shortLabel})`;
+          expHint.style.display = 'block';
+        }
+      } else {
+        if (row.expAutoComputed) {
+          row.expDate = '';
+          row.expAutoComputed = false;
+          if (expInput) expInput.value = '';
+        }
+        if (expHint) {
+          expHint.textContent = '';
+          expHint.style.display = 'none';
+        }
+      }
+    }
+
     function handleCommInput(val) {
       const typed = (val ?? commInput?.value ?? '').trim();
       row.commodityName = typed;
@@ -746,7 +844,16 @@ function bindRowEvents() {
             catCombo?.addOption(guessedCat);
           }
         }
+        if (!row.unit || row.unit === '') {
+          const guessedUnit = extractUnitFromName(typed);
+          if (guessedUnit && unitInput) {
+            row.unit = guessedUnit;
+            unitInput.value = guessedUnit;
+            unitCombo?.addOption(guessedUnit);
+          }
+        }
       }
+      syncRowShelfLifeAutoExpiry();
       updateRowLiveCode(tr, row);
       updateFooters();
       validateTableRows();
@@ -800,11 +907,13 @@ function bindRowEvents() {
     // 3. Expiration Date Input/Change
     expInput?.addEventListener('input', () => {
       row.expDate = expInput.value;
+      row.expAutoComputed = false;
       updateRowLiveCode(tr, row);
       validateTableRows();
     });
     expInput?.addEventListener('change', () => {
       row.expDate = expInput.value;
+      row.expAutoComputed = false;
       updateRowLiveCode(tr, row);
       validateTableRows();
     });
@@ -819,6 +928,7 @@ function bindRowEvents() {
     // 5. Delivery Date & Supplier
     const handleDelChange = () => {
       row.deliveryDate = delInput.value;
+      syncRowShelfLifeAutoExpiry();
       updateRowLiveCode(tr, row);
       validateTableRows();
     };
@@ -1121,12 +1231,16 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
       // Auto-register new commodity if typed without prior registry ID
       if (!row.commodityId && row.commodityName) {
         const sku = generateCommoditySKU(row.commodityName, row.unit);
+        const autoShelfConfig = isNutribunName(row.commodityName)
+          ? SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.WEEKLY_PERISHABLE]
+          : null;
         const newCommRes = await createCommodity({
           commodity_code: sku,
           name: row.commodityName,
           category: (row.category || '').trim() || 'General',
           unit: row.unit || 'Piece',
-          description: 'Auto-registered from bulk intake'
+          description: 'Auto-registered from bulk intake',
+          ...(autoShelfConfig ? { shelf_life_config: autoShelfConfig } : {}),
         }, profile);
 
         if (newCommRes.error) {

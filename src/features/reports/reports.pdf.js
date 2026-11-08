@@ -56,7 +56,7 @@ function generateReportHTML(title, data, modelId, filters = {}, profile, origina
     `;
     let totalUnits = 0;
     data.forEach((b, idx) => {
-      const status = b.expiry_status || getExpirationStatus(b.expiration_date);
+      const status = b.expiry_status || getExpirationStatus(b.expiration_date, b);
       const daysLeft = b.days_left !== undefined ? b.days_left : getDaysRemaining(b.expiration_date);
       const daysStr = daysLeft === null || daysLeft === undefined ? 'N/A' : (daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`);
       totalUnits += Number(b.quantity || 0);

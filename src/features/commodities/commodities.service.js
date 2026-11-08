@@ -8,6 +8,11 @@
 import { supabase } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
+import {
+  hydrateCommodityShelfLife,
+  normalizeShelfLifeConfig,
+  saveLocalShelfLifeConfig,
+} from '../../shared/utils/shelf-life.utils.js';
 
 const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
 
@@ -21,13 +26,13 @@ export async function fetchCommodities() {
   try {
     const { data, error } = await supabase
       .from('commodities')
-      .select('id, commodity_code, name, description, category, unit, created_at')
+      .select('*')
       .is('deleted_at', null)
       .order('name');
 
     if (error) throw error;
 
-    const commodities = data || [];
+    const commodities = (data || []).map(c => hydrateCommodityShelfLife(c));
     const usedCodes = new Set(commodities.map(c => (c.commodity_code || '').toUpperCase()));
     const updates = [];
     for (const c of commodities) {
@@ -65,11 +70,12 @@ export async function fetchCommodityLineage(commodityId) {
   try {
     const { data: commodity, error: commErr } = await supabase
       .from('commodities')
-      .select('id, commodity_code, name, description, category, unit, created_at')
+      .select('*')
       .eq('id', commodityId)
       .single();
 
     if (commErr) throw commErr;
+    hydrateCommodityShelfLife(commodity);
 
     const { data: batches, error: batchErr } = await supabase
       .from('batches')
@@ -129,24 +135,44 @@ export async function fetchCommodityLineage(commodityId) {
  */
 export async function createCommodity(formData, profile) {
   try {
-    const { data, error } = await supabase
+    const shelfConfig = normalizeShelfLifeConfig(formData.shelf_life_config);
+    const basePayload = {
+      commodity_code: formData.commodity_code.trim().toUpperCase(),
+      name:           formData.name.trim(),
+      description:    formData.description?.trim() || null,
+      category:       formData.category,
+      unit:           formData.unit,
+      created_by:     profile.id,
+    };
+
+    let { data, error } = await supabase
       .from('commodities')
-      .insert({
-        commodity_code: formData.commodity_code.trim().toUpperCase(),
-        name:           formData.name.trim(),
-        description:    formData.description?.trim() || null,
-        category:       formData.category,
-        unit:           formData.unit,
-        created_by:     profile.id,
-      })
+      .insert(shelfConfig ? { ...basePayload, shelf_life_config: shelfConfig } : basePayload)
       .select()
       .single();
+
+    if (
+      error &&
+      shelfConfig &&
+      (error.code === '42703' || error.code === 'PGRST204' || /shelf_life_config/i.test(error.message || ''))
+    ) {
+      ({ data, error } = await supabase
+        .from('commodities')
+        .insert(basePayload)
+        .select()
+        .single());
+    }
 
     if (error) {
       if (error.code === '23505') {
         return { commodity: null, error: 'A commodity with this code already exists.' };
       }
       throw error;
+    }
+
+    if (shelfConfig) {
+      data.shelf_life_config = shelfConfig;
+      saveLocalShelfLifeConfig(data, shelfConfig);
     }
 
     await supabase.from('audit_logs').insert({
@@ -169,32 +195,54 @@ export async function createCommodity(formData, profile) {
 /**
  * Update an existing commodity and write an audit log entry.
  * @param {string} id
- * @param {{ commodity_code, name, description, category, unit }} formData
+ * @param {{ commodity_code, name, description, category, unit, shelf_life_config? }} formData
  * @param {Object} profile
  * @returns {Promise<{ commodity: Object|null, error: string|null }>}
  */
 export async function updateCommodity(id, formData, profile) {
   try {
-    const { data, error } = await supabase
+    const shelfConfig = normalizeShelfLifeConfig(formData.shelf_life_config);
+    const basePayload = {
+      commodity_code: formData.commodity_code.trim().toUpperCase(),
+      name:           formData.name.trim(),
+      description:    formData.description?.trim() || null,
+      category:       formData.category,
+      unit:           formData.unit,
+      updated_by:     profile.id,
+    };
+
+    let { data, error } = await supabase
       .from('commodities')
-      .update({
-        commodity_code: formData.commodity_code.trim().toUpperCase(),
-        name:           formData.name.trim(),
-        description:    formData.description?.trim() || null,
-        category:       formData.category,
-        unit:           formData.unit,
-        updated_by:     profile.id,
-      })
+      .update(shelfConfig ? { ...basePayload, shelf_life_config: shelfConfig } : basePayload)
       .eq('id', id)
       .is('deleted_at', null)
       .select()
       .single();
+
+    if (
+      error &&
+      shelfConfig &&
+      (error.code === '42703' || error.code === 'PGRST204' || /shelf_life_config/i.test(error.message || ''))
+    ) {
+      ({ data, error } = await supabase
+        .from('commodities')
+        .update(basePayload)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select()
+        .single());
+    }
 
     if (error) {
       if (error.code === '23505') {
         return { commodity: null, error: 'A commodity with this code already exists.' };
       }
       throw error;
+    }
+
+    if (shelfConfig) {
+      data.shelf_life_config = shelfConfig;
+      saveLocalShelfLifeConfig(data, shelfConfig);
     }
 
     await supabase.from('audit_logs').insert({

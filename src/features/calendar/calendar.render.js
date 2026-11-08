@@ -8,6 +8,9 @@
  *   - Add program event modal template
  */
 
+import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { resolveShelfLifePolicy } from '../../shared/utils/shelf-life.utils.js';
+
 export function renderCalendarLayout() {
   return `
     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4);">
@@ -31,8 +34,8 @@ export function renderCalendarLayout() {
       <div class="cal-toolbar">
         <div class="cal-legend">
           <span class="cal-chip cal-chip-delivery"><span class="icon icon--sm">local_shipping</span> Delivery</span>
-          <span class="cal-chip cal-chip-good"><span class="icon icon--sm">check_circle</span> Good (&gt;180d)</span>
-          <span class="cal-chip cal-chip-moderate"><span class="icon icon--sm">info</span> Moderate (&gt;90d)</span>
+          <span class="cal-chip cal-chip-good"><span class="icon icon--sm">check_circle</span> Good</span>
+          <span class="cal-chip cal-chip-moderate"><span class="icon icon--sm">info</span> Moderate</span>
           <span class="cal-chip cal-chip-near"><span class="icon icon--sm">warning</span> Near Expiry</span>
           <span class="cal-chip cal-chip-expired"><span class="icon icon--sm">error</span> Expired</span>
           <span class="cal-chip cal-chip-custom"><span class="icon icon--sm">event</span> Program Event</span>
@@ -120,8 +123,9 @@ export function renderDeliveryDetailBody(batch) {
 }
 
 export function renderExpirationDetailBody(batch) {
-  const diff = Math.ceil((new Date(batch.expiration_date) - new Date()) / 86400000);
-  const status = diff <= 0 ? 'Expired' : diff <= 90 ? 'Near Expiry' : diff <= 180 ? 'Moderate' : 'Good';
+  const diff = getDaysRemaining(batch.expiration_date);
+  const status = getExpirationStatus(batch.expiration_date, batch);
+  const policy = resolveShelfLifePolicy(batch);
   return `
     <div class="cal-modal-badge cal-badge-exp" style="width: max-content;">
       <span class="icon icon--sm">warning</span> Expiration
@@ -131,6 +135,7 @@ export function renderExpirationDetailBody(batch) {
       <span class="cal-modal-label">Quantity</span><span>${batch.quantity} ${batch.commodities?.unit || ''}</span>
       <span class="cal-modal-label">Expiration Date</span><span>${batch.expiration_date}</span>
       <span class="cal-modal-label">Status</span><span class="cal-exp-status">${status} (${diff > 0 ? diff + ' days left' : 'Expired'})</span>
+      <span class="cal-modal-label">Policy</span><span>${policy.shortLabel}</span>
       <span class="cal-modal-label">Supplier</span><span>${batch.supplier || '—'}</span>
     </div>
   `;
