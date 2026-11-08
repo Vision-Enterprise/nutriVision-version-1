@@ -387,7 +387,7 @@ export function renderBulkReleasePage(profile) {
   openBulkReleaseWorkspace({
     profile,
     onClose: () => {
-      router.navigate('dashboard');
+      router.navigate('releases');
     }
   });
 }

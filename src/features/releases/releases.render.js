@@ -40,10 +40,22 @@ export function renderReleasesLayout({ releases, commodities, filtered, filterCo
   const hasFilters = filterCommodity !== 'all' || filterBarangay !== 'all' || Boolean(searchTerm);
 
   return `
-    <div class="page-header" style="margin-bottom: var(--space-5);">
+    <div class="page-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5);">
       <div>
         <h1 class="page-header__title">Releases Ledger</h1>
         <p class="page-header__subtitle">${releases.length} total release${releases.length !== 1 ? 's' : ''} recorded</p>
+      </div>
+      <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+        <button id="releases-bulk-release-btn" class="btn btn-bulk-release" type="button"
+                aria-label="Open Bulk Release Manifest">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          Bulk Release
+        </button>
       </div>
     </div>
 

@@ -247,8 +247,9 @@ class Router {
       );
     });
 
-    // Add active to items matching the current route
-    document.querySelectorAll(`[data-route="${activePath}"]`).forEach(el => {
+    // Add active to items matching the current route (map bulk-release sub-route to releases)
+    const navPath = activePath === 'bulk-release' ? 'releases' : activePath;
+    document.querySelectorAll(`[data-route="${navPath}"]`).forEach(el => {
       if (el.classList.contains('sidebar__nav-item')) {
         el.classList.add('sidebar__nav-item--active');
       } else if (el.classList.contains('mobile-nav__item')) {

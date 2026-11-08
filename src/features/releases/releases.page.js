@@ -9,13 +9,16 @@
 
 import { fetchReleases } from './releases.service.js';
 import { renderReleasesLayout, renderReleasesTable, renderEmpty, escapeHtml } from './releases.render.js';
+import { openBulkReleaseWorkspace } from '../bulk-release/bulk-release.page.js';
 
 let _releases = [];
+let _profile = null;
 let _filterBarangay = 'all';
 let _filterCommodity = 'all';
 let _searchTerm = '';
 
 export async function renderReleasesPage(profile) {
+  _profile = profile;
   const contentContainer = document.getElementById('page-content');
   if (!contentContainer) return;
 
@@ -91,6 +94,15 @@ function _refreshTable() {
 }
 
 function _attachEventListeners() {
+  document.getElementById('releases-bulk-release-btn')?.addEventListener('click', () => {
+    openBulkReleaseWorkspace({
+      profile: _profile,
+      onClose: async () => {
+        await renderReleasesPage(_profile);
+      }
+    });
+  });
+
   document.getElementById('filter-commodity')?.addEventListener('change', e => {
     _filterCommodity = e.target.value;
     _refreshTable();

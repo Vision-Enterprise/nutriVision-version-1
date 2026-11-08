@@ -49,7 +49,7 @@ export function renderBulkReleaseShell() {
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
-          Back to Batches
+          Back to Releases
         </button>
       </div>
 
@@ -361,7 +361,7 @@ export function renderSuccessSummary(results, errors, barangay) {
           </div>
         </div>` : ''}
       <button id="bulk-release-back-after-success" class="btn btn-primary" type="button">
-        Back to Batches
+        Back to Releases
       </button>
     </div>`;
 }
