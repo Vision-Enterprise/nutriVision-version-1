@@ -6,15 +6,27 @@
  */
 
 import { supabase } from '../../core/supabase.js';
-import { AUDIT_ACTIONS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { AUDIT_ACTIONS, RECORD_STATUS, EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 import { generateCommoditySKU } from '../../shared/utils/code-generator.util.js';
+import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import {
   hydrateCommodityShelfLife,
   normalizeShelfLifeConfig,
   saveLocalShelfLifeConfig,
 } from '../../shared/utils/shelf-life.utils.js';
+import {
+  hydrateCommodityImage,
+  saveLocalCommodityImage,
+} from './commodity-image.utils.js';
 
-const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|CAP|PIE|UNT)$/i;
+const LEGACY_SKU_SUFFIX_RE = /-(SAC|TAB|PAC|BOT|BOTTLE|CAP|PIE|UNT)$/i;
+
+function isMissingColumnError(error, colPattern) {
+  if (!error) return false;
+  const msg = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
+  if (colPattern && colPattern.test(msg)) return true;
+  return error.code === '42703' || error.code === 'PGRST204';
+}
 
 // ── Read ────────────────────────────────────────────────────────────────────
 
@@ -32,10 +44,19 @@ export async function fetchCommodities() {
 
     if (error) throw error;
 
-    const commodities = (data || []).map(c => hydrateCommodityShelfLife(c));
+    const rawRows = data || [];
+    const dbHasImageCol = rawRows.length > 0 && Object.prototype.hasOwnProperty.call(rawRows[0], 'image_url');
+    const commodities = rawRows.map(c => hydrateCommodityImage(hydrateCommodityShelfLife({ ...c })));
     const usedCodes = new Set(commodities.map(c => (c.commodity_code || '').toUpperCase()));
     const updates = [];
-    for (const c of commodities) {
+    for (let i = 0; i < commodities.length; i++) {
+      const c = commodities[i];
+      const raw = rawRows[i];
+      if (dbHasImageCol && !raw?.image_url && c?.image_url && c?.id) {
+        updates.push(
+          supabase.from('commodities').update({ image_url: c.image_url }).eq('id', c.id)
+        );
+      }
       if (!c?.name || !c?.unit) continue;
       const current = (c.commodity_code || '').trim().toUpperCase();
       if (!LEGACY_SKU_SUFFIX_RE.test(current)) continue;
@@ -76,6 +97,7 @@ export async function fetchCommodityLineage(commodityId) {
 
     if (commErr) throw commErr;
     hydrateCommodityShelfLife(commodity);
+    hydrateCommodityImage(commodity);
 
     const { data: batches, error: batchErr } = await supabase
       .from('batches')
@@ -125,17 +147,65 @@ export async function fetchCommodityLineage(commodityId) {
   }
 }
 
+/**
+ * Fetch aggregated live active stock counts per commodity for Card/Table snapshots (#87).
+ *
+ * @param {Array} [commodities=[]]
+ * @returns {Promise<{ stockMap: Record<string, { activeBatchCount: number, totalUnits: number, urgentBatchCount: number }>, error: string|null }>}
+ */
+export async function fetchCommodityStockSummaries(commodities = []) {
+  try {
+    const commById = new Map((commodities || []).map(c => [c.id, c]));
+    const { data, error } = await supabase
+      .from('batches')
+      .select('id, commodity_id, quantity, expiration_date, record_status')
+      .is('deleted_at', null)
+      .gt('quantity', 0);
+
+    if (error) throw error;
+
+    const stockMap = {};
+    for (const b of data || []) {
+      if (b.record_status && b.record_status !== RECORD_STATUS.ACTIVE) continue;
+      const cid = b.commodity_id;
+      if (!cid) continue;
+
+      if (!stockMap[cid]) {
+        stockMap[cid] = { activeBatchCount: 0, totalUnits: 0, urgentBatchCount: 0 };
+      }
+      stockMap[cid].activeBatchCount += 1;
+      stockMap[cid].totalUnits += Number(b.quantity) || 0;
+
+      const comm = commById.get(cid) || null;
+      const expStatus = getExpirationStatus(b.expiration_date, { ...b, commodities: comm });
+      if (expStatus === EXPIRATION_STATUS.NEAR_EXPIRY || expStatus === EXPIRATION_STATUS.EXPIRED) {
+        stockMap[cid].urgentBatchCount += 1;
+      }
+    }
+
+    return { stockMap, error: null };
+  } catch (err) {
+    console.warn('[CommoditiesService] fetchCommodityStockSummaries warning:', err);
+    return { stockMap: {}, error: null };
+  }
+}
+
 // ── Create ──────────────────────────────────────────────────────────────────
 
 /**
  * Insert a new commodity and write an audit log entry.
- * @param {{ commodity_code, name, description, category, unit }} formData
+ * @param {{ commodity_code, name, description, category, unit, shelf_life_config?, image_url? }} formData
  * @param {Object} profile
  * @returns {Promise<{ commodity: Object|null, error: string|null }>}
  */
 export async function createCommodity(formData, profile) {
   try {
     const shelfConfig = normalizeShelfLifeConfig(formData.shelf_life_config);
+    const hasImageField = formData.image_url !== undefined;
+    const cleanImageUrl = typeof formData.image_url === 'string' && formData.image_url.trim()
+      ? formData.image_url.trim()
+      : null;
+
     const basePayload = {
       commodity_code: formData.commodity_code.trim().toUpperCase(),
       name:           formData.name.trim(),
@@ -145,22 +215,34 @@ export async function createCommodity(formData, profile) {
       created_by:     profile.id,
     };
 
+    const fullPayload = {
+      ...basePayload,
+      ...(shelfConfig ? { shelf_life_config: shelfConfig } : {}),
+      ...(hasImageField ? { image_url: cleanImageUrl } : {}),
+    };
+
     let { data, error } = await supabase
       .from('commodities')
-      .insert(shelfConfig ? { ...basePayload, shelf_life_config: shelfConfig } : basePayload)
+      .insert(fullPayload)
       .select()
       .single();
 
-    if (
-      error &&
-      shelfConfig &&
-      (error.code === '42703' || error.code === 'PGRST204' || /shelf_life_config/i.test(error.message || ''))
-    ) {
-      ({ data, error } = await supabase
-        .from('commodities')
-        .insert(basePayload)
-        .select()
-        .single());
+    // Graceful fallback if image_url or shelf_life_config column is not yet added in Supabase
+    if (error && isMissingColumnError(error, /image_url|shelf_life_config/i)) {
+      if (hasImageField && shelfConfig && isMissingColumnError(error, /image_url/i) && !/shelf_life_config/i.test(error.message || '')) {
+        ({ data, error } = await supabase
+          .from('commodities')
+          .insert({ ...basePayload, shelf_life_config: shelfConfig })
+          .select()
+          .single());
+      }
+      if (error && isMissingColumnError(error, /image_url|shelf_life_config/i)) {
+        ({ data, error } = await supabase
+          .from('commodities')
+          .insert(basePayload)
+          .select()
+          .single());
+      }
     }
 
     if (error) {
@@ -173,6 +255,12 @@ export async function createCommodity(formData, profile) {
     if (shelfConfig) {
       data.shelf_life_config = shelfConfig;
       saveLocalShelfLifeConfig(data, shelfConfig);
+    }
+    if (hasImageField) {
+      data.image_url = cleanImageUrl;
+      saveLocalCommodityImage(data, cleanImageUrl);
+    } else {
+      hydrateCommodityImage(data);
     }
 
     await supabase.from('audit_logs').insert({
@@ -195,13 +283,18 @@ export async function createCommodity(formData, profile) {
 /**
  * Update an existing commodity and write an audit log entry.
  * @param {string} id
- * @param {{ commodity_code, name, description, category, unit, shelf_life_config? }} formData
+ * @param {{ commodity_code, name, description, category, unit, shelf_life_config?, image_url? }} formData
  * @param {Object} profile
  * @returns {Promise<{ commodity: Object|null, error: string|null }>}
  */
 export async function updateCommodity(id, formData, profile) {
   try {
     const shelfConfig = normalizeShelfLifeConfig(formData.shelf_life_config);
+    const hasImageField = formData.image_url !== undefined;
+    const cleanImageUrl = typeof formData.image_url === 'string' && formData.image_url.trim()
+      ? formData.image_url.trim()
+      : null;
+
     const basePayload = {
       commodity_code: formData.commodity_code.trim().toUpperCase(),
       name:           formData.name.trim(),
@@ -211,26 +304,39 @@ export async function updateCommodity(id, formData, profile) {
       updated_by:     profile.id,
     };
 
+    const fullPayload = {
+      ...basePayload,
+      ...(shelfConfig ? { shelf_life_config: shelfConfig } : {}),
+      ...(hasImageField ? { image_url: cleanImageUrl } : {}),
+    };
+
     let { data, error } = await supabase
       .from('commodities')
-      .update(shelfConfig ? { ...basePayload, shelf_life_config: shelfConfig } : basePayload)
+      .update(fullPayload)
       .eq('id', id)
       .is('deleted_at', null)
       .select()
       .single();
 
-    if (
-      error &&
-      shelfConfig &&
-      (error.code === '42703' || error.code === 'PGRST204' || /shelf_life_config/i.test(error.message || ''))
-    ) {
-      ({ data, error } = await supabase
-        .from('commodities')
-        .update(basePayload)
-        .eq('id', id)
-        .is('deleted_at', null)
-        .select()
-        .single());
+    if (error && isMissingColumnError(error, /image_url|shelf_life_config/i)) {
+      if (hasImageField && shelfConfig && isMissingColumnError(error, /image_url/i) && !/shelf_life_config/i.test(error.message || '')) {
+        ({ data, error } = await supabase
+          .from('commodities')
+          .update({ ...basePayload, shelf_life_config: shelfConfig })
+          .eq('id', id)
+          .is('deleted_at', null)
+          .select()
+          .single());
+      }
+      if (error && isMissingColumnError(error, /image_url|shelf_life_config/i)) {
+        ({ data, error } = await supabase
+          .from('commodities')
+          .update(basePayload)
+          .eq('id', id)
+          .is('deleted_at', null)
+          .select()
+          .single());
+      }
     }
 
     if (error) {
@@ -243,6 +349,12 @@ export async function updateCommodity(id, formData, profile) {
     if (shelfConfig) {
       data.shelf_life_config = shelfConfig;
       saveLocalShelfLifeConfig(data, shelfConfig);
+    }
+    if (hasImageField) {
+      data.image_url = cleanImageUrl;
+      saveLocalCommodityImage(data, cleanImageUrl);
+    } else {
+      hydrateCommodityImage(data);
     }
 
     await supabase.from('audit_logs').insert({

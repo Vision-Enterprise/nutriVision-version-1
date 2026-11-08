@@ -17,6 +17,10 @@ import {
   formatPolicyRanges,
   isNutribunName,
 } from '../../shared/utils/shelf-life.utils.js';
+import {
+  compressCommodityImage,
+  getCategoryArtwork,
+} from './commodity-image.utils.js';
 
 let _activeModalEscHandler = null;
 let _activeComboboxes = [];
@@ -138,6 +142,8 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   const title  = isEdit ? 'Edit Commodity' : 'Add Commodity';
   let isManualCodeOverride = isEdit && Boolean(commodity?.commodity_code);
   let isManualPolicyOverride = isEdit;
+  let currentImageUrl = commodity?.image_url ? String(commodity.image_url).trim() : null;
+  let imageModified = false;
 
   const initialPolicy = isEdit
     ? resolveShelfLifePolicy(commodity)
@@ -174,6 +180,34 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
 
       <form id="commodity-form" novalidate>
         <div class="modal-body" style="display: flex; flex-direction: column; gap: var(--space-4);">
+
+          <!-- Commodity Image Uploader (#87) -->
+          <div class="form-group">
+            <label class="form-label" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-1);">
+              <span>Commodity Image <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></span>
+              <span style="font-size: 11px; font-weight: 500; color: var(--color-text-muted);">Category illustration used by default</span>
+            </label>
+            <div class="commodity-photo-uploader" id="commodity-photo-dropzone">
+              <div class="commodity-photo-uploader__preview" id="commodity-photo-preview"></div>
+              <div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <button type="button" id="btn-upload-commodity-photo" class="btn btn-secondary btn-sm">
+                    <span class="icon" style="font-size:15px;" aria-hidden="true">upload</span>
+                    <span id="commodity-photo-btn-label">${currentImageUrl ? 'Change Photo' : 'Upload Photo'}</span>
+                  </button>
+                  <button type="button" id="btn-remove-commodity-photo" class="btn btn-ghost btn-sm"
+                          style="display:${currentImageUrl ? 'inline-flex' : 'none'}; color:var(--color-danger);">
+                    Remove Photo
+                  </button>
+                  <input type="file" id="field-commodity-photo" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" />
+                </div>
+                <span style="font-size:11.5px; color:var(--color-text-muted); line-height:1.35;">
+                  JPG, PNG, or WebP (or drag &amp; drop here). Automatically resized for fast card loading.
+                </span>
+                <span class="form-error" id="error-photo" role="alert"></span>
+              </div>
+            </div>
+          </div>
 
           <!-- Row: Code + Name -->
           <div style="display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-3);">
@@ -322,6 +356,74 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
   const customNearIn  = document.getElementById('field-custom-near');
   const customShelfIn = document.getElementById('field-custom-shelf');
   const policyPreview = document.getElementById('shelf-policy-preview');
+  const photoPreview  = document.getElementById('commodity-photo-preview');
+  const photoDropzone = document.getElementById('commodity-photo-dropzone');
+  const photoFileIn   = document.getElementById('field-commodity-photo');
+  const photoUploadBtn = document.getElementById('btn-upload-commodity-photo');
+  const photoRemoveBtn = document.getElementById('btn-remove-commodity-photo');
+  const photoBtnLabel  = document.getElementById('commodity-photo-btn-label');
+  const photoErrEl     = document.getElementById('error-photo');
+
+  function updatePhotoPreview() {
+    if (!photoPreview) return;
+    if (currentImageUrl) {
+      photoPreview.style.background = '#ffffff';
+      photoPreview.innerHTML = `<img src="${escapeHtml(currentImageUrl)}" alt="Commodity preview" />`;
+      if (photoBtnLabel) photoBtnLabel.textContent = 'Change Photo';
+      if (photoRemoveBtn) photoRemoveBtn.style.display = 'inline-flex';
+    } else {
+      const art = getCategoryArtwork({
+        category: categoryInput?.value || commodity?.category || '',
+        name: nameInput?.value || commodity?.name || '',
+      });
+      photoPreview.style.background = art.bgGradient;
+      photoPreview.innerHTML = art.svgHtml;
+      if (photoBtnLabel) photoBtnLabel.textContent = 'Upload Photo';
+      if (photoRemoveBtn) photoRemoveBtn.style.display = 'none';
+    }
+  }
+
+  async function handleSelectedPhotoFile(file) {
+    if (!file) return;
+    if (photoErrEl) photoErrEl.textContent = '';
+    try {
+      const compressedDataUrl = await compressCommodityImage(file);
+      currentImageUrl = compressedDataUrl;
+      imageModified = true;
+      updatePhotoPreview();
+    } catch (err) {
+      if (photoErrEl) photoErrEl.textContent = err?.message || 'Could not process image.';
+    } finally {
+      if (photoFileIn) photoFileIn.value = '';
+    }
+  }
+
+  updatePhotoPreview();
+
+  photoUploadBtn?.addEventListener('click', () => photoFileIn?.click());
+  photoFileIn?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (file) handleSelectedPhotoFile(file);
+  });
+  photoRemoveBtn?.addEventListener('click', () => {
+    currentImageUrl = null;
+    imageModified = true;
+    if (photoErrEl) photoErrEl.textContent = '';
+    updatePhotoPreview();
+  });
+  photoDropzone?.addEventListener('dragover', e => {
+    e.preventDefault();
+    photoDropzone.classList.add('is-dragover');
+  });
+  photoDropzone?.addEventListener('dragleave', () => {
+    photoDropzone.classList.remove('is-dragover');
+  });
+  photoDropzone?.addEventListener('drop', e => {
+    e.preventDefault();
+    photoDropzone.classList.remove('is-dragover');
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleSelectedPhotoFile(file);
+  });
 
   function getActivePolicyDraft() {
     const selMode = policySelect?.value || SHELF_LIFE_MODES.STANDARD;
@@ -406,6 +508,7 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
     const rawName = nameInput?.value?.trim() || '';
     if (!rawName) {
       if (codeInput && !isManualCodeOverride) codeInput.value = '';
+      updatePhotoPreview();
       return;
     }
 
@@ -455,11 +558,15 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
         if (badgeText) badgeText.textContent = 'Auto';
       }
     }
+
+    updatePhotoPreview();
   }
 
   // Reactive listeners
   nameInput?.addEventListener('input', () => handleNameUpdate());
   nameInput?.addEventListener('change', () => handleNameUpdate());
+  categoryInput?.addEventListener('input', () => updatePhotoPreview());
+  categoryInput?.addEventListener('change', () => updatePhotoPreview());
 
   unitInput?.addEventListener('input', () => {
     if (!isManualCodeOverride) {
@@ -575,6 +682,12 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
     }
 
     if (!valid) return;
+
+    if (mode === 'add') {
+      formData.image_url = currentImageUrl || null;
+    } else if (imageModified) {
+      formData.image_url = currentImageUrl || null;
+    }
 
     clearFieldErrors();
     setModalLoading(true, mode);
