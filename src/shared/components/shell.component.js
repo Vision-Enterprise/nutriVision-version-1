@@ -125,10 +125,6 @@ export function renderShell(profile, onLogout) {
             <span class="icon" aria-hidden="true">package_2</span>
             <span class="sidebar__nav-text">Batches</span>
           </button>
-          <button class="sidebar__nav-item" data-route="archive" id="nav-archive" type="button" aria-label="Archive">
-            <span class="icon" aria-hidden="true">archive</span>
-            <span class="sidebar__nav-text">Archive</span>
-          </button>
           <button
             class="sidebar__nav-item"
             data-route="releases"
@@ -138,6 +134,11 @@ export function renderShell(profile, onLogout) {
           >
             <span class="icon" aria-hidden="true">local_shipping</span>
             <span class="sidebar__nav-text">Releases</span>
+          </button>
+
+          <button class="sidebar__nav-item" data-route="archive" id="nav-archive" type="button" aria-label="Archive">
+            <span class="icon" aria-hidden="true">archive</span>
+            <span class="sidebar__nav-text">Archive</span>
           </button>
 
           <button
