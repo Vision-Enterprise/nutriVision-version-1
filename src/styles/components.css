@@ -1478,7 +1478,19 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
   min-width: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background-color 0.15s ease;
+}
+
+.bulk-cart-item__info:hover,
+.bulk-cart-item__info:focus-visible {
+  background-color: rgba(5, 150, 105, 0.07);
+  outline: none;
 }
 
 .bulk-cart-item__name {
@@ -1488,12 +1500,49 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 100%;
 }
 
 .bulk-cart-item__code {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Expanded state on click (#102) — reveals full commodity name & batch code regardless of zoom */
+.bulk-cart-item.is-expanded {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  background: var(--color-surface, #ffffff);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.10);
+}
+
+.bulk-cart-item.is-expanded .bulk-cart-item__info {
+  flex: 1 1 100%;
+  margin-bottom: 4px;
+}
+
+.bulk-cart-item.is-expanded .bulk-cart-item__name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  max-width: none;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.bulk-cart-item.is-expanded .bulk-cart-item__code {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-all;
+}
+
+.bulk-cart-item.is-expanded .bulk-cart-item__controls {
+  margin-left: auto;
 }
 
 .bulk-cart-item__controls {
@@ -1705,6 +1754,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
@@ -1771,8 +1823,8 @@
 }
 
 .headless-grid .creatable-combobox__menu {
-  min-width: 220px;
-  max-width: 360px;
+  min-width: max(100%, 280px);
+  max-width: 480px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 

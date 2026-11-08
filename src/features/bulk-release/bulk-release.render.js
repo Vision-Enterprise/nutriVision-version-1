@@ -281,13 +281,19 @@ export function renderBatchSelectorTable(batches, selectedIds = new Set()) {
  * Render a single cart item row.
  * @param {Object} batch
  * @param {number} qty - Quantity currently entered for this batch
+ * @param {boolean} [isExpanded=false] - Whether full unwrapped commodity name is expanded (#102)
  */
-export function renderCartItem(batch, qty = 1) {
+export function renderCartItem(batch, qty = 1, isExpanded = false) {
   const unit = escapeHtml(batch.commodities?.unit ?? '');
+  const fullName = batch.commodities?.name ?? '—';
   return `
-    <div class="bulk-cart-item" id="cart-item-${batch.id}" data-batch-id="${batch.id}">
-      <div class="bulk-cart-item__info">
-        <span class="bulk-cart-item__name">${escapeHtml(batch.commodities?.name ?? '—')}</span>
+    <div class="bulk-cart-item${isExpanded ? ' is-expanded' : ''}" id="cart-item-${batch.id}" data-batch-id="${batch.id}">
+      <div class="bulk-cart-item__info"
+           role="button"
+           tabindex="0"
+           aria-expanded="${isExpanded ? 'true' : 'false'}"
+           title="${escapeHtml(fullName)} — Click to ${isExpanded ? 'collapse' : 'view full name'}">
+        <span class="bulk-cart-item__name">${escapeHtml(fullName)}</span>
         <span class="bulk-cart-item__code">${escapeHtml(batch.batch_number)}</span>
       </div>
       <div class="bulk-cart-item__controls">

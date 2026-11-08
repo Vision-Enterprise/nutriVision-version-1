@@ -30,6 +30,7 @@ import { SystemDialog } from '../../shared/components/dialog.component.js';
 let _batches    = [];        // all active batches from DB
 let _filtered   = [];        // currently displayed (after filter/sort)
 let _cart       = new Map(); // batchId -> { batch, qty }
+let _expandedCartIds = new Set(); // batchIds whose cart cards are expanded to show full name (#102)
 let _sortMode   = 'fefo';
 let _filterComm = 'all';
 let _profile    = null;
@@ -48,6 +49,7 @@ export async function openBulkReleaseWorkspace({ profile, onClose }) {
   _batches  = [];
   _filtered = [];
   _cart     = new Map();
+  _expandedCartIds = new Set();
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -163,9 +165,33 @@ function _updateCartDisplay() {
   // Re-render cart items
   _cart.forEach(({ batch, qty }) => {
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = renderCartItem(batch, qty);
+    const isExpanded = _expandedCartIds.has(batch.id);
+    wrapper.innerHTML = renderCartItem(batch, qty, isExpanded);
     const item = wrapper.firstElementChild;
     cartEl.insertBefore(item, emptyEl);
+
+    // Click / keyboard toggle to expand compressed commodity name (#102)
+    const infoEl = item.querySelector('.bulk-cart-item__info');
+    const toggleExpand = () => {
+      const nowExpanded = !item.classList.contains('is-expanded');
+      item.classList.toggle('is-expanded', nowExpanded);
+      if (nowExpanded) {
+        _expandedCartIds.add(batch.id);
+      } else {
+        _expandedCartIds.delete(batch.id);
+      }
+      if (infoEl) {
+        infoEl.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+        infoEl.title = `${batch.commodities?.name ?? '—'} — Click to ${nowExpanded ? 'collapse' : 'view full name'}`;
+      }
+    };
+    infoEl?.addEventListener('click', toggleExpand);
+    infoEl?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleExpand();
+      }
+    });
 
     // Qty input listener
     item.querySelector('.bulk-cart-qty')?.addEventListener('input', e => {
@@ -181,6 +207,7 @@ function _updateCartDisplay() {
     item.querySelector('.bulk-cart-remove')?.addEventListener('click', e => {
       const batchId = e.currentTarget.dataset.batchId;
       _cart.delete(batchId);
+      _expandedCartIds.delete(batchId);
       // Uncheck checkbox in table
       const chk = document.getElementById(`chk-${batchId}`);
       if (chk) chk.checked = false;
@@ -211,6 +238,7 @@ function _attachTableListeners() {
       if (row) row.classList.add('bulk-batch-row--selected');
     } else {
       _cart.delete(batchId);
+      _expandedCartIds.delete(batchId);
       if (row) row.classList.remove('bulk-batch-row--selected');
     }
 

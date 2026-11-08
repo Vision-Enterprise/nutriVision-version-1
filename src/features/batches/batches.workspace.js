@@ -179,6 +179,17 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
         position: relative;
         z-index: 5;
       }
+      .cell-expanded-inline {
+        position: relative !important;
+        z-index: 45 !important;
+        background: #ffffff !important;
+        border-radius: 6px !important;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15) !important;
+      }
+      .cell-expanded-inline .headless-input {
+        background: #ffffff !important;
+        border-radius: 6px !important;
+      }
       .fx-bar-label {
         min-width: 88px;
         text-align: center;
@@ -265,8 +276,8 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
            <table class="headless-grid">
               <thead>
                  <tr>
-                    <th style="min-width:200px;">Commodity <span style="color:#ef4444;">*</span></th>
-                    <th style="min-width:145px;">Category <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:240px;">Commodity <span style="color:#ef4444;">*</span></th>
+                    <th style="min-width:165px;">Category <span style="color:#ef4444;">*</span></th>
                     <th style="min-width:110px;">Unit <span style="color:#ef4444;">*</span></th>
                     <th style="min-width:250px;">Batch Code</th>
                     <th style="min-width:85px;">Qty <span style="color:#ef4444;">*</span></th>
@@ -384,11 +395,44 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   fxTarget = null;
   isSyncingFx = false;
 
+  function collapseExpandedCells() {
+    document.querySelectorAll('.cell-expanded-inline').forEach(el => {
+      const td = el.closest('td');
+      if (td) delete td.dataset.baseWidth;
+      el.classList.remove('cell-expanded-inline');
+      el.style.width = '';
+    });
+  }
+
+  function expandActiveCellIfCompressed(cellInput) {
+    if (!cellInput || cellInput.type === 'date' || cellInput.type === 'number') return;
+    const td = cellInput.closest('td');
+    if (!td) return;
+    const text = (cellInput.value || cellInput.placeholder || '').trim();
+    cellInput.title = cellInput.value ? cellInput.value : '';
+    const hostEl = cellInput.closest('.creatable-combobox') || cellInput;
+    if (!hostEl.classList.contains('cell-expanded-inline')) {
+      td.dataset.baseWidth = String(td.clientWidth || 240);
+    }
+    const baseWidth = Number(td.dataset.baseWidth) || 240;
+    const neededWidth = Math.min(560, Math.max(baseWidth, Math.ceil(text.length * 8.4) + 56));
+    if (neededWidth > baseWidth + 8) {
+      hostEl.classList.add('cell-expanded-inline');
+      hostEl.style.width = `${neededWidth}px`;
+    } else {
+      delete td.dataset.baseWidth;
+      hostEl.classList.remove('cell-expanded-inline');
+      hostEl.style.width = '';
+    }
+  }
+
   function setActiveCell(cellInput) {
     if (!cellInput) return;
     document.querySelectorAll('.cell-active-excel').forEach(el => el.classList.remove('cell-active-excel'));
+    collapseExpandedCells();
     fxTarget = cellInput;
     fxTarget.classList.add('cell-active-excel');
+    expandActiveCellIfCompressed(fxTarget);
 
     const tr = fxTarget.closest('tr');
     const rowIndex = tr ? (parseInt(tr.getAttribute('data-index'), 10) + 1) : '';
@@ -423,7 +467,17 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     setActiveCell(inp);
   });
 
+  document.getElementById('bulk-table-body')?.addEventListener('focusout', (e) => {
+    const nextTarget = e.relatedTarget;
+    if (!nextTarget || !document.getElementById('bulk-table-body')?.contains(nextTarget)) {
+      collapseExpandedCells();
+    }
+  });
+
   document.getElementById('bulk-table-body')?.addEventListener('input', (e) => {
+    if (e.target?.matches?.('input')) {
+      expandActiveCellIfCompressed(e.target);
+    }
     if (fxTarget && e.target === fxTarget && fxBar && !isSyncingFx) {
       isSyncingFx = true;
       fxBar.value = fxTarget.value;
@@ -677,6 +731,7 @@ function renderBulkTable() {
               aria-label="Commodity" 
               placeholder="Type or select commodity..." 
               value="${escapeHtml(row.commodityName || '')}" 
+              title="${escapeHtml(row.commodityName || 'Click to type or select commodity')}"
               autocomplete="off" 
               style="${commInputStyle}"
             />
@@ -690,6 +745,7 @@ function renderBulkTable() {
               aria-label="Category" 
               placeholder="Select/Add Category..." 
               value="${escapeHtml(row.category || '')}" 
+              title="${escapeHtml(row.category || 'Click to select or add category')}"
               autocomplete="off" 
             />
          </td>
@@ -853,6 +909,8 @@ function bindRowEvents() {
           }
         }
       }
+      if (commInput) commInput.title = row.commodityName || '';
+      if (catInput) catInput.title = row.category || '';
       syncRowShelfLifeAutoExpiry();
       updateRowLiveCode(tr, row);
       updateFooters();
