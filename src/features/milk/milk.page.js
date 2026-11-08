@@ -101,6 +101,12 @@ let _draftDispatches = [];
  */
 export async function renderMilkPage(profile) {
   _profile = profile;
+  _activeTab = 'intake';
+  _batchesSubView = 'table';
+  _auditFilter = '';
+  _auditSearch = '';
+  _selectedBatch = null;
+  _selectedShelf = null;
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -165,6 +171,12 @@ function _updateTabCounts() {
 function _renderActiveSheet() {
   const contentArea = document.getElementById('milk-tab-content');
   if (!contentArea) return;
+
+  document.querySelectorAll('.milk-tab').forEach(t => {
+    const isActive = t.dataset.tab === _activeTab;
+    t.classList.toggle('milk-tab--active', isActive);
+    t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
 
   const fefoBatch = getFefoPriorityBatch(_batches);
 
