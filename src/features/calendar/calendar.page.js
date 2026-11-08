@@ -15,7 +15,7 @@ import {
   fetchCustomEvents,
   subscribeToCalendarEvents,
 } from './calendar.service.js';
-import { renderCalendarLayout } from './calendar.render.js';
+import { renderCalendarLayout, escapeHtml, formatTime12h } from './calendar.render.js';
 import { showDetailModal, attachModalListeners } from './calendar.modals.js';
 import { getLocalDateString, getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
@@ -178,10 +178,42 @@ export async function renderCalendarPage(profile) {
     },
     height:        'auto',
     events:        loadAllEvents,
-    eventClick:    info => showDetailModal(info, _calendar),
+    eventContent:  arg => {
+      if (arg.event.extendedProps?.type !== 'custom') return undefined;
+      const customEv = arg.event.extendedProps.event || {};
+      const title = escapeHtml(customEv.title || arg.event.title || 'Program Event');
+      const pic = String(customEv.person_in_charge ?? '').trim();
+
+      if (arg.view.type.startsWith('list')) {
+        return {
+          html: `
+            <div class="cal-fc-list-custom">
+              <span class="cal-fc-list-title">${title}</span>
+              ${pic
+                ? `<span class="cal-fc-list-pic"><span class="icon">person</span>${escapeHtml(pic)}</span>`
+                : `<span class="cal-fc-list-pic cal-fc-list-pic--muted">Unassigned</span>`
+              }
+            </div>
+          `,
+        };
+      }
+
+      const timePrefix = arg.timeText ? `<span class="cal-fc-chip-time">${escapeHtml(arg.timeText)}</span> ` : '';
+      const picSuffix = pic ? ` <span class="cal-fc-chip-pic">&middot; ${escapeHtml(pic)}</span>` : '';
+      return {
+        html: `<div class="fc-event-main"><span class="fc-event-title">${timePrefix}${title}${picSuffix}</span></div>`,
+      };
+    },
+    eventClick:    info => showDetailModal(info, _calendar, _profile),
     eventDidMount: info => {
       info.el.style.cursor = 'pointer';
       info.el.style.borderRadius = 'var(--radius-sm)';
+      if (info.event.extendedProps?.type === 'custom') {
+        const customEv = info.event.extendedProps.event || {};
+        const picLabel = customEv.person_in_charge || 'Unassigned';
+        const timeLabel = customEv.start_time ? ` (${formatTime12h(customEv.start_time)})` : '';
+        info.el.title = `${customEv.title || info.event.title}${timeLabel}\nPerson in Charge: ${picLabel}`;
+      }
     },
     dayCellDidMount: info => {
       const today = getLocalDateString();

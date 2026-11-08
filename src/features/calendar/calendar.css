@@ -337,8 +337,40 @@
 }
 .cal-exp-status { font-weight: var(--font-weight-semibold); }
 
-.cal-btn-danger {
+.cal-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
   margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle, var(--color-border));
+  flex-wrap: wrap;
+}
+
+.cal-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary-bg);
+  color: var(--color-primary-dark, var(--color-primary));
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.cal-btn-edit:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.cal-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: var(--space-2) var(--space-4);
   background: var(--color-danger-bg);
   color: var(--color-danger);
@@ -347,9 +379,91 @@
   cursor: pointer;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 .cal-btn-danger:hover { background: var(--color-danger); color: #fff; }
+
+/* ─── Person in Charge Badges & Calendar Pills (#99) ───── */
+.cal-pic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+.cal-pic-badge .icon {
+  font-size: 14px;
+}
+.cal-pic-badge--unassigned {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.cal-assign-me-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary-dark, var(--color-primary));
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.cal-assign-me-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.cal-form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.cal-fc-chip-time {
+  font-weight: var(--font-weight-bold);
+}
+.cal-fc-chip-pic {
+  opacity: 0.92;
+  font-weight: var(--font-weight-normal);
+}
+
+.cal-fc-list-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.cal-fc-list-title {
+  font-weight: var(--font-weight-semibold);
+}
+.cal-fc-list-pic {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+}
+.cal-fc-list-pic .icon {
+  font-size: 13px;
+}
+.cal-fc-list-pic--muted {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
 
 /* ─── Add Event Form ───────────────────────────────────── */
 .cal-form {
@@ -375,4 +489,5 @@
   .cal-toolbar { flex-direction: column; align-items: flex-start; }
   .cal-modal { max-width: calc(100vw - 32px); padding: var(--space-4); }
   .fc .fc-toolbar { flex-wrap: wrap; gap: var(--space-2); }
+  .cal-form-row-2col { grid-template-columns: 1fr; }
 }
