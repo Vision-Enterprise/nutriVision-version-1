@@ -1,4 +1,5 @@
 import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
+import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import { getMilkBatchTrafficLight } from './milk.service.js';
 /**
  * Milk Bank — Official Print / PDF Export Generator
@@ -647,6 +648,119 @@ export function exportMilkDispensingCSV(dispatches = []) {
   _downloadCsvFile(`MILK_DISPENSING_LEDGER_${dateStr}.csv`, rows);
 }
 
+const MILK_AUDIT_ACTION_LABELS = {
+  [AUDIT_ACTIONS.CREATE_MILK_DONATION]: 'Milk Intake',
+  [AUDIT_ACTIONS.CREATE_MILK_BATCH]:    'Batch Created',
+  [AUDIT_ACTIONS.UPDATE_MILK_BATCH]:    'Batch Edited',
+  [AUDIT_ACTIONS.DELETE_MILK_BATCH]:    'Batch Deleted',
+  [AUDIT_ACTIONS.MOVE_MILK_SHELF]:      'Shelf Relocated',
+  [AUDIT_ACTIONS.DISPENSE_MILK_BATCH]:  'Milk Dispensed',
+  [AUDIT_ACTIONS.CREATE_FREEZER_UNIT]:  'Freezer Created',
+  [AUDIT_ACTIONS.UPDATE_FREEZER_UNIT]:  'Freezer Renamed',
+  [AUDIT_ACTIONS.DELETE_FREEZER_UNIT]:  'Freezer Deleted',
+};
+
+function formatAuditActionLabel(action) {
+  return MILK_AUDIT_ACTION_LABELS[action] || action || '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. MILK BANK AUDIT TRAIL PDF (#111)
+// ─────────────────────────────────────────────────────────────────────────────
+export function showMilkAuditPrintPreview(auditLogs = [], meta = {}) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const pdfTitle = `MILK_BANK_AUDIT_TRAIL_${dateStr}`;
+  const html = generateMilkAuditReportHTML(auditLogs, meta);
+  showPrintPreviewOverlay('Print Preview — Milk Bank Custody & Audit Trail Log', pdfTitle, html);
+}
+
+function generateMilkAuditReportHTML(auditLogs = [], meta = {}) {
+  const generatedAt = new Date().toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const filterLabel = meta.filterAction
+    ? formatAuditActionLabel(meta.filterAction)
+    : 'All Milk Bank Actions';
+  const searchNote = meta.searchQuery
+    ? ` &bull; Search: "${escapeHtml(meta.searchQuery)}"`
+    : '';
+
+  const totalRows = Math.max(12, auditLogs.length);
+  const rowsHtml = [];
+
+  for (let i = 0; i < totalRows; i++) {
+    const log = auditLogs[i] || null;
+    let dateTimeStr = '';
+    if (log?.created_at) {
+      try {
+        const dt = new Date(log.created_at);
+        dateTimeStr = dt.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      } catch {
+        dateTimeStr = String(log.created_at);
+      }
+    }
+
+    rowsHtml.push(`
+      <tr>
+        <td style="text-align: center;">${i + 1}.</td>
+        <td style="white-space: nowrap;">${log ? escapeHtml(dateTimeStr) : ''}</td>
+        <td style="font-weight: 600;">${log ? escapeHtml(formatAuditActionLabel(log.action)) : ''}</td>
+        <td style="text-align: center; font-family: monospace;">${log ? escapeHtml(log.entity_type || '—') : ''}</td>
+        <td>${log ? escapeHtml(log.description || '—') : ''}</td>
+        <td>${log ? escapeHtml(log.profiles?.full_name || 'Staff User') : ''}</td>
+      </tr>
+    `);
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>MILK BANK AUDIT TRAIL</title>
+      <style>${getBasePrintStyles()}</style>
+    </head>
+    <body>
+      ${getHeaderHTML('HUMAN MILK BANK — CUSTODY &amp; AUDIT TRAIL LOG')}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #334155; margin-bottom: 6px;">
+        <div><strong>Filter:</strong> ${escapeHtml(filterLabel)}${searchNote}</div>
+        <div><strong>Entries:</strong> ${auditLogs.length} &bull; <strong>Generated:</strong> ${escapeHtml(generatedAt)}</div>
+      </div>
+
+      <table class="report-grid">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th style="width: 125px;">Date &amp; Time</th>
+            <th style="width: 105px;">Action Type</th>
+            <th style="width: 90px;">Target Type</th>
+            <th>Description of Activity</th>
+            <th style="width: 125px;">Personnel</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml.join('')}
+        </tbody>
+      </table>
+
+      ${getSignaturesHTML('Prepared / Verified by:', 'Milk Bank Coordinator / Nutrition Personnel', 'Noted by:', 'Municipal Nutrition Action Officer')}
+      <div class="form-code">MH.MNAO.HMB.AUDIT</div>
+    </body>
+    </html>
+  `;
+}
+
 export function exportMilkAuditCSV(auditLogs = []) {
   const dateStr = new Date().toISOString().split('T')[0];
   const rows = [
@@ -661,7 +775,7 @@ export function exportMilkAuditCSV(auditLogs = []) {
     ...auditLogs.map((log, idx) => [
       idx + 1,
       log.created_at ? new Date(log.created_at).toLocaleString() : '',
-      log.action || '',
+      formatAuditActionLabel(log.action),
       log.entity_type || '',
       log.description || '',
       log.profiles?.full_name || 'Staff User'

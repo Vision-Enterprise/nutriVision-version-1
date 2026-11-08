@@ -57,6 +57,7 @@ import {
   showMilkIntakePrintPreview,
   showMilkBatchesPrintPreview,
   showMilkDispensingPrintPreview,
+  showMilkAuditPrintPreview,
   exportMilkIntakeCSV,
   exportMilkBatchesCSV,
   exportMilkDispensingCSV,
@@ -246,7 +247,7 @@ function _bindAuditSheetEvents() {
     _renderActiveSheet();
   });
 
-  document.getElementById('btn-export-milk-audit-csv')?.addEventListener('click', () => {
+  const getFilteredAuditRows = () => {
     let filtered = _auditLogs || [];
     if (_auditFilter) {
       filtered = filtered.filter(l => l.action === _auditFilter);
@@ -259,7 +260,18 @@ function _bindAuditSheetEvents() {
         (l.profiles?.full_name || '').toLowerCase().includes(q)
       );
     }
-    exportMilkAuditCSV(filtered);
+    return filtered;
+  };
+
+  document.getElementById('btn-export-milk-audit-csv')?.addEventListener('click', () => {
+    exportMilkAuditCSV(getFilteredAuditRows());
+  });
+
+  document.getElementById('btn-export-milk-audit-pdf')?.addEventListener('click', () => {
+    showMilkAuditPrintPreview(getFilteredAuditRows(), {
+      filterAction: _auditFilter,
+      searchQuery: _auditSearch,
+    });
   });
 }
 

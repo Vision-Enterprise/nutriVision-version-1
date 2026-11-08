@@ -1412,14 +1412,19 @@ export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQu
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
           Export Excel (CSV)
         </button>
+        <button id="btn-export-milk-audit-pdf" class="btn btn-secondary btn-sm" type="button" title="Preview and Export Milk Bank Audit Trail as PDF">
+          <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
+          Export PDF
+        </button>
         <input type="text" id="milk-audit-search" class="form-input"
                placeholder="Search audit descriptions, batches, staff..."
                value="${escapeHtml(searchQuery)}"
-               style="width: 260px; font-size: 13px; padding: 5px 10px;">
+               style="width: 240px; font-size: 13px; padding: 5px 10px;">
         <select id="milk-audit-filter" class="form-input" style="width: 170px; font-size: 13px; padding: 5px 8px;">
           <option value="">All Milk Actions</option>
           <option value="${AUDIT_ACTIONS.CREATE_MILK_DONATION}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_DONATION ? 'selected' : ''}>Milk Intakes</option>
           <option value="${AUDIT_ACTIONS.CREATE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.CREATE_MILK_BATCH ? 'selected' : ''}>Batches Created</option>
+          <option value="${AUDIT_ACTIONS.UPDATE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.UPDATE_MILK_BATCH ? 'selected' : ''}>Batches Edited</option>
           <option value="${AUDIT_ACTIONS.MOVE_MILK_SHELF}" ${filterAction === AUDIT_ACTIONS.MOVE_MILK_SHELF ? 'selected' : ''}>Shelf Relocations</option>
           <option value="${AUDIT_ACTIONS.DISPENSE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.DISPENSE_MILK_BATCH ? 'selected' : ''}>Milk Dispenses</option>
           <option value="${AUDIT_ACTIONS.CREATE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.CREATE_FREEZER_UNIT ? 'selected' : ''}>Freezer Units Added</option>
