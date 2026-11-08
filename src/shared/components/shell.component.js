@@ -22,6 +22,7 @@ import {
   renderAvatarInnerHTML,
 } from '../utils/profile.utils.js';
 import { mountModuleGuideSystem } from './guide.component.js';
+import { mountNotificationBell } from './notifications.component.js';
 
 // Feature page render functions
 import { renderCalendarPage }            from '../../features/calendar/calendar.page.js';
@@ -243,8 +244,9 @@ export function renderShell(profile, onLogout) {
             </div>
           </div>
 
-          <!-- Top-right Profile Photo + "Hi, FirstName!" Account Settings Pill (#93) -->
+          <!-- Top-right Notification Bell (#94) + Profile Photo / Account Settings Pill (#93) -->
           <div class="app-header__user">
+            <div class="nv-notif-wrap" id="header-notif-wrap"></div>
             <button
               id="header-account-btn"
               class="app-header__profile-btn"
@@ -368,6 +370,9 @@ export function renderShell(profile, onLogout) {
 
   // Mount contextual [ⓘ Guide] buttons & right-side Help Drawer across all pages (#95)
   mountModuleGuideSystem(profile);
+
+  // Mount Top Navbar Notification Bell (#94)
+  mountNotificationBell(profile);
 }
 
 /**

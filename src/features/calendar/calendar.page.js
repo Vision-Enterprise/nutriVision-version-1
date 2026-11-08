@@ -17,7 +17,7 @@ import {
 } from './calendar.service.js';
 import { renderCalendarLayout, escapeHtml, formatTime12h } from './calendar.render.js';
 import { showDetailModal, attachModalListeners } from './calendar.modals.js';
-import { getLocalDateString, getExpirationStatus } from '../../shared/utils/date.utils.js';
+import { getLocalDateString, getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 let _calendar      = null;
@@ -179,40 +179,108 @@ export async function renderCalendarPage(profile) {
     height:        'auto',
     events:        loadAllEvents,
     eventContent:  arg => {
-      if (arg.event.extendedProps?.type !== 'custom') return undefined;
-      const customEv = arg.event.extendedProps.event || {};
-      const title = escapeHtml(customEv.title || arg.event.title || 'Program Event');
-      const pic = String(customEv.person_in_charge ?? '').trim();
+      const type = arg.event.extendedProps?.type;
+      const isList = arg.view.type.startsWith('list');
 
-      if (arg.view.type.startsWith('list')) {
+      // 1. Program Events (custom)
+      if (type === 'custom') {
+        const customEv = arg.event.extendedProps.event || {};
+        const title = escapeHtml(customEv.title || arg.event.title || 'Program Event');
+        const pic = String(customEv.person_in_charge ?? '').trim();
+
+        if (isList) {
+          return {
+            html: `
+              <div class="cal-fc-list-custom">
+                <span class="cal-fc-list-title"><span class="icon" style="font-size:14px; vertical-align:middle; color:#7C3AED;">event</span> ${title}</span>
+                ${pic
+                  ? `<span class="cal-fc-list-pic"><span class="icon">person</span>${escapeHtml(pic)}</span>`
+                  : `<span class="cal-fc-list-pic cal-fc-list-pic--muted">Unassigned</span>`
+                }
+              </div>
+            `,
+          };
+        }
+
+        const timePrefix = arg.timeText ? `<span class="cal-fc-chip-time">${escapeHtml(arg.timeText)}</span> ` : '';
+        const picSuffix = pic ? ` <span class="cal-fc-chip-pic">&middot; ${escapeHtml(pic)}</span>` : '';
         return {
-          html: `
-            <div class="cal-fc-list-custom">
-              <span class="cal-fc-list-title">${title}</span>
-              ${pic
-                ? `<span class="cal-fc-list-pic"><span class="icon">person</span>${escapeHtml(pic)}</span>`
-                : `<span class="cal-fc-list-pic cal-fc-list-pic--muted">Unassigned</span>`
-              }
-            </div>
-          `,
+          html: `<div class="fc-event-main"><span class="icon">event</span><span class="fc-event-title">${timePrefix}${title}${picSuffix}</span></div>`,
         };
       }
 
-      const timePrefix = arg.timeText ? `<span class="cal-fc-chip-time">${escapeHtml(arg.timeText)}</span> ` : '';
-      const picSuffix = pic ? ` <span class="cal-fc-chip-pic">&middot; ${escapeHtml(pic)}</span>` : '';
+      // 2. Batch Deliveries
+      if (type === 'delivery') {
+        const batch = arg.event.extendedProps.batch || {};
+        const title = escapeHtml(batch.commodities?.name || arg.event.title || 'Delivery');
+        const qty = batch.quantity ? `${Number(batch.quantity).toLocaleString()} ${batch.commodities?.unit || ''}`.trim() : '';
+
+        if (isList) {
+          return {
+            html: `
+              <div class="cal-fc-list-custom">
+                <span class="cal-fc-list-title"><span class="icon" style="font-size:14px; vertical-align:middle; color:#1565C0;">local_shipping</span> Delivery: ${title}</span>
+                ${qty ? `<span class="cal-fc-list-pic" style="background:#dbeafe; color:#1e40af;">${escapeHtml(qty)}</span>` : ''}
+              </div>
+            `,
+          };
+        }
+
+        return {
+          html: `<div class="fc-event-main"><span class="icon">local_shipping</span><span class="fc-event-title">Del: ${title}</span></div>`,
+        };
+      }
+
+      // 3. Batch Expirations
+      if (type === 'expiration') {
+        const batch = arg.event.extendedProps.batch || {};
+        const title = escapeHtml(batch.commodities?.name || arg.event.title || 'Expiration');
+        const status = getExpirationStatus(batch.expiration_date, batch);
+        const days = getDaysRemaining(batch.expiration_date);
+        const diffText = days <= 0 ? 'Expired' : `${days}d left`;
+
+        if (isList) {
+          return {
+            html: `
+              <div class="cal-fc-list-custom">
+                <span class="cal-fc-list-title"><span class="icon" style="font-size:14px; vertical-align:middle;">warning</span> Expiry: ${title}</span>
+                <span class="cal-fc-list-pic" style="background:rgba(255,255,255,0.2); color:inherit; font-weight:600;">${escapeHtml(status)} (${diffText})</span>
+              </div>
+            `,
+          };
+        }
+
+        return {
+          html: `<div class="fc-event-main"><span class="icon">warning</span><span class="fc-event-title">Exp: ${title}</span></div>`,
+        };
+      }
+
+      // Fallback
       return {
-        html: `<div class="fc-event-main"><span class="fc-event-title">${timePrefix}${title}${picSuffix}</span></div>`,
+        html: `<div class="fc-event-main"><span class="fc-event-title">${escapeHtml(arg.event.title || '')}</span></div>`,
       };
     },
     eventClick:    info => showDetailModal(info, _calendar, _profile),
     eventDidMount: info => {
       info.el.style.cursor = 'pointer';
       info.el.style.borderRadius = 'var(--radius-sm)';
-      if (info.event.extendedProps?.type === 'custom') {
+
+      const type = info.event.extendedProps?.type;
+      if (type === 'custom') {
         const customEv = info.event.extendedProps.event || {};
         const picLabel = customEv.person_in_charge || 'Unassigned';
         const timeLabel = customEv.start_time ? ` (${formatTime12h(customEv.start_time)})` : '';
-        info.el.title = `${customEv.title || info.event.title}${timeLabel}\nPerson in Charge: ${picLabel}`;
+        info.el.title = `Program Event: ${customEv.title || info.event.title}${timeLabel}\nPerson in Charge: ${picLabel}`;
+      } else if (type === 'delivery') {
+        const batch = info.event.extendedProps.batch || {};
+        const qty = batch.quantity ? `${Number(batch.quantity).toLocaleString()} ${batch.commodities?.unit || ''}` : '';
+        info.el.title = `Delivery: ${batch.commodities?.name || info.event.title}\nDelivery Date: ${batch.delivery_date || '—'}\nBatch Code: ${batch.batch_number || '—'}\nQuantity: ${qty}\nSupplier: ${batch.supplier || '—'}`;
+      } else if (type === 'expiration') {
+        const batch = info.event.extendedProps.batch || {};
+        const status = getExpirationStatus(batch.expiration_date, batch);
+        const days = getDaysRemaining(batch.expiration_date);
+        const diffText = days <= 0 ? 'Expired' : `${days} days left`;
+        info.el.title = `Expiration: ${batch.commodities?.name || info.event.title}\nExpiration Date: ${batch.expiration_date || '—'}\nStatus: ${status} (${diffText})\nBatch Code: ${batch.batch_number || '—'}`;
       }
     },
     dayCellDidMount: info => {
