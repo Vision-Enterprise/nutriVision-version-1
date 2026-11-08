@@ -69,41 +69,6 @@ export function renderDefectsLayout() {
         </table>
       </div>
     </div>
-
-    <!-- ── PDF Archive Card ────────────────────────────────────────────── -->
-    <div class="card" style="padding: 0; overflow: hidden;">
-
-      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <div style="display: flex; align-items: center; gap: var(--space-2);">
-            <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">picture_as_pdf</span>
-            <h2 class="card-title">Generated PDF Reports</h2>
-          </div>
-          <p class="card-subtitle" style="margin: 0;">Last 20 generated reports. Click view to open or delete to remove from history.</p>
-        </div>
-        <button id="btn-clear-defect-archive" class="btn btn-ghost" style="display: none; font-size: var(--font-size-xs); color: var(--color-danger); gap: 4px; align-items: center;" title="Clear all PDF report history">
-          <span class="icon" style="font-size: 16px;">delete_sweep</span>
-          Clear All
-        </button>
-      </div>
-
-      <div class="table-wrapper" style="border: none; box-shadow: none; border-radius: 0; overflow-x: hidden; width: 100%;">
-        <table class="table table-compact" style="width: 100%; table-layout: auto;">
-          <thead>
-            <tr>
-              <th style="padding: 10px 6px 10px 14px; white-space: nowrap;">Date Generated</th>
-              <th style="padding: 10px 6px;">Report File Name</th>
-              <th style="padding: 10px 6px; white-space: nowrap;">Reference Batch</th>
-              <th style="padding: 10px 6px; white-space: nowrap;">Action Type</th>
-              <th style="padding: 10px 14px 10px 6px; text-align: right; white-space: nowrap; min-width: 80px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="defect-pdf-archive-tbody">
-            ${renderPdfArchiveEmptyState()}
-          </tbody>
-        </table>
-      </div>
-    </div>
   `;
 }
 
@@ -133,76 +98,37 @@ export function renderIncidentRows(incidents = []) {
       ? '<span style="font-size: 10px; background: #e0e0e0; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">Entire Batch</span>'
       : '<span style="font-size: 10px; background: #f0f0f0; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">Partial</span>';
 
+    const hasPhoto = Boolean(inc.evidence_url);
+    const photoBadge = hasPhoto
+      ? `<span title="Photographic evidence attached" style="display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-size: 11px; color: var(--color-primary); vertical-align: middle;"><span class="icon" style="font-size: 14px;">photo_camera</span></span>`
+      : '';
+
     let qtyStr = `${inc.quantity_affected} ${inc.batches?.commodities?.unit || ''}`;
-    let actionHtml = '—';
+    let restoreBtnHtml = '';
 
     if (inc.action_taken === 'Quarantined') {
-      // Fallback for legacy records before the column was added
       const remaining = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
-      
-      // Show only the remaining amount so it's not confusing
       qtyStr = `${remaining} ${inc.batches?.commodities?.unit || ''}`;
-      
+
       if (remaining > 0) {
-        actionHtml = `<div class="table-actions"><button class="btn-table-action btn-restore-incident" data-id="${inc.id}" type="button"><span class="icon icon--sm" style="font-size: 15px;">restore</span> Restore</button></div>`;
+        restoreBtnHtml = `<button class="btn-table-action btn-restore-incident" data-id="${inc.id}" type="button"><span class="icon icon--sm" style="font-size: 15px;">restore</span> Restore</button>`;
       }
     }
+
+    const viewBtnHtml = `<button class="btn-table-action btn-view-incident-pdf" data-id="${inc.id}" type="button" title="View / Print Official Report &amp; Evidence"><span class="icon icon--sm" style="font-size: 15px;">visibility</span> View Report</button>`;
+    const actionHtml = `<div class="table-actions" style="justify-content: flex-end;">${viewBtnHtml}${restoreBtnHtml}</div>`;
 
     return `
       <tr>
         <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
         <td style="padding: 8px 6px; white-space: nowrap;">${renderBatchCodeBadge(inc.batches?.batch_number || '—')}</td>
         <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px;">${inc.batches?.commodities?.name || '—'}</td>
-        <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted);">${inc.classification}</td>
+        <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted);">${inc.classification}${photoBadge}</td>
         <td style="padding: 8px 6px; text-align: center; white-space: nowrap;">${scopeBadge}</td>
         <td style="padding: 8px 6px; white-space: nowrap; font-weight: var(--font-weight-medium); font-size: 12px;">${qtyStr}</td>
         <td style="padding: 8px 6px; text-align: center; white-space: nowrap;">${badge}</td>
         <td style="padding: 8px 6px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${inc.reporter_name || '—'}</td>
         <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">${actionHtml}</td>
-      </tr>
-    `;
-  }).join('');
-}
-
-export function renderPdfArchiveEmptyState() {
-  return `
-    <tr>
-      <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: var(--space-10);">
-        <span class="icon" style="font-size: 36px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">history</span>
-        No PDF reports generated yet.
-      </td>
-    </tr>
-  `;
-}
-
-export function renderPdfArchiveRows(archiveArr = []) {
-  if (!archiveArr.length) return renderPdfArchiveEmptyState();
-
-  return archiveArr.map(item => {
-    const date   = new Date(item.generatedOn).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-    const isDispose = (item.actionTaken || item.fileName || '').toLowerCase().includes('dispos');
-    const type   = isDispose ? 'Disposal Record' : 'Quarantine Notice';
-    let displayFileName = item.fileName || 'Report.pdf';
-    if (isDispose && displayFileName.startsWith('Quarantine_Notice')) {
-      displayFileName = displayFileName.replace('Quarantine_Notice', 'Disposal_Record');
-    }
-
-    return `
-      <tr>
-        <td style="padding: 8px 6px 8px 14px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${date}</td>
-        <td style="padding: 8px 6px; font-weight: var(--font-weight-medium); font-size: 12px; word-break: break-all;">${displayFileName}</td>
-        <td style="padding: 8px 6px; white-space: nowrap;">${renderBatchCodeBadge(item.batchNumber || '—')}</td>
-        <td style="padding: 8px 6px; font-size: 12px; white-space: nowrap;">${type}</td>
-        <td style="padding: 8px 14px 8px 6px; text-align: right; white-space: nowrap;">
-          <div class="table-actions">
-            <button class="btn-table-icon btn-replay-defect-pdf" data-id="${item.id}" type="button" title="View / Print PDF" aria-label="View PDF">
-              <span class="icon">visibility</span>
-            </button>
-            <button class="btn-table-icon btn-table-icon--danger btn-delete-defect-pdf" data-id="${item.id}" type="button" title="Delete from history" aria-label="Delete report">
-              <span class="icon">delete_outline</span>
-            </button>
-          </div>
-        </td>
       </tr>
     `;
   }).join('');

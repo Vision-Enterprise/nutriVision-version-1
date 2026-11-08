@@ -8,7 +8,6 @@
  */
 
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
-import { buildReportFileName } from './reports.export.js';
 
 export function renderReportsLayout() {
   return `
@@ -167,99 +166,5 @@ export function renderReportsLayout() {
       </div>
 
     </div>
-
-    <!-- Report Archive Card -->
-    <div class="card" style="padding: 0; overflow: hidden;">
-
-      <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <div style="display: flex; align-items: center; gap: var(--space-2);">
-            <span class="icon" style="color: var(--color-text-muted); font-size: 20px;">history</span>
-            <h2 class="card-title">Report Archive</h2>
-          </div>
-          <p class="card-subtitle" style="margin: 0;">Last 20 generated reports. Click view to open or delete to remove from history.</p>
-        </div>
-        <button id="btn-clear-archive" class="btn btn-ghost" style="display: none; font-size: var(--font-size-xs); color: var(--color-danger); gap: 4px; align-items: center;" title="Clear all report history">
-          <span class="icon" style="font-size: 16px;">delete_sweep</span>
-          Clear All
-        </button>
-      </div>
-
-      <div class="table-container">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Report File Name</th>
-              <th>Parameters</th>
-              <th>Generated On</th>
-              <th>Format</th>
-              <th style="text-align: right; min-width: 150px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="report-archive-tbody">
-            <tr>
-              <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: var(--space-8);">
-                <span class="icon" style="font-size: 32px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">history</span>
-                No archived reports yet. Generate one above.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-    </div>
   `;
-}
-
-/**
- * Renders archive table rows.
- */
-export function renderArchiveRows(historyArr = []) {
-  if (!historyArr || historyArr.length === 0) {
-    return `
-      <tr>
-        <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: var(--space-8);">
-          <span class="icon" style="font-size: 32px; display: block; margin-bottom: var(--space-2); opacity: 0.4;">history</span>
-          No archived reports yet. Generate one above.
-        </td>
-      </tr>
-    `;
-  }
-
-  return historyArr.map(item => {
-    const isPdf = item.format === 'PDF';
-    const badgeClass = isPdf ? 'badge badge-near-expiry' : 'badge badge-active';
-    const displayFileName = item.fileName || buildReportFileName(item.modelId || item.model_id, item.filters, item.format, item.generatedOn);
-    return `
-      <tr>
-        <td style="font-weight: var(--font-weight-medium);">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="icon" style="font-size: 18px; color: ${isPdf ? '#e05252' : '#10b981'}; flex-shrink: 0;">
-              ${isPdf ? 'picture_as_pdf' : 'table_view'}
-            </span>
-            <span style="word-break: break-all;">${displayFileName}</span>
-          </div>
-        </td>
-        <td style="color: var(--color-text-muted); font-size: var(--font-size-sm);">${item.parameters}</td>
-        <td style="font-size: var(--font-size-sm); white-space: nowrap;">${item.generatedOn}</td>
-        <td><span class="${badgeClass}">${item.format}</span></td>
-        <td style="text-align: right; white-space: nowrap;">
-          <div class="table-actions">
-            ${isPdf ? `
-              <button class="btn-table-icon btn-replay-report" data-id="${item.id}" type="button" title="View / Print report" aria-label="View report">
-                <span class="icon">visibility</span>
-              </button>
-            ` : `
-              <button class="btn-table-icon btn-replay-report" data-id="${item.id}" type="button" title="Download CSV" aria-label="Download CSV">
-                <span class="icon">download</span>
-              </button>
-            `}
-            <button class="btn-table-icon btn-table-icon--danger btn-delete-report" data-id="${item.id}" type="button" title="Delete from history" aria-label="Delete report">
-              <span class="icon">delete_outline</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
 }

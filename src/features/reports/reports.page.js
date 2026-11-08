@@ -1,5 +1,4 @@
-import { supabase } from '../../core/supabase.js';
-import { renderReportsLayout, renderArchiveRows } from './reports.render.js';
+import { renderReportsLayout } from './reports.render.js';
 import {
   fetchCommodityOptions,
   fetchBarangayOptions,
@@ -8,13 +7,12 @@ import {
   fetchAllocationBalances,
   fetchDefectWastageReport
 } from './reports.service.js';
-import { exportToCSV, buildReportFileName } from './reports.export.js';
+import { exportToCSV } from './reports.export.js';
 import { showPrintPreview } from './reports.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
 
 const MODULE = '[Reports]';
-const ARCHIVE_KEY = 'nv_report_archive';
 
 let _profile = null;
 let _el = null;
@@ -30,7 +28,6 @@ export async function renderReportsPage(profile) {
     _el.innerHTML = renderReportsLayout();
 
     await _loadFilterOptions();
-    _refreshArchiveTable();
     _bindEvents();
   } catch (err) {
     console.error(`${MODULE} mount error:`, err);
@@ -152,43 +149,37 @@ function _handleModelChange(e) {
 
 // ─── Generate ───────────────────────────────────────────────────────────────
 
-async function _handleGenerate(format, isReplay = false, overrideModelId = null, overrideFilters = null, replayGeneratedOn = null) {
+async function _handleGenerate(format) {
   const checkedRadio = _el.querySelector('input[name="report_model"]:checked');
-  const rawModelId = overrideModelId || checkedRadio?.value;
+  const rawModelId = checkedRadio?.value;
   if (!rawModelId) {
     await SystemDialog.alert('Please select a report type.', 'Select Report');
     return;
   }
 
-  // Map legacy 'fefo' archive entries to 'batches'
   const modelId = rawModelId === 'fefo' ? 'batches' : rawModelId;
+  const filters = {};
 
-  const filters = overrideFilters ? { ...overrideFilters } : {};
-  if (!overrideFilters) {
-    if (modelId === 'batches') {
-      const expSel = _el.querySelector('#report-filter-expiry-status');
-      filters.expiryStatus = expSel?.value || 'all';
-      filters.expiryStatusLabel = expSel?.options[expSel.selectedIndex]?.text || 'All Active Batches';
-    } else if (modelId === 'distribution') {
-      filters.dateFrom = _el.querySelector('#report-date-start')?.value || '';
-      filters.dateTo   = _el.querySelector('#report-date-end')?.value   || '';
-      filters.barangay = _el.querySelector('#report-filter-barangay')?.value || 'all';
-    } else if (modelId === 'defects') {
-      filters.dateFrom     = _el.querySelector('#report-date-start')?.value || '';
-      filters.dateTo       = _el.querySelector('#report-date-end')?.value   || '';
-      filters.defectAction = _el.querySelector('#report-filter-defect-action')?.value || 'all';
-    }
+  if (modelId === 'batches') {
+    const expSel = _el.querySelector('#report-filter-expiry-status');
+    filters.expiryStatus = expSel?.value || 'all';
+    filters.expiryStatusLabel = expSel?.options[expSel.selectedIndex]?.text || 'All Active Batches';
+  } else if (modelId === 'distribution') {
+    filters.dateFrom = _el.querySelector('#report-date-start')?.value || '';
+    filters.dateTo   = _el.querySelector('#report-date-end')?.value   || '';
+    filters.barangay = _el.querySelector('#report-filter-barangay')?.value || 'all';
+  } else if (modelId === 'defects') {
+    filters.dateFrom     = _el.querySelector('#report-date-start')?.value || '';
+    filters.dateTo       = _el.querySelector('#report-date-end')?.value   || '';
+    filters.defectAction = _el.querySelector('#report-filter-defect-action')?.value || 'all';
+  }
 
-    const commSelect = _el.querySelector('#report-filter-commodity');
-    if (commSelect) {
-      filters.commodityId = commSelect.value;
-      if (commSelect.selectedIndex > 0) {
-        filters.commodityName = commSelect.options[commSelect.selectedIndex].text;
-      }
+  const commSelect = _el.querySelector('#report-filter-commodity');
+  if (commSelect) {
+    filters.commodityId = commSelect.value;
+    if (commSelect.selectedIndex > 0) {
+      filters.commodityName = commSelect.options[commSelect.selectedIndex].text;
     }
-  } else if (rawModelId === 'fefo' && !filters.expiryStatus) {
-    filters.expiryStatus = 'fefo_risk';
-    filters.expiryStatusLabel = 'Near Expiry & Expired Only (FEFO Priority)';
   }
 
   const btns = ['#btn-generate-pdf', '#btn-export-csv', '#btn-print-preview']
@@ -231,15 +222,7 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
 
     if (format === 'CSV') {
       exportToCSV(dataRes.data, modelId, filters);
-      if (!isReplay) {
-        await _saveToArchive(modelId, reportTitle, filters, 'CSV');
-        await _refreshArchiveTable();
-      }
     } else {
-      if (!isReplay) {
-        await _saveToArchive(modelId, reportTitle, filters, 'PDF');
-        await _refreshArchiveTable();
-      }
       showPrintPreview(
         reportTitle,
         dataRes.data,
@@ -247,7 +230,7 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
         filters,
         _profile,
         null,
-        replayGeneratedOn
+        null
       );
     }
   } catch (err) {
@@ -255,218 +238,5 @@ async function _handleGenerate(format, isReplay = false, overrideModelId = null,
     await SystemDialog.alert('Unexpected error while generating report.', 'Report Generation Error');
   } finally {
     btns.forEach(b => (b.disabled = false));
-  }
-}
-
-// ─── Archive ────────────────────────────────────────────────────────────────
-
-async function _saveToArchive(modelId, title, filters, format) {
-  let paramsStr = '';
-  try {
-    const commStr = filters.commodityName || 'All Commodities';
-    if (modelId === 'batches') {
-      paramsStr = `${commStr} | ${filters.expiryStatusLabel || 'All Active Batches'}`;
-    } else if (modelId === 'distribution') {
-      paramsStr = `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'Present'} | ${filters.barangay === 'all' ? 'All Barangays' : (filters.barangay || 'All Barangays')} | ${commStr}`;
-    } else if (modelId === 'defects') {
-      paramsStr = `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'Present'} | ${filters.defectAction === 'all' ? 'All Dispositions' : (filters.defectAction || 'All')} | ${commStr}`;
-    } else {
-      paramsStr = `${commStr} (Stock Snapshot)`;
-    }
-
-    const fileName = buildReportFileName(modelId, filters, format);
-    const entry = {
-      id: Date.now().toString(),
-      name: title,
-      fileName,
-      modelId,
-      filters,
-      parameters: paramsStr,
-      generatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      format
-    };
-
-    // 1. Cloud persistence: Supabase user_report_archive (max 20 enforced by DB trigger)
-    if (_profile?.id) {
-      try {
-        await supabase.from('user_report_archive').insert({
-          user_id:     _profile.id,
-          report_name: title,
-          file_name:   fileName,
-          model_id:    modelId,
-          parameters:  paramsStr,
-          filters,
-          format
-        });
-      } catch (dbErr) {
-        console.warn(`${MODULE} Supabase archive write error:`, dbErr);
-      }
-    }
-
-    // 2. Local mirror fallback (max 20)
-    const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
-    let history = [];
-    try {
-      history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-    } catch {
-      history = [];
-    }
-    history.unshift(entry);
-    if (history.length > 20) history.pop();
-    localStorage.setItem(userArchiveKey, JSON.stringify(history));
-    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(history));
-  } catch (err) {
-    console.error(`${MODULE} _saveToArchive error:`, err);
-  }
-}
-
-async function _refreshArchiveTable() {
-  const tbody = _el?.querySelector('#report-archive-tbody');
-  if (!tbody) return;
-
-  let history = [];
-  const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
-
-  // 1. Cloud fetch: last 20 reports for this user
-  if (_profile?.id) {
-    try {
-      const { data, error } = await supabase
-        .from('user_report_archive')
-        .select('*')
-        .eq('user_id', _profile.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (!error && data && data.length > 0) {
-        history = data.map(row => ({
-          id:          row.id,
-          name:        row.report_name,
-          fileName:    row.file_name,
-          modelId:     row.model_id,
-          model_id:    row.model_id,
-          parameters:  row.parameters,
-          filters:     row.filters,
-          format:      row.format || 'PDF',
-          generatedOn: new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        }));
-
-        // Merge any local entries that were saved locally
-        let localHistory = [];
-        try {
-          localHistory = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-        } catch {}
-
-        const dbFileNames = new Set(history.map(h => h.fileName));
-        const unsynced = localHistory.filter(l => l.fileName && !dbFileNames.has(l.fileName));
-        if (unsynced.length > 0) {
-          history = [...unsynced, ...history].slice(0, 20);
-        }
-
-        localStorage.setItem(userArchiveKey, JSON.stringify(history));
-      }
-    } catch (dbErr) {
-      console.warn(`${MODULE} Cloud archive fetch failed:`, dbErr);
-    }
-  }
-
-  // 2. Offline / local fallback
-  if (history.length === 0) {
-    try {
-      history = JSON.parse(localStorage.getItem(userArchiveKey)) || JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-    } catch {}
-  }
-
-  tbody.innerHTML = renderArchiveRows(history);
-
-  const clearBtn = _el?.querySelector('#btn-clear-archive');
-  if (clearBtn) {
-    clearBtn.style.display = history.length > 0 ? 'inline-flex' : 'none';
-    clearBtn.onclick = async () => {
-      const confirmed = await SystemDialog.confirm(
-        `Clear all ${history.length} archived reports from history?`,
-        'Clear Report Archive',
-        'Clear All',
-        true
-      );
-      if (!confirmed) return;
-
-      if (_profile?.id) {
-        try {
-          await supabase.from('user_report_archive').delete().eq('user_id', _profile.id);
-        } catch (e) {}
-      }
-      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
-      localStorage.removeItem(userArchiveKey);
-      localStorage.removeItem(ARCHIVE_KEY);
-      await _refreshArchiveTable();
-    };
-  }
-
-  tbody.querySelectorAll('.btn-replay-report').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id   = btn.getAttribute('data-id');
-      const item = history.find(h => h.id === id);
-      if (item) _replayReport(item);
-    });
-  });
-
-  tbody.querySelectorAll('.btn-delete-report').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const item = history.find(h => h.id === id);
-      const name = item?.fileName || item?.name || 'this report';
-      const confirmed = await SystemDialog.confirm(
-        `Remove "${name}" from report archive history?`,
-        'Remove Archived Report',
-        'Remove',
-        true
-      );
-      if (!confirmed) return;
-
-      if (_profile?.id) {
-        try {
-          await supabase.from('user_report_archive').delete().eq('id', id);
-        } catch (e) {}
-      }
-      const userArchiveKey = _profile?.id ? `${ARCHIVE_KEY}_${_profile.id}` : ARCHIVE_KEY;
-      const updated = history.filter(h => h.id !== id);
-      localStorage.setItem(userArchiveKey, JSON.stringify(updated));
-      await _refreshArchiveTable();
-    });
-  });
-}
-
-// ─── Replay ─────────────────────────────────────────────────────────────────
-
-async function _replayReport(item) {
-  try {
-    const rawModel = item.modelId || item.model_id;
-    const targetModel = rawModel === 'fefo' ? 'batches' : rawModel;
-    const radio = _el.querySelector(`input[name="report_model"][value="${targetModel}"]`);
-    if (radio) {
-      radio.checked = true;
-      radio.dispatchEvent(new Event('change'));
-    }
-
-    if (item.filters) {
-      const dateStart = _el.querySelector('#report-date-start');
-      const dateEnd   = _el.querySelector('#report-date-end');
-      const commSel   = _el.querySelector('#report-filter-commodity');
-      const brgySel   = _el.querySelector('#report-filter-barangay');
-      const expSel    = _el.querySelector('#report-filter-expiry-status');
-      const defSel    = _el.querySelector('#report-filter-defect-action');
-
-      if (dateStart && item.filters.dateFrom !== undefined) dateStart.value = item.filters.dateFrom;
-      if (dateEnd   && item.filters.dateTo   !== undefined) dateEnd.value   = item.filters.dateTo;
-      if (commSel   && item.filters.commodityId)            commSel.value   = item.filters.commodityId;
-      if (brgySel   && item.filters.barangay)               brgySel.value   = item.filters.barangay;
-      if (expSel    && item.filters.expiryStatus)           expSel.value    = item.filters.expiryStatus;
-      if (defSel    && item.filters.defectAction)           defSel.value    = item.filters.defectAction;
-    }
-
-    await _handleGenerate(item.format === 'CSV' ? 'CSV' : 'PRINT', true, targetModel, item.filters, item.generatedOn);
-  } catch (err) {
-    console.error(`${MODULE} _replayReport error:`, err);
   }
 }
