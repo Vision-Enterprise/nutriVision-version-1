@@ -268,7 +268,7 @@ class Router {
       'dashboard':    'Dashboard',
       'commodities':  'Commodity Management',
       'batches':      'Batch Management',
-      'archive':      'Data Archive',
+      'archive':      'Archive',
       'releases':     'Releases Ledger',
       'bulk-release': 'Bulk Release',
       'milk':         'Milk Bank',

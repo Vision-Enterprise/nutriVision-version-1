@@ -65,7 +65,7 @@ export function renderArchiveLayout({ currentFilter = 'all', searchTerm = '', co
   return `
     <div class="page-header" style="margin-bottom: var(--space-4);">
       <div>
-        <h1 class="page-header__title">Data Archive &amp; Audit Log</h1>
+        <h1 class="page-header__title">Archive</h1>
         <p class="page-header__subtitle" id="archive-subtitle">
           ${counts.all} total historical, expired, and voided records
         </p>

@@ -56,8 +56,8 @@ export async function renderArchivePage(profile) {
 
   content.innerHTML = `
     <div class="page-header">
-      <h1 class="page-header__title">Data Archive &amp; Audit Log</h1>
-      <p class="page-header__subtitle">Audit depleted batches, review expired stock and voided entries, and manage archived records.</p>
+      <h1 class="page-header__title">Archive</h1>
+      <p class="page-header__subtitle">Review depleted batches, expired stock, voided entries, and archived commodities.</p>
     </div>
     <div class="loading-overlay"><div class="spinner spinner-lg"></div></div>
   `;
