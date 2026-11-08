@@ -1,8 +1,8 @@
 /**
  * Authentication Page (Controller)
  *
- * Coordinates login form inputs, client validation, auth service calls,
- * and user callbacks.
+ * Coordinates login form inputs, client validation, brute-force cooldown,
+ * auth service calls, and user callbacks.
  *
  * MVC Controller: delegates layout to .render.js.
  */
@@ -12,9 +12,47 @@ import { validateLoginForm } from './auth.validation.js';
 import { renderLoginLayout } from './auth.render.js';
 import { normalizeStaffEmail } from '../users/users.service.js';
 
+const LOGIN_GUARD_KEY   = 'nutrivision_login_guard';
+const AUTH_NOTICE_KEY   = 'nutrivision_auth_notice';
+const MAX_FAILED_TRIES  = 5;
+const COOLDOWN_MS       = 30 * 1000;
+
+let _cooldownInterval = null;
+
+function _readGuard() {
+  try {
+    const raw = sessionStorage.getItem(LOGIN_GUARD_KEY);
+    if (!raw) return { failures: 0, lockedUntil: 0 };
+    const parsed = JSON.parse(raw);
+    return {
+      failures: Number(parsed?.failures) || 0,
+      lockedUntil: Number(parsed?.lockedUntil) || 0,
+    };
+  } catch {
+    return { failures: 0, lockedUntil: 0 };
+  }
+}
+
+function _writeGuard(state) {
+  try {
+    sessionStorage.setItem(LOGIN_GUARD_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function _clearGuard() {
+  try {
+    sessionStorage.removeItem(LOGIN_GUARD_KEY);
+  } catch {}
+}
+
 export function renderLoginPage(onSuccess) {
   const app = document.getElementById('app');
   if (!app) return;
+
+  if (_cooldownInterval) {
+    clearInterval(_cooldownInterval);
+    _cooldownInterval = null;
+  }
 
   app.innerHTML = renderLoginLayout();
   attachLoginHandlers(onSuccess);
@@ -33,6 +71,18 @@ function attachLoginHandlers(onSuccess) {
   const errorMsg    = document.getElementById('auth-error-message');
   const emailError  = document.getElementById('login-email-error');
   const passError   = document.getElementById('login-password-error');
+
+  // Display any forced-logout notice (e.g. account deactivated while signed in)
+  try {
+    const notice = sessionStorage.getItem(AUTH_NOTICE_KEY);
+    if (notice) {
+      sessionStorage.removeItem(AUTH_NOTICE_KEY);
+      showError(errorBox, errorMsg, notice);
+    }
+  } catch {}
+
+  // Resume active cooldown if user refreshed during lockout
+  _syncCooldownUI(submitBtn, btnText, errorBox, errorMsg);
 
   // Input clear handlers
   emailInput?.addEventListener('input', () => clearFieldError(emailInput, emailError));
@@ -62,6 +112,13 @@ function attachLoginHandlers(onSuccess) {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
 
+    // Check active brute-force cooldown
+    const guard = _readGuard();
+    if (guard.lockedUntil > Date.now()) {
+      _syncCooldownUI(submitBtn, btnText, errorBox, errorMsg);
+      return;
+    }
+
     const rawEmail = emailInput.value.trim();
     const email    = normalizeStaffEmail(rawEmail);
     if (rawEmail && !rawEmail.includes('@')) {
@@ -85,14 +142,63 @@ function attachLoginHandlers(onSuccess) {
     setLoading(false, submitBtn, btnText, btnSpinner);
 
     if (error) {
-      showError(errorBox, errorMsg, error);
+      const nextFailures = (guard.lockedUntil && guard.lockedUntil <= Date.now() ? 0 : guard.failures) + 1;
+      if (nextFailures >= MAX_FAILED_TRIES) {
+        _writeGuard({ failures: 0, lockedUntil: Date.now() + COOLDOWN_MS });
+        _syncCooldownUI(submitBtn, btnText, errorBox, errorMsg);
+      } else {
+        _writeGuard({ failures: nextFailures, lockedUntil: 0 });
+        const remaining = MAX_FAILED_TRIES - nextFailures;
+        const suffix = remaining <= 2 ? ` (${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 30s cooldown)` : '';
+        showError(errorBox, errorMsg, `${error}${suffix}`);
+      }
       return;
     }
+
+    _clearGuard();
 
     if (typeof onSuccess === 'function') {
       onSuccess(profile);
     }
   });
+}
+
+function _syncCooldownUI(submitBtn, btnText, errorBox, errorMsg) {
+  if (_cooldownInterval) {
+    clearInterval(_cooldownInterval);
+    _cooldownInterval = null;
+  }
+
+  const tick = () => {
+    const { lockedUntil } = _readGuard();
+    const remainingSec = Math.ceil((lockedUntil - Date.now()) / 1000);
+
+    if (remainingSec > 0) {
+      if (submitBtn) submitBtn.disabled = true;
+      if (btnText) btnText.textContent = `Try again in ${remainingSec}s`;
+      showError(
+        errorBox,
+        errorMsg,
+        `Too many failed sign-in attempts. Please wait ${remainingSec}s before trying again.`
+      );
+      return true;
+    }
+
+    if (_cooldownInterval) {
+      clearInterval(_cooldownInterval);
+      _cooldownInterval = null;
+    }
+    _clearGuard();
+    if (submitBtn) submitBtn.disabled = false;
+    if (btnText) btnText.textContent = 'Sign In';
+    hideError(errorBox);
+    return false;
+  };
+
+  const isLocked = _readGuard().lockedUntil > Date.now();
+  if (isLocked && tick()) {
+    _cooldownInterval = setInterval(tick, 1000);
+  }
 }
 
 function setLoading(isLoading, btn, text, spinner) {

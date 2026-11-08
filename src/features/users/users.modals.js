@@ -11,6 +11,7 @@ import { validateUserForm } from './users.validation.js';
 import { escapeHtml } from './users.render.js';
 import { ROLES, AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { renderPasswordChecklistHTML, updatePasswordChecklistUI } from '../../shared/utils/password.utils.js';
 
 let _activeUserModalEscHandler = null;
 
@@ -100,7 +101,7 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
                 id="field-password"
                 name="password"
                 class="form-input"
-                placeholder="At least 6 characters"
+                placeholder="Min. 8 chars (Aa1! required)"
                 autocomplete="new-password"
                 required
                 style="padding-right: 42px;"
@@ -115,7 +116,8 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
                 <span class="icon icon--sm" id="toggle-pwd-icon">visibility</span>
               </button>
             </div>
-            <span class="form-hint">Staff can change this after logging in.</span>
+            ${renderPasswordChecklistHTML('create-user-pw')}
+            <span class="form-hint" style="margin-top: 4px;">Staff can change this after logging in.</span>
             <span class="form-error" id="error-password" role="alert"></span>
           </div>
 
@@ -153,6 +155,13 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
   document.getElementById('modal-cancel-btn')?.addEventListener('click', closeUserModal);
 
   const pwdInput = document.getElementById('field-password');
+  pwdInput?.addEventListener('input', () => {
+    updatePasswordChecklistUI('create-user-pw', pwdInput.value);
+    const errEl = document.getElementById('error-password');
+    if (errEl) errEl.textContent = '';
+    pwdInput.classList.remove('form-input--error');
+  });
+
   const emailInput = document.getElementById('field-email');
   emailInput?.addEventListener('blur', () => {
     if (emailInput.value.trim()) {
@@ -319,16 +328,18 @@ export function openConfirmToggleStatusModal({ user, profile, onSuccess }) {
 // ── User Activity Logs Modal ──────────────────────────────────────────────
 
 const USER_LOG_META = {
-  [AUDIT_ACTIONS.LOGIN]:           { label: 'Login',           icon: 'login',        cls: 'badge-active'    },
-  [AUDIT_ACTIONS.LOGOUT]:          { label: 'Logout',          icon: 'logout',       cls: 'badge-personnel' },
-  [AUDIT_ACTIONS.CREATE_USER]:     { label: 'Create User',     icon: 'person_add',   cls: 'badge-admin'     },
-  [AUDIT_ACTIONS.ACTIVATE_USER]:   { label: 'Activate User',   icon: 'check_circle', cls: 'badge-active'    },
-  [AUDIT_ACTIONS.DEACTIVATE_USER]: { label: 'Deactivate User', icon: 'block',        cls: 'badge-inactive'  },
+  [AUDIT_ACTIONS.LOGIN]:           { label: 'Login',            icon: 'login',           cls: 'badge-active'    },
+  [AUDIT_ACTIONS.LOGOUT]:          { label: 'Logout',           icon: 'logout',          cls: 'badge-personnel' },
+  [AUDIT_ACTIONS.CREATE_USER]:     { label: 'Create User',      icon: 'person_add',      cls: 'badge-admin'     },
+  [AUDIT_ACTIONS.ACTIVATE_USER]:   { label: 'Activate User',    icon: 'check_circle',    cls: 'badge-active'    },
+  [AUDIT_ACTIONS.DEACTIVATE_USER]: { label: 'Deactivate User',  icon: 'block',           cls: 'badge-inactive'  },
+  [AUDIT_ACTIONS.UPDATE_PROFILE]:  { label: 'Profile Updated',  icon: 'manage_accounts', cls: 'badge-personnel' },
+  [AUDIT_ACTIONS.UPDATE_PASSWORD]: { label: 'Password Changed', icon: 'key',             cls: 'badge-admin'     },
 };
 
 const USER_LOG_GROUPS = {
   'session': [AUDIT_ACTIONS.LOGIN, AUDIT_ACTIONS.LOGOUT],
-  'create':  [AUDIT_ACTIONS.CREATE_USER],
+  'create':  [AUDIT_ACTIONS.CREATE_USER, AUDIT_ACTIONS.UPDATE_PROFILE, AUDIT_ACTIONS.UPDATE_PASSWORD],
   'status':  [AUDIT_ACTIONS.ACTIVATE_USER, AUDIT_ACTIONS.DEACTIVATE_USER],
 };
 
@@ -382,7 +393,7 @@ export async function openUserLogsModal() {
             <select id="user-logs-filter" class="form-input" aria-label="Filter activity type">
               <option value="">All User Activities</option>
               <option value="session">Sessions (Login / Logout)</option>
-              <option value="create">Account Provisioning</option>
+              <option value="create">Account &amp; Security Updates</option>
               <option value="status">Status Changes (Activate/Deactivate)</option>
             </select>
           </div>

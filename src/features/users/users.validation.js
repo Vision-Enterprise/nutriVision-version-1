@@ -6,6 +6,7 @@
 
 import { ROLES } from '../../shared/constants/app.constants.js';
 import { normalizeStaffEmail } from './users.service.js';
+import { validatePasswordStrength } from '../../shared/utils/password.utils.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,11 +34,12 @@ export function validateUserForm(data) {
     errors.email = 'Please enter a valid Account ID or email (e.g. 20260001@mnao.ph).';
   }
 
-  // Password
+  // Strong Password Policy (#89)
+  const pwCheck = validatePasswordStrength(data.password);
   if (!data.password) {
     errors.password = 'Initial password is required.';
-  } else if (data.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters long.';
+  } else if (!pwCheck.isValid) {
+    errors.password = pwCheck.error;
   }
 
   // Role

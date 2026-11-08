@@ -23,6 +23,8 @@ const USER_ACTIONS = [
   AUDIT_ACTIONS.CREATE_USER,
   AUDIT_ACTIONS.ACTIVATE_USER,
   AUDIT_ACTIONS.DEACTIVATE_USER,
+  AUDIT_ACTIONS.UPDATE_PROFILE,
+  AUDIT_ACTIONS.UPDATE_PASSWORD,
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────

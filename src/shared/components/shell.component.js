@@ -347,6 +347,7 @@ export function renderShell(profile, onLogout) {
   // â”€â”€ Router Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   router.setProfile(profile);
+  router.setOnForceLogout(onLogout);
 
   router
     .register('dashboard',   renderDashboardPage)

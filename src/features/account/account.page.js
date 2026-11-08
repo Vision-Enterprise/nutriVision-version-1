@@ -5,12 +5,25 @@
  * .form-input, .btn, .btn-primary — consistent with all other modules.
  */
 
-import { supabase } from '../../core/supabase.js';
+import { supabase, createIsolatedAuthClient } from '../../core/supabase.js';
 import { normalizeStaffEmail, getRecommendedStaffEmailForUser } from '../users/users.service.js';
 import { saveEmailAlias } from '../auth/auth.service.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
+import {
+  validatePasswordStrength,
+  renderPasswordChecklistHTML,
+  updatePasswordChecklistUI,
+} from '../../shared/utils/password.utils.js';
 
 const MODULE = '[Account]';
+
+function _escAttr(val) {
+  return String(val ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 export async function renderAccountPage(profile) {
   const content = document.getElementById('page-content');
@@ -46,7 +59,7 @@ export async function renderAccountPage(profile) {
       <p class="page-header__subtitle">Manage your profile information, Account ID, and password.</p>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--space-6); align-items: start;">
 
       <!-- ── Profile Card ─────────────────────────────────── -->
       <div class="card" style="padding: 0; overflow: hidden;">
@@ -75,7 +88,7 @@ export async function renderAccountPage(profile) {
               type="text"
               id="account-full-name"
               class="form-input"
-              value="${profile?.full_name || ''}"
+              value="${_escAttr(profile?.full_name || '')}"
               placeholder="Your full name"
               maxlength="80"
             >
@@ -85,8 +98,8 @@ export async function renderAccountPage(profile) {
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
               <label class="form-label form-label--required" for="account-email">Office Email / Account ID</label>
               ${!isAlreadyRecommended ? `
-                <button type="button" id="btn-use-recommended-id" class="btn-table-action" style="padding: 2px 8px; font-size: 11.5px;" data-rec="${recommendedEmail}">
-                  ★ Use MNAO ID (${recommendedEmail})
+                <button type="button" id="btn-use-recommended-id" class="btn-table-action" style="padding: 2px 8px; font-size: 11.5px;" data-rec="${_escAttr(recommendedEmail)}">
+                  ★ Use MNAO ID (${_escAttr(recommendedEmail)})
                 </button>
               ` : `
                 <span style="font-size: 11px; color: var(--color-primary); font-weight: 600;">✓ Standard MNAO ID</span>
@@ -96,13 +109,13 @@ export async function renderAccountPage(profile) {
               type="text"
               id="account-email"
               class="form-input"
-              value="${displayEmail}"
-              data-auth-email="${authEmail}"
-              placeholder="e.g. ${recommendedEmail}"
+              value="${_escAttr(displayEmail)}"
+              data-auth-email="${_escAttr(authEmail)}"
+              placeholder="e.g. ${_escAttr(recommendedEmail)}"
               style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600;"
             >
             <span class="form-hint">
-              Sign in faster by typing just the ID number (e.g. <strong>${recommendedIdOnly}</strong>) or full <strong>${recommendedEmail}</strong>.
+              Sign in faster by typing just the ID number (e.g. <strong>${_escAttr(recommendedIdOnly)}</strong>) or full <strong>${_escAttr(recommendedEmail)}</strong>.
             </span>
           </div>
 
@@ -149,7 +162,7 @@ export async function renderAccountPage(profile) {
             </div>
             <div>
               <div class="card-title">Security Settings</div>
-              <div class="card-subtitle" style="margin-top: 0;">Ensure your account is using a secure password.</div>
+              <div class="card-subtitle" style="margin-top: 0;">Verify your current password to set a strong new password.</div>
             </div>
           </div>
         </div>
@@ -182,7 +195,7 @@ export async function renderAccountPage(profile) {
                 type="password"
                 id="account-new-pw"
                 class="form-input"
-                placeholder="At least 6 characters"
+                placeholder="Min. 8 chars (Aa1! required)"
                 autocomplete="new-password"
                 style="padding-right: 44px;"
               >
@@ -192,6 +205,7 @@ export async function renderAccountPage(profile) {
                 color: var(--color-text-muted); display: flex; align-items: center;
               "><span class="icon" style="font-size: 18px;">visibility</span></button>
             </div>
+            ${renderPasswordChecklistHTML('account-pw')}
           </div>
 
           <div class="form-group">
@@ -250,6 +264,11 @@ function _bindEvents(profile) {
     });
   });
 
+  const newPwInput = document.getElementById('account-new-pw');
+  newPwInput?.addEventListener('input', () => {
+    updatePasswordChecklistUI('account-pw', newPwInput.value);
+  });
+
   const emailInput = document.getElementById('account-email');
   emailInput?.addEventListener('blur', () => {
     if (emailInput.value.trim()) {
@@ -269,7 +288,7 @@ function _bindEvents(profile) {
   document.getElementById('btn-save-profile')?.addEventListener('click', () => _saveProfile(profile));
 
   // Update password
-  document.getElementById('btn-update-pw')?.addEventListener('click', _updatePassword);
+  document.getElementById('btn-update-pw')?.addEventListener('click', () => _updatePassword(profile));
 }
 
 // ─── Profile Update ───────────────────────────────────────────────────────────
@@ -329,14 +348,23 @@ async function _saveProfile(profile) {
       // 3. Log in audit_logs so User Management table displays the new Account ID
       await supabase.from('audit_logs').insert({
         user_id: profile.id,
-        action: AUDIT_ACTIONS.CREATE_USER,
+        action: AUDIT_ACTIONS.UPDATE_PROFILE,
         entity_type: 'profile',
         entity_id: profile.id,
         description: `Updated Account ID / email for ${fullName} to ${newEmail}`,
       });
+    } else {
+      await supabase.from('audit_logs').insert({
+        user_id: profile.id,
+        action: AUDIT_ACTIONS.UPDATE_PROFILE,
+        entity_type: 'profile',
+        entity_id: profile.id,
+        description: `Updated profile details for ${fullName}`,
+      });
     }
 
-    const topbarName = document.querySelector('.topbar-user-name');
+    profile.full_name = fullName;
+    const topbarName = document.querySelector('.topbar-user-name, .app-header__user-name');
     if (topbarName) topbarName.textContent = fullName;
 
     const idOnly = newEmail.split('@')[0];
@@ -351,34 +379,83 @@ async function _saveProfile(profile) {
   }
 }
 
-// ─── Password Update ──────────────────────────────────────────────────────────
+// ─── Password Update (#89 Strong Rules + #90 Current Password Re-Auth) ────────
 
-async function _updatePassword() {
-  const currentPw = document.getElementById('account-current-pw')?.value;
-  const newPw     = document.getElementById('account-new-pw')?.value;
-  const confirmPw = document.getElementById('account-confirm-pw')?.value;
+async function _updatePassword(profile) {
+  const currentPw = document.getElementById('account-current-pw')?.value || '';
+  const newPw     = document.getElementById('account-new-pw')?.value || '';
+  const confirmPw = document.getElementById('account-confirm-pw')?.value || '';
   const msgEl     = document.getElementById('account-pw-msg');
   const btn       = document.getElementById('btn-update-pw');
 
-  if (!currentPw) { _showMsg(msgEl, 'Current password is required.', 'error'); return; }
-  if (!newPw)     { _showMsg(msgEl, 'New password is required.', 'error'); return; }
-  if (newPw.length < 6) { _showMsg(msgEl, 'New password must be at least 6 characters.', 'error'); return; }
-  if (newPw !== confirmPw) { _showMsg(msgEl, 'New passwords do not match.', 'error'); return; }
-  if (newPw === currentPw) { _showMsg(msgEl, 'New password must differ from current password.', 'error'); return; }
+  if (!currentPw) {
+    _showMsg(msgEl, 'Current password is required.', 'error');
+    return;
+  }
+  if (!newPw) {
+    _showMsg(msgEl, 'New password is required.', 'error');
+    return;
+  }
+
+  const strength = validatePasswordStrength(newPw);
+  if (!strength.isValid) {
+    _showMsg(msgEl, strength.error, 'error');
+    return;
+  }
+
+  if (newPw !== confirmPw) {
+    _showMsg(msgEl, 'New passwords do not match.', 'error');
+    return;
+  }
+  if (newPw === currentPw) {
+    _showMsg(msgEl, 'New password must differ from current password.', 'error');
+    return;
+  }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="icon" style="font-size:18px;animation:spin 1s linear infinite;">progress_activity</span> Updating...';
+  btn.innerHTML = '<span class="icon" style="font-size:18px;animation:spin 1s linear infinite;">progress_activity</span> Verifying & Updating...';
 
   try {
-    const { error } = await supabase.auth.updateUser({ password: newPw });
+    // 1. Re-authenticate current password via isolated client so active session listeners aren't disrupted
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const verifyEmail = authUser?.email || document.getElementById('account-email')?.dataset.authEmail || '';
 
+    if (!verifyEmail) {
+      throw new Error('Could not verify active account email. Please sign in again.');
+    }
+
+    const isolatedClient = createIsolatedAuthClient();
+    const { error: verifyErr } = await isolatedClient.auth.signInWithPassword({
+      email: verifyEmail,
+      password: currentPw,
+    });
+
+    if (verifyErr) {
+      _showMsg(msgEl, 'Current password is incorrect.', 'error');
+      return;
+    }
+
+    // 2. Update password on active authenticated session
+    const { error } = await supabase.auth.updateUser({ password: newPw });
     if (error) throw error;
+
+    // 3. Record audit log entry
+    if (profile?.id) {
+      await supabase.from('audit_logs').insert({
+        user_id: profile.id,
+        action: AUDIT_ACTIONS.UPDATE_PASSWORD,
+        entity_type: 'profile',
+        entity_id: profile.id,
+        description: `${profile.full_name || 'User'} updated their account password.`,
+      });
+    }
 
     document.getElementById('account-current-pw').value = '';
     document.getElementById('account-new-pw').value = '';
     document.getElementById('account-confirm-pw').value = '';
+    updatePasswordChecklistUI('account-pw', '');
 
-    _showMsg(msgEl, 'Password updated successfully.', 'success');
+    _showMsg(msgEl, 'Password verified and updated successfully.', 'success');
     console.log(`${MODULE} password updated`);
   } catch (err) {
     console.error(`${MODULE} _updatePassword error:`, err);
@@ -404,7 +481,9 @@ function _showMsg(el, text, type = 'success') {
   el.style.border       = `1px solid ${isErr ? '#fecaca' : '#bbf7d0'}`;
   el.innerHTML = `
     <span class="icon" style="font-size:16px;">${isErr ? 'error' : 'check_circle'}</span>
-    <span>${text}</span>
+    <span></span>
   `;
-  setTimeout(() => { el.style.display = 'none'; }, 5000);
+  const textSpan = el.querySelector('span:last-child');
+  if (textSpan) textSpan.textContent = text;
+  setTimeout(() => { el.style.display = 'none'; }, 5500);
 }

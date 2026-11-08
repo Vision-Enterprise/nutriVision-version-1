@@ -15,27 +15,31 @@
  * 1. register() maps path names to render functions
  * 2. start() listens for hashchange events
  * 3. On every hash change, _resolve() reads the new path,
- *    applies guards, and calls the registered render function
+ *    verifies account active status & role guards, and calls the registered render function
  *
  * ROUTE GUARDS:
  * adminOnly: true → redirect to #/dashboard if the user is not an administrator
  * This prevents nutrition_personnel from accessing user management or audit logs
  * by typing the URL directly.
  *
- * NOTE: Guards here protect the UI only.
- * Supabase RLS policies protect the actual data in the database.
- * Even if someone bypasses the frontend guard, they cannot read or write
- * data they are not authorized to access.
+ * NOTE: Guards here protect the UI; Supabase RLS + triggers protect database records.
  */
 
 import { ROUTES } from '../shared/constants/app.constants.js';
+import { supabase } from './supabase.js';
+import { signOut } from './auth.js';
+
+const STATUS_CHECK_INTERVAL_MS = 10 * 1000;
+const AUTH_NOTICE_KEY = 'nutrivision_auth_notice';
 
 class Router {
   constructor() {
     // Map of path string → { handler, adminOnly }
-    this._routes   = new Map();
-    this._profile  = null;
-    this._started  = false;
+    this._routes        = new Map();
+    this._profile       = null;
+    this._started       = false;
+    this._onForceLogout = null;
+    this._lastStatusCheckAt = 0;
   }
 
   /**
@@ -46,6 +50,15 @@ class Router {
    */
   setProfile(profile) {
     this._profile = profile;
+    this._lastStatusCheckAt = Date.now();
+  }
+
+  /**
+   * Register a callback executed if the signed-in user is deactivated mid-session.
+   * @param {Function} fn
+   */
+  setOnForceLogout(fn) {
+    this._onForceLogout = fn;
   }
 
   /**
@@ -110,6 +123,53 @@ class Router {
   }
 
   /**
+   * Lightweight check ensuring the signed-in account is still active and its role
+   * has not been revoked while navigating across modules.
+   * Network hiccups fail open so transient Wi-Fi drops never cause false logouts.
+   *
+   * @private
+   * @returns {Promise<boolean>} false if user was deactivated and forced out
+   */
+  async _verifyActiveStatus() {
+    if (!this._profile?.id) return true;
+    const now = Date.now();
+    if (now - this._lastStatusCheckAt < STATUS_CHECK_INTERVAL_MS) return true;
+    this._lastStatusCheckAt = now;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, is_active')
+        .eq('id', this._profile.id)
+        .maybeSingle();
+
+      if (error || !data) return true;
+
+      if (data.is_active === false) {
+        try {
+          sessionStorage.setItem(
+            AUTH_NOTICE_KEY,
+            'Your account has been deactivated by an administrator.'
+          );
+        } catch {}
+        await signOut().catch(() => {});
+        if (typeof this._onForceLogout === 'function') {
+          this._onForceLogout();
+        }
+        return false;
+      }
+
+      if (data.role && data.role !== this._profile.role) {
+        this._profile.role = data.role;
+      }
+    } catch {
+      // Fail open on temporary network error
+    }
+
+    return true;
+  }
+
+  /**
    * Resolve the current URL to a route and render it.
    * Called on every hashchange and on every start() call.
    *
@@ -120,6 +180,9 @@ class Router {
    * @private
    */
   async _resolve() {
+    const stillActive = await this._verifyActiveStatus();
+    if (!stillActive) return;
+
     const path  = this.getCurrentPath();
     const route = this._routes.get(path);
 
@@ -226,4 +289,3 @@ class Router {
 // Every file that imports this gets the SAME router object.
 // This is the Singleton pattern — same reason as the Supabase client.
 export const router = new Router();
-
