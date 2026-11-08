@@ -13,17 +13,23 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * Validate the Create User form inputs.
  *
- * @param {{ full_name, email, password, role }} data
+ * @param {{ first_name, last_name, full_name, email, password, role }} data
  * @returns {{ isValid: boolean, errors: Object }}
  */
 export function validateUserForm(data) {
   const errors = {};
 
-  // Full Name
-  if (!data.full_name || !data.full_name.trim()) {
-    errors.full_name = 'Full name is required.';
-  } else if (data.full_name.trim().length < 2) {
-    errors.full_name = 'Full name must be at least 2 characters.';
+  // Separate First & Last Name validation
+  if (!data.first_name || !data.first_name.trim()) {
+    errors.first_name = 'First name is required.';
+  } else if (data.first_name.trim().length < 2) {
+    errors.first_name = 'First name must be at least 2 characters.';
+  }
+
+  if (!data.last_name || !data.last_name.trim()) {
+    errors.last_name = 'Last name is required.';
+  } else if (data.last_name.trim().length < 2) {
+    errors.last_name = 'Last name must be at least 2 characters.';
   }
 
   // Email / Account ID (accepts "20260001" or "20260001@mnao.ph")

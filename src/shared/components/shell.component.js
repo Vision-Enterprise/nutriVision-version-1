@@ -2,27 +2,12 @@
  * Application Shell Component
  *
  * Renders the full authenticated application layout:
- *   - Fixed sidebar (desktop)
- *   - Sticky top header
+ *   - Fixed sidebar (desktop) with Sign Out in footer (#93)
+ *   - Sticky top header with Profile Photo + "Hi, <FirstName>!" Account Settings pill (#93)
  *   - Main content area (routes render here)
  *   - Fixed bottom nav bar (mobile)
  *
  * Then registers all routes and starts the router.
- *
- * WHY everything in one component?
- * The shell is always present while the user is authenticated.
- * Sidebar, header, and mobile nav never change â€” only #page-content does.
- * Keeping them in one place makes the structure easy to follow:
- * renderShell() â†’ shell in DOM â†’ router.start() â†’ first page renders.
- *
- * WHAT changes per route:
- * Only the innerHTML of #page-content changes.
- * The sidebar, header, and mobile nav stay mounted.
- *
- * HOW to add a new route in the future:
- * 1. Add the nav item HTML here
- * 2. Import the page render function
- * 3. Call router.register() with the path and handler
  */
 
 import { router }           from '../../core/router.js';
@@ -31,8 +16,13 @@ import logoIconUrl          from '../../assets/logo-icon.png';
 import mnaoLogoUrl          from '../../assets/mnao-logo.jpg';
 import { logout }           from '../../features/auth/auth.service.js';
 import { isAdministrator, getRoleLabel } from '../../core/permissions.js';
+import {
+  escapeProfileHtml,
+  getFirstNameForGreeting,
+  renderAvatarInnerHTML,
+} from '../utils/profile.utils.js';
 
-// Feature page render functions (placeholders in Phase 3)
+// Feature page render functions
 import { renderCalendarPage }            from '../../features/calendar/calendar.page.js';
 import { renderAdvisorPage }             from '../../features/advisor/advisor.page.js';
 import { renderDashboardPage }   from '../../features/dashboard/dashboard.page.js';
@@ -55,8 +45,9 @@ import { renderMilkPage }        from '../../features/milk/milk.page.js';
  * @param {Function} onLogout - Called after successful logout (shows login page)
  */
 export function renderShell(profile, onLogout) {
-  const app     = document.getElementById('app');
-  const isAdmin = isAdministrator(profile);
+  const app       = document.getElementById('app');
+  const isAdmin   = isAdministrator(profile);
+  const firstName = getFirstNameForGreeting(profile);
 
   // Check initial state from localStorage
   const isCompressed = localStorage.getItem('sidebar_compressed') === 'true';
@@ -138,16 +129,16 @@ export function renderShell(profile, onLogout) {
             <span class="icon" aria-hidden="true">archive</span>
             <span class="sidebar__nav-text">Archive</span>
           </button>
-            <button
-              class="sidebar__nav-item"
-              data-route="releases"
-              id="nav-releases"
-              type="button"
-              aria-label="Releases Ledger"
-            >
-              <span class="icon" aria-hidden="true">local_shipping</span>
-              <span class="sidebar__nav-text">Releases</span>
-            </button>
+          <button
+            class="sidebar__nav-item"
+            data-route="releases"
+            id="nav-releases"
+            type="button"
+            aria-label="Releases Ledger"
+          >
+            <span class="icon" aria-hidden="true">local_shipping</span>
+            <span class="sidebar__nav-text">Releases</span>
+          </button>
 
           <button
             class="sidebar__nav-item"
@@ -221,17 +212,17 @@ export function renderShell(profile, onLogout) {
 
         </nav>
 
-        <!-- Sidebar footer — account settings -->
+        <!-- Sidebar footer — Sign Out (#93 swapped from top header) -->
         <div class="sidebar__footer">
           <button
-            class="sidebar__nav-item"
-            data-route="account"
-            id="nav-account"
+            class="sidebar__nav-item sidebar__logout-btn"
+            id="sidebar-logout-btn"
             type="button"
-            aria-label="Account Settings"
+            title="Sign Out"
+            aria-label="Sign out of NutriVision"
           >
-            <span class="icon" aria-hidden="true">manage_accounts</span>
-            <span class="sidebar__nav-text">Account</span>
+            <span class="icon" aria-hidden="true">logout</span>
+            <span class="sidebar__nav-text" id="sidebar-logout-text">Sign Out</span>
           </button>
         </div>
 
@@ -250,22 +241,24 @@ export function renderShell(profile, onLogout) {
             </div>
           </div>
 
+          <!-- Top-right Profile Photo + "Hi, FirstName!" Account Settings Pill (#93) -->
           <div class="app-header__user">
-            <div class="app-header__user-info">
-              <span class="app-header__user-name">${profile.full_name}</span>
-              <span class="badge ${isAdmin ? 'badge-admin' : 'badge-personnel'}">
-                ${getRoleLabel(profile)}
-              </span>
-            </div>
-            <span class="app-header__divider" aria-hidden="true"></span>
             <button
-              id="header-logout-btn"
-              class="btn btn-sm app-header__logout-btn"
+              id="header-account-btn"
+              class="app-header__profile-btn"
+              data-route="account"
               type="button"
-              aria-label="Sign out of NutriVision"
+              title="Account Settings"
+              aria-label="Account Settings for ${escapeProfileHtml(profile.full_name)}"
             >
-              <span class="icon icon--sm" aria-hidden="true">logout</span>
-              Sign Out
+              <span class="app-header__avatar ${isAdmin ? 'app-header__avatar--admin' : ''}" id="header-user-avatar">
+                ${renderAvatarInnerHTML(profile)}
+              </span>
+              <span class="app-header__profile-meta">
+                <span class="app-header__greeting" id="header-user-greeting">Hi, ${escapeProfileHtml(firstName)}!</span>
+                <span class="app-header__role-label">${escapeProfileHtml(getRoleLabel(profile))}</span>
+              </span>
+              <span class="icon app-header__settings-icon" aria-hidden="true">manage_accounts</span>
             </button>
           </div>
         </header>
@@ -290,7 +283,7 @@ export function renderShell(profile, onLogout) {
         </button>
 
         <button class="mobile-nav__item" data-route="commodities" type="button" aria-label="Commodities">
-          <span class="icon" aria-hidden="true">group</span>
+          <span class="icon" aria-hidden="true">inventory_2</span>
           Commodities
         </button>
 
@@ -301,9 +294,9 @@ export function renderShell(profile, onLogout) {
         </button>
         ` : ''}
 
-        <button class="mobile-nav__item" data-route="account" type="button" aria-label="Account">
-          <span class="icon" aria-hidden="true">manage_accounts</span>
-          Account
+        <button class="mobile-nav__item" id="mobile-logout-btn" type="button" aria-label="Sign Out">
+          <span class="icon" aria-hidden="true">logout</span>
+          Sign Out
         </button>
       </nav>
 
@@ -339,12 +332,15 @@ export function renderShell(profile, onLogout) {
     }
   });
 
-  // Logout button
-  document.getElementById('header-logout-btn').addEventListener('click', () => {
+  // Logout buttons (Desktop sidebar footer + Mobile bottom nav)
+  document.getElementById('sidebar-logout-btn')?.addEventListener('click', () => {
+    handleLogout(profile, onLogout);
+  });
+  document.getElementById('mobile-logout-btn')?.addEventListener('click', () => {
     handleLogout(profile, onLogout);
   });
 
-  // â”€â”€ Router Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Router Setup ───────────────────────────────────────────────────────────
 
   router.setProfile(profile);
   router.setOnForceLogout(onLogout);
@@ -365,25 +361,26 @@ export function renderShell(profile, onLogout) {
     .register('calendar',    renderCalendarPage)
     .register('advisor',     renderAdvisorPage);
 
-  // Start the router â€” handles the current hash and listens for changes
+  // Start the router — handles the current hash and listens for changes
   router.start();
 }
 
 /**
- * Handle logout from the header button.
+ * Handle logout from the sidebar / mobile button.
  * @param {Object}   profile
  * @param {Function} onLogout - Callback to show the login page
  */
 async function handleLogout(profile, onLogout) {
-  const btn = document.getElementById('header-logout-btn');
-  if (btn) {
-    btn.textContent = 'Signing out...';
-    btn.disabled = true;
-  }
+  const sidebarBtn  = document.getElementById('sidebar-logout-btn');
+  const sidebarText = document.getElementById('sidebar-logout-text');
+  const mobileBtn   = document.getElementById('mobile-logout-btn');
+
+  if (sidebarBtn)  sidebarBtn.disabled = true;
+  if (sidebarText) sidebarText.textContent = 'Signing out...';
+  if (mobileBtn)   mobileBtn.disabled = true;
 
   await logout(profile);
-  // onAuthStateChange in main.js also fires SIGNED_OUT â†’ rerenders login
+  // onAuthStateChange in main.js also fires SIGNED_OUT → rerenders login
   // Calling onLogout directly handles the case before the event fires
   onLogout();
 }
-

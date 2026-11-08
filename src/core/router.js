@@ -240,7 +240,11 @@ class Router {
   _syncNavActiveState(activePath) {
     // Remove active from all nav items
     document.querySelectorAll('[data-route]').forEach(el => {
-      el.classList.remove('sidebar__nav-item--active', 'mobile-nav__item--active');
+      el.classList.remove(
+        'sidebar__nav-item--active',
+        'mobile-nav__item--active',
+        'app-header__profile-btn--active'
+      );
     });
 
     // Add active to items matching the current route
@@ -249,6 +253,8 @@ class Router {
         el.classList.add('sidebar__nav-item--active');
       } else if (el.classList.contains('mobile-nav__item')) {
         el.classList.add('mobile-nav__item--active');
+      } else if (el.classList.contains('app-header__profile-btn')) {
+        el.classList.add('app-header__profile-btn--active');
       }
     });
   }

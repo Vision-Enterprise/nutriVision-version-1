@@ -7,6 +7,7 @@
 
 import { supabase, createIsolatedAuthClient } from '../../core/supabase.js';
 import { AUDIT_ACTIONS, ROLES } from '../../shared/constants/app.constants.js';
+import { readLocalProfileExtras } from '../../shared/utils/profile.utils.js';
 
 export const DEFAULT_STAFF_DOMAIN = 'mnao.ph';
 
@@ -82,7 +83,7 @@ export async function fetchUsers() {
     const [profilesRes, emailLogsRes, currentAuthRes] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, role, is_active, created_at, updated_at')
+        .select('*')
         .order('full_name'),
       supabase
         .from('audit_logs')
@@ -114,8 +115,10 @@ export async function fetchUsers() {
 
     const enriched = profiles.map(u => {
       const recEmail = getRecommendedStaffEmailForUser(u.id, profiles);
+      const localExt = readLocalProfileExtras(u.id);
       return {
         ...u,
+        avatar_url: u.avatar_url ?? localExt?.avatar_url ?? null,
         email: emailByUserId[u.id] || recEmail,
         recommended_email: recEmail,
       };
@@ -129,7 +132,7 @@ export async function fetchUsers() {
 }
 
 /**
- * Fetch user activity logs (logins, logouts, account creation, activation/deactivation).
+ * Fetch user activity logs (logins, logouts, account creation, activation/deactivation, security updates).
  * @returns {Promise<{ logs: Array, error: string|null }>}
  */
 export async function fetchUserLogs() {
@@ -173,7 +176,7 @@ export async function fetchUserLogs() {
  *
  * Uses an isolated Supabase client to prevent overwriting the active Admin session.
  *
- * @param {{ full_name: string, email: string, password: string, role: string }} formData
+ * @param {{ first_name?: string, last_name?: string, full_name: string, email: string, password: string, role: string }} formData
  * @param {Object} adminProfile - Current logged-in administrator profile
  * @returns {Promise<{ user: Object|null, error: string|null }>}
  */
@@ -181,14 +184,19 @@ export async function createUser(formData, adminProfile) {
   try {
     const isolatedClient = createIsolatedAuthClient();
     const normalizedEmail = normalizeStaffEmail(formData.email);
+    const firstName = String(formData.first_name ?? '').trim();
+    const lastName  = String(formData.last_name ?? '').trim();
+    const fullName  = [firstName, lastName].filter(Boolean).join(' ') || String(formData.full_name ?? '').trim();
 
     const { data, error: authError } = await isolatedClient.auth.signUp({
       email: normalizedEmail,
       password: formData.password,
       options: {
         data: {
-          full_name: formData.full_name.trim(),
-          role: formData.role,
+          first_name: firstName,
+          last_name:  lastName,
+          full_name:  fullName,
+          role:       formData.role,
         },
       },
     });
@@ -205,6 +213,19 @@ export async function createUser(formData, adminProfile) {
       return { user: null, error: 'Could not create user. Please check your inputs.' };
     }
 
+    // Best-effort sync of separate first_name / last_name columns on public.profiles
+    if (firstName || lastName) {
+      await supabase
+        .from('profiles')
+        .update({
+          first_name: firstName || null,
+          last_name:  lastName || null,
+          full_name:  fullName,
+        })
+        .eq('id', createdUser.id)
+        .catch(() => {});
+    }
+
     // Record audit log entry using the Admin's authenticated client
     const roleLabel = formData.role === ROLES.ADMINISTRATOR ? 'Administrator' : 'Nutrition Personnel';
     await supabase.from('audit_logs').insert({
@@ -212,7 +233,7 @@ export async function createUser(formData, adminProfile) {
       action: AUDIT_ACTIONS.CREATE_USER,
       entity_type: 'profile',
       entity_id: createdUser.id,
-      description: `Created user account for ${formData.full_name.trim()} (${roleLabel}) with email ${normalizedEmail}`,
+      description: `Created user account for ${fullName} (${roleLabel}) with email ${normalizedEmail}`,
     });
 
     return { user: createdUser, error: null };

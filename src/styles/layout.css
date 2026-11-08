@@ -342,6 +342,17 @@ body.sidebar--compressed .sidebar__nav-item--active:hover {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.sidebar__logout-btn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.22);
+  border-color: rgba(254, 202, 202, 0.45);
+  color: #ffffff;
+}
+
+.sidebar__logout-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 /* â”€â”€ Main Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*
  * margin-left matches sidebar width so content doesn't go under the sidebar.
@@ -433,36 +444,106 @@ body.sidebar--compressed .main-wrapper {
   flex-shrink: 0;
 }
 
-.app-header__user-info {
+.app-header__profile-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-}
-
-.app-header__user-name {
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-}
-
-.app-header__divider {
-  width: 1px;
-  height: 22px;
-  background-color: var(--color-border);
-}
-
-.app-header__logout-btn {
+  gap: 10px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 9999px;
   background-color: #ffffff;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text);
-  padding: 0.35rem 0.85rem;
-  font-weight: var(--font-weight-medium);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  text-align: left;
 }
 
-.app-header__logout-btn:hover:not(:disabled) {
-  background-color: var(--color-danger-bg);
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+.app-header__profile-btn:hover {
+  background-color: #f0fdf4;
+  border-color: rgba(22, 163, 74, 0.4);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.08);
+}
+
+.app-header__profile-btn--active {
+  background-color: #f0fdf4;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.12);
+}
+
+.app-header__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: var(--color-primary);
+  border: 1.5px solid rgba(22, 163, 74, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.app-header__avatar--admin {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #15803d 100%);
+  color: #ffffff;
+  border-color: rgba(22, 163, 74, 0.45);
+}
+
+.app-header__profile-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.app-header__greeting {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header__role-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.app-header__settings-icon {
+  font-size: 18px;
+  color: var(--color-text-muted);
+  margin-left: 2px;
+  transition: color 0.18s ease;
+}
+
+.app-header__profile-btn:hover .app-header__settings-icon,
+.app-header__profile-btn--active .app-header__settings-icon {
+  color: var(--color-primary);
+}
+
+@media (max-width: 520px) {
+  .app-header__role-label,
+  .app-header__settings-icon {
+    display: none;
+  }
+  .app-header__profile-btn {
+    padding: 4px 10px 4px 4px;
+    gap: 7px;
+  }
+  .app-header__avatar {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 /* â”€â”€ Page Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

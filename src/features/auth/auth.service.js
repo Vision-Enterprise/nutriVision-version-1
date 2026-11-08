@@ -9,6 +9,7 @@ import { signIn, signOut } from '../../core/auth.js';
 import { isActive } from '../../core/permissions.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
 import { normalizeStaffEmail } from '../users/users.service.js';
+import { splitProfileName, readLocalProfileExtras, saveLocalProfileExtras } from '../../shared/utils/profile.utils.js';
 
 const EMAIL_ALIASES_STORAGE_KEY = 'nutrivision_email_aliases';
 
@@ -34,6 +35,8 @@ function getEmailAlias(inputEmail) {
 
 /**
  * Fetch a user's profile from the profiles table.
+ * Uses .select('*') + seamless fallback so first_name, last_name, and avatar_url
+ * work both before and after running database/11_security_and_profile_upgrade.sql.
  *
  * @param {string} userId - The auth user's UUID
  * @returns {Promise<{ profile: Object|null, error: string|null }>}
@@ -41,7 +44,7 @@ function getEmailAlias(inputEmail) {
 export async function fetchProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role, is_active')
+    .select('*')
     .eq('id', userId)
     .single();
 
@@ -52,7 +55,33 @@ export async function fetchProfile(userId) {
     return { profile: null, error: 'Failed to load user profile.' };
   }
 
-  return { profile: data, error: null };
+  const localExt = readLocalProfileExtras(userId);
+  const parsed = splitProfileName(data);
+
+  const enriched = {
+    ...data,
+    first_name: data.first_name || localExt?.first_name || parsed.firstName,
+    last_name:  data.last_name ?? localExt?.last_name ?? parsed.lastName,
+    avatar_url: data.avatar_url ?? localExt?.avatar_url ?? null,
+  };
+
+  // Auto-promote locally cached avatar/names to DB once Migration 11 columns exist
+  if ('avatar_url' in data && localExt && !data.avatar_url && localExt.avatar_url) {
+    supabase
+      .from('profiles')
+      .update({
+        first_name: enriched.first_name,
+        last_name: enriched.last_name || null,
+        avatar_url: localExt.avatar_url,
+      })
+      .eq('id', userId)
+      .then(({ error: syncErr }) => {
+        if (!syncErr) saveLocalProfileExtras(userId, {});
+      })
+      .catch(() => {});
+  }
+
+  return { profile: enriched, error: null };
 }
 
 /**

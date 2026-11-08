@@ -59,19 +59,35 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
             <span id="modal-form-alert-msg"></span>
           </div>
 
-          <!-- Full Name -->
-          <div class="form-group">
-            <label for="field-full-name" class="form-label form-label--required">Full Name</label>
-            <input
-              type="text"
-              id="field-full-name"
-              name="full_name"
-              class="form-input"
-              placeholder="e.g. Maria Santos"
-              autocomplete="name"
-              required
-            />
-            <span class="form-error" id="error-full_name" role="alert"></span>
+          <!-- First & Last Name -->
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <div class="form-group">
+              <label for="field-first_name" class="form-label form-label--required">First Name</label>
+              <input
+                type="text"
+                id="field-first_name"
+                name="first_name"
+                class="form-input"
+                placeholder="e.g. Adrian"
+                autocomplete="given-name"
+                required
+              />
+              <span class="form-error" id="error-first_name" role="alert"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="field-last_name" class="form-label form-label--required">Last Name</label>
+              <input
+                type="text"
+                id="field-last_name"
+                name="last_name"
+                class="form-input"
+                placeholder="e.g. Santos"
+                autocomplete="family-name"
+                required
+              />
+              <span class="form-error" id="error-last_name" role="alert"></span>
+            </div>
           </div>
 
           <!-- Office Email / Username -->
@@ -145,7 +161,7 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
   `;
 
   document.body.appendChild(overlay);
-  setTimeout(() => document.getElementById('field-full-name')?.focus(), 50);
+  setTimeout(() => document.getElementById('field-first_name')?.focus(), 50);
 
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeUserModal();
@@ -184,14 +200,18 @@ export function openAddUserModal({ profile, users = [], onSuccess }) {
   document.getElementById('create-user-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     const form = e.target;
+    const firstName = form.first_name.value.trim();
+    const lastName  = form.last_name.value.trim();
     const formData = {
-      full_name: form.full_name.value.trim(),
-      email:     normalizeStaffEmail(form.email.value),
-      password:  form.password.value,
-      role:      form.role.value,
+      first_name: firstName,
+      last_name:  lastName,
+      full_name:  [firstName, lastName].filter(Boolean).join(' '),
+      email:      normalizeStaffEmail(form.email.value),
+      password:   form.password.value,
+      role:       form.role.value,
     };
 
-    ['full_name', 'email', 'password', 'role'].forEach(field => {
+    ['first_name', 'last_name', 'email', 'password', 'role'].forEach(field => {
       const errEl = document.getElementById(`error-${field}`);
       const inputEl = document.getElementById(`field-${field}`);
       if (errEl) errEl.textContent = '';

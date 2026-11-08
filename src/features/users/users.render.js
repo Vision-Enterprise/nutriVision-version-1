@@ -7,6 +7,7 @@
 
 import { formatDate } from '../../shared/utils/date.utils.js';
 import { ROLES } from '../../shared/constants/app.constants.js';
+import { renderAvatarInnerHTML } from '../../shared/utils/profile.utils.js';
 
 export function escapeHtml(str) {
   if (!str) return '';
@@ -146,7 +147,6 @@ export function renderUsersTable(filtered, totalUsersCount, profile) {
 
 export function renderUserRow(user, profile) {
   const isCurrent = user.id === profile?.id;
-  const initial = (user.full_name || 'U').charAt(0).toUpperCase();
   const isAdmin = user.role === ROLES.ADMINISTRATOR;
 
   return `
@@ -164,9 +164,10 @@ export function renderUserRow(user, profile) {
             justify-content: center;
             font-weight: 600;
             font-size: var(--font-size-sm);
+            overflow: hidden;
             flex-shrink: 0;
           ">
-            ${initial}
+            ${renderAvatarInnerHTML(user)}
           </div>
           <div>
             <div style="font-weight: 500; color: var(--color-text);">
