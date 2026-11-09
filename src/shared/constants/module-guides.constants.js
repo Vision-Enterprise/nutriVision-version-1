@@ -582,47 +582,47 @@ export const MODULE_GUIDES = {
 
   defects: {
     key: 'defects',
-    title: 'Defects & Returns',
+    title: 'Stock Returns & Dispositions',
     icon: 'assignment_return',
     theme: 'green',
     adminOnly: false,
     purpose:
-      'Tracks damaged, recalled, or defective commodities, manages official property returns to LGU General Services Office (GSO) / suppliers, and documents in-house Nutribun kitchen spoilage.',
+      'Universal inventory log sheet for managing Quarantined stock under observation, goods Returned to suppliers, and Disposed / condemned commodities.',
     navigation: [
       {
-        label: '+ Report Defect / Return Button',
-        detail: 'Opens the incident dialog to flag affected batch units, choose Return to LGU or In-House Spoilage, and attach photo evidence.',
+        label: '+ Log Stock Event Button',
+        detail: 'Opens the event dialog to record quarantined holds, supplier returns, or condemned inventory deductions.',
       },
       {
-        label: 'KPI Summary Cards',
-        detail: 'Monitor Total Incidents, Goods Returned to LGU, In-House Kitchen Spoilage, and Distinct Batches Affected.',
+        label: '3 KPI Summary Cards',
+        detail: 'Track counts and volume in order: Quarantined (active hold), Returned (supplier returns), and Disposed (condemned).',
       },
       {
-        label: 'Filter Tabs & Instant Search',
-        detail: 'Quickly isolate Returned to LGU, In-House Spoilage, On Hold / Quarantined, or search by batch ID and commodity.',
+        label: 'Category Tabs: Quarantined, Returned, Disposed',
+        detail: 'Instantly toggle between stock under observation, supplier returns, and write-offs with live search.',
       },
       {
-        label: 'View Slip & Official Documents',
-        detail: 'Click [View Slip] to review and print official LGU GSO Property Turnover Slips or In-House Condemnation Records.',
+        label: 'Quarantine Resolution & Slips',
+        detail: 'Quarantined rows allow partial or full resolution (Restore to stock, Return to supplier, or Dispose) with on-the-fly printable slips.',
       },
     ],
     howToUse: [
       {
-        stepTitle: 'Select Defective Batch',
-        detail: 'Click + Report Defect / Return and search the active batch. If Nutribun is selected, the system automatically configures in-house kitchen spoilage; for external goods, it prepares an LGU GSO return.',
+        stepTitle: 'Log Suspect or Defective Stock',
+        detail: 'Click + Log Stock Event, select the active batch, pick the action (Quarantined, Returned, or Disposed), enter quantity, and document the reason.',
       },
       {
-        stepTitle: 'Specify Reason & Evidence',
-        detail: 'Select the defect classification (e.g. Broken Seal, Baking Mold, Delivery Damage), enter quantity affected, and upload photo evidence via file or phone scan.',
+        stepTitle: 'Resolve Quarantined Stock',
+        detail: 'Under the Quarantined tab, click Resolve to restore cleared units back to active inventory, send rejected units back to supplier, or condemn them. Any un-resolved units remain under quarantine.',
       },
       {
-        stepTitle: 'Review & Print Official Turnover Slip',
-        detail: 'Click Log Defect & Review Slip to inspect the printable A4 turnover or condemnation receipt with official signature blocks.',
+        stepTitle: 'Generate Official Document Slips',
+        detail: 'Click [Slip] on any row to generate an on-the-fly printable document with signature blocks without bloating database storage.',
       },
     ],
     rulesAndBadges: [
-      'Returned and Spoiled quantities are immediately deducted from active batch inventory to protect distribution safety.',
-      'Procured goods (Vita Meena, MMS, Milk) produce LGU GSO Property Return Slips for replacement; Nutribun produces MNAO kitchen spoilage records.',
+      'Quarantined stock is immediately frozen out of active inventory so staff cannot accidentally distribute suspect goods.',
+      'SaaS log sheet design maintains instant multi-device synchronization with zero storage bloat.',
     ],
     relatedRoutes: [
       { route: 'batches', label: 'Batch Management' },

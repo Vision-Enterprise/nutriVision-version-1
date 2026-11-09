@@ -1,32 +1,25 @@
 import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 /**
  * Defects Module — Official Slip & Document Generator
- * Produces official LGU GSO Property Turnover Slips or In-House Spoilage Records.
+ * Generates on-the-fly printable slips for Quarantined, Returned, and Disposed stock.
+ * Uses zero database storage.
  */
-
-import { APP_ORGANIZATION } from '../../shared/constants/app.constants.js';
 
 const ORG_NAME    = 'Municipal Nutrition Action Office';
 const ORG_ADDRESS = 'Manolo Fortich, Bukidnon';
 
 /**
- * @param {Object} incident      - filled form data (classification, qty, action, remarks)
- * @param {Object} batch         - the selected batch with commodity info
- * @param {Object} profile       - logged-in user
- * @param {Function} onConfirm   - called only when user clicks Print/Save
+ * Shows the print preview for a stock event.
  */
 export function showDefectPrintPreview(incident, batch, profile, onConfirm, originalDate = null) {
   const act = (incident.actionTaken || incident.action_taken || '').toLowerCase();
-  let prefix = 'LGU_Return_Slip';
-  let modalTitle = 'Commodity Return Slip';
+  let prefix = 'Quarantine_Notice';
+  let modalTitle = 'Quarantine Notice';
 
-  if (act.includes('spoil')) {
-    prefix = 'InHouse_Spoilage_Record';
-    modalTitle = 'In-House Spoilage Record';
-  } else if (act.includes('quarantin')) {
-    prefix = 'Quarantine_Hold_Notice';
-    modalTitle = 'Quarantine Hold Notice';
-  } else if (act.includes('dispos')) {
+  if (act.includes('return')) {
+    prefix = 'Supplier_Return_Slip';
+    modalTitle = 'Return Slip';
+  } else if (act.includes('dispos') || act.includes('spoil')) {
     prefix = 'Disposal_Record';
     modalTitle = 'Disposal Record';
   }
@@ -40,7 +33,6 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
 
   const html = _generateIncidentReportHTML(incident, batch, profile, originalDate);
 
-  // ── Overlay ────────────────────────────────────────────────────────────────
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed; inset: 0; z-index: 9000;
@@ -89,7 +81,6 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
           </button>
         </div>
       </div>
-      <!-- iframe container with A4 sheet canvas -->
       <div style="flex: 1; background: #cbd5e1; padding: 24px; display: flex; justify-content: center; overflow: auto;">
         <iframe id="defect-preview-iframe" style="width: 100%; max-width: 210mm; height: 100%; min-height: 297mm; background: #fff; border: none; box-shadow: 0 4px 16px rgba(0,0,0,0.15);"></iframe>
       </div>
@@ -98,18 +89,17 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
 
   document.body.appendChild(overlay);
 
-  const iframe   = overlay.querySelector('#defect-preview-iframe');
+  const iframe    = overlay.querySelector('#defect-preview-iframe');
   const cancelBtn = overlay.querySelector('#defect-preview-cancel');
   const printBtn  = overlay.querySelector('#defect-preview-print');
   const saveBtn   = overlay.querySelector('#defect-preview-save');
 
-  // Write content into iframe via Blob URL
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const blobUrl = URL.createObjectURL(blob);
   iframe.src = blobUrl;
 
   const cleanup = () => {
-    try { URL.revokeObjectURL(blobUrl); } catch (e) {}
+    try { URL.revokeObjectURL(blobUrl); } catch (_) {}
     document.title = originalTitle;
     const printArea = document.getElementById('nv-print-area');
     if (printArea) printArea.innerHTML = '';
@@ -123,6 +113,7 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
     printReportHtml(pdfTitle, html);
     if (typeof onConfirm === 'function') onConfirm();
   };
+
   if (saveBtn) {
     saveBtn.onclick = async () => {
       saveBtn.disabled = true;
@@ -149,38 +140,30 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
   const comm         = batch?.commodities;
 
   const act = (incident.actionTaken || incident.action_taken || '').toLowerCase();
-  let documentTitle = 'COMMODITY DEFECT & LGU RETURN SLIP';
-  let documentSubtitle = 'Official Property Turnover to General Services Office (GSO) / Supplier for Replacement or Credit';
-  let sigRole1 = 'Turned Over By (MNAO Custodian):';
-  let sigRole2 = 'Received By (LGU GSO / Supplier):';
-  let sigTitle2 = 'LGU GSO / Supplier Representative';
+  let documentTitle = 'COMMODITY QUARANTINE NOTICE';
+  let documentSubtitle = 'Official Notice of Temporary Hold Pending Quality / Supplier Verification';
+  let sigRole1 = 'Held / Inspected By:';
+  let sigRole2 = 'Approved / Noted By:';
+  let sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
 
-  if (act.includes('spoil')) {
-    documentTitle = 'IN-HOUSE COMMODITY SPOILAGE & CONDEMNATION RECORD';
-    documentSubtitle = 'Official MNAO Kitchen / In-House Bakery Spoilage & Waste Assessment';
-    sigRole1 = 'Prepared By (Baker / Personnel):';
-    sigRole2 = 'Approved By (Action Officer):';
-    sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
-  } else if (act.includes('quarantin')) {
-    documentTitle = 'COMMODITY QUARANTINE & HOLD ORDER';
-    documentSubtitle = 'Official Notice of Temporary Hold Pending Quality / Laboratory Verification';
-    sigRole1 = 'Inspected & Held By:';
-    sigRole2 = 'Noted By (Action Officer):';
-    sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
-  } else if (act.includes('dispos')) {
-    documentTitle = 'COMMODITY CONDEMNATION & DISPOSAL RECORD';
-    documentSubtitle = 'Official Condemnation & Safe Disposal Certificate';
+  if (act.includes('return')) {
+    documentTitle = 'COMMODITY RETURN & TURNOVER SLIP';
+    documentSubtitle = 'Official Return to Supplier / Source for Replacement or Credit';
+    sigRole1 = 'Turned Over By:';
+    sigRole2 = 'Received By:';
+    sigTitle2 = 'Supplier / Carrier Representative';
+  } else if (act.includes('dispos') || act.includes('spoil')) {
+    documentTitle = 'COMMODITY DISPOSAL & CONDEMNATION RECORD';
+    documentSubtitle = 'Official Condemnation & Inventory Write-Off Certificate';
     sigRole1 = 'Condemned By:';
-    sigRole2 = 'Approved By (Action Officer):';
+    sigRole2 = 'Approved By:';
     sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
   }
 
   const cleanBatch   = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
   const pdfTitle     = `${documentTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${cleanBatch}_${dateStr}`;
-  const evidenceImg  = incident.imageData || incident.evidenceUrl || incident.evidence_url;
-
   const reporterName = profile?.full_name || incident.reporter_name || 'Authorized Staff';
-  const scopeText    = incident.scope === 'entire_batch' ? 'Entire Batch' : 'Partial Batch';
+  const evidenceImg  = incident.imageData || null;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -258,38 +241,33 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
     </div>
     <div class="info-cell">
       <label>Quantity Affected</label>
-      <span>${incident.quantityAffected} ${comm?.unit || ''} (${scopeText})</span>
+      <span>${incident.quantityAffected} ${comm?.unit || ''}</span>
     </div>
   </div>
 
   <!-- Incident Details -->
-  <div class="section-title">Incident &amp; Inspection Assessment</div>
+  <div class="section-title">Log Sheet Details</div>
   <table class="detail-table">
-    <tr><td>Defect Classification</td><td>${incident.classification || 'Inspection / Damage'}</td></tr>
+    <tr><td>Classification / Reason</td><td>${incident.classification || 'Inspection'}</td></tr>
     <tr><td>Action / Status</td><td><span class="action-text">${(incident.actionTaken || incident.action_taken || 'Logged').toUpperCase()}</span></td></tr>
     <tr><td>Date Logged</td><td>${generatedStr}</td></tr>
-    <tr><td>Assessed / Inspected By</td><td>${reporterName}</td></tr>
+    <tr><td>Handled / Inspected By</td><td>${reporterName}</td></tr>
   </table>
 
   <!-- Remarks -->
-  <div class="section-title">Findings &amp; Remarks</div>
+  <div class="section-title">Remarks / Log Details</div>
   <div class="remarks-box">${incident.remarks || 'No additional remarks provided.'}</div>
 
-  <!-- Photographic Evidence -->
   ${evidenceImg ? `
-  <div class="section-title" style="margin-top: 14px;">Photographic Inspection Evidence</div>
+  <div class="section-title" style="margin-top: 14px;">Photo Attachment</div>
   <div style="text-align:center; margin-top: 8px;">
     <img src="${evidenceImg}"
-      alt="Defect evidence"
+      alt="Evidence"
       style="max-width: 100%; max-height: 250px; object-fit: contain;
              border: 1px solid #333; padding: 4px;"
     >
-    <p style="font-size: 9px; color: #555; margin-top: 4px;">Attached photographic inspection documentation.</p>
   </div>
-  ` : `
-  <div class="section-title" style="margin-top: 14px;">Photographic Inspection Evidence</div>
-  <p style="font-size: 10.5px; color: #888; font-style: italic; margin-top: 4px;">No photographic evidence attached.</p>
-  `}
+  ` : ''}
 
   <!-- Signatures -->
   <div class="signatures">
@@ -297,7 +275,7 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
       <div class="sig-role">${sigRole1}</div>
       <div class="sig-line">
         <strong>${reporterName.toUpperCase()}</strong><br>
-        <span class="sig-title">Nutrition Staff / Inspector</span>
+        <span class="sig-title">Nutrition Staff / Custodian</span>
       </div>
     </div>
     <div class="sig-block">
@@ -310,26 +288,8 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
   </div>
 
   <div class="footer">
-    Official LGU Record &bull; Municipal Nutrition Action Office &bull; Manolo Fortich, Bukidnon
+    Official Record &bull; Municipal Nutrition Action Office &bull; Manolo Fortich, Bukidnon
   </div>
 </body>
 </html>`;
-}
-
-/**
- * Returns the PDF file name for archive storage.
- */
-export function getDefectPdfFileName(batchNumber, action) {
-  const date       = new Date().toISOString().split('T')[0];
-  const act        = (action || '').toLowerCase();
-  let prefix = 'LGU_Return_Slip';
-  if (act.includes('spoil')) {
-    prefix = 'InHouse_Spoilage_Record';
-  } else if (act.includes('quarantin')) {
-    prefix = 'Quarantine_Hold_Notice';
-  } else if (act.includes('dispos')) {
-    prefix = 'Disposal_Record';
-  }
-  const cleanBatch = (batchNumber || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
-  return `${prefix}_${cleanBatch}_${date}.pdf`;
 }

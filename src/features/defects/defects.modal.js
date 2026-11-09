@@ -1,45 +1,38 @@
 /**
- * Defects Module — Log Incident & Return Modal
- * Searchable batch selector → batch info card → form → print preview.
+ * Defects Module — Log Event & Quarantine Resolution Modals
+ * Lightweight SaaS architecture (no base64 database bloat).
  */
 
-import { fetchActiveBatchesForSelector } from './defects.service.js';
-import { showDefectPrintPreview, getDefectPdfFileName } from './defects.pdf.js';
-import { logDefectIncident, restoreFromQuarantine } from './defects.service.js';
+import { fetchActiveBatchesForSelector, logDefectIncident, resolveQuarantineIncident } from './defects.service.js';
+import { showDefectPrintPreview } from './defects.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
-import { supabase } from '../../core/supabase.js';
 
 const CLASSIFICATIONS = [
-  'In-House Baking Spoilage / Mold',
   'Damaged on Delivery / Broken Seal',
-  'Compromised Packaging / Tears',
+  'Packaging Defect / Torn',
   'Expired Prior to Distribution',
+  'Quality Suspect / Spoilage',
   'Pest / Water Contamination',
-  'DOH / FDA Quality Recall',
-  'Physical Damage',
-  'Other Quality Defect',
+  'Recall / Notice',
+  'Other Quality Non-Compliance',
 ];
 
 /**
- * Opens the Log Incident & Return modal.
- * @param {Object}   profile    - logged-in user
- * @param {Function} onSuccess  - called after incident is confirmed & saved
+ * Opens the Log Stock Event modal.
  */
 export async function openLogIncidentModal(profile, onSuccess) {
-  // Fetch active batches first
   const { data: batches, error } = await fetchActiveBatchesForSelector();
   if (error) {
     await SystemDialog.alert('Error: ' + error, 'Load Failed');
     return;
   }
 
-  _renderModal(batches, profile, onSuccess);
+  _renderLogModal(batches, profile, onSuccess);
 }
 
-// ─── Modal Render ─────────────────────────────────────────────────────────────
+// ─── Log Stock Event Modal ────────────────────────────────────────────────────
 
-function _renderModal(batches, profile, onSuccess) {
-  // Remove any existing modal
+function _renderLogModal(batches, profile, onSuccess) {
   document.getElementById('defect-modal-overlay')?.remove();
 
   const overlay = document.createElement('div');
@@ -54,7 +47,7 @@ function _renderModal(batches, profile, onSuccess) {
     <div style="
       background: var(--color-surface, #fff);
       border-radius: var(--radius-xl, 16px);
-      width: 100%; max-width: 580px;
+      width: 100%; max-width: 560px;
       max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
       overflow: hidden;
@@ -69,22 +62,21 @@ function _renderModal(batches, profile, onSuccess) {
         <div style="display: flex; align-items: flex-start; gap: var(--space-4);">
           <div style="
             width: 44px; height: 44px; border-radius: var(--radius-full); flex-shrink: 0;
-            background: #e0f2fe; display: flex; align-items: center; justify-content: center;
+            background: #fef3c7; display: flex; align-items: center; justify-content: center;
           ">
-            <span class="icon" style="color: #0284c7; font-size: 22px;">assignment_return</span>
+            <span class="icon" style="color: #b45309; font-size: 22px;">inventory_2</span>
           </div>
           <div>
-            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Log Defect &amp; Return</h2>
+            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Log Stock Event</h2>
             <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 0;">
-              Record damaged commodities to deduct from active stock and generate an official LGU turnover receipt or spoilage slip.
+              Record quarantined stock under observation, supplier returns, or condemned inventory.
             </p>
           </div>
         </div>
         <button id="defect-modal-close" type="button" aria-label="Close" style="
           background: transparent; border: none; cursor: pointer; color: var(--color-text-muted);
           padding: 6px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-          transition: background 0.15s ease, color 0.15s ease; flex-shrink: 0;
-        " onmouseover="this.style.background='var(--color-surface-alt, #f1f5f9)'; this.style.color='var(--color-text, #111827)'" onmouseout="this.style.background='transparent'; this.style.color='var(--color-text-muted)'">
+        ">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -100,7 +92,7 @@ function _renderModal(batches, profile, onSuccess) {
 
         <!-- Batch Search -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="defect-batch-search">Search Batch</label>
+          <label class="form-label form-label--required" for="defect-batch-search">Search Active Batch</label>
           <div style="position: relative;">
             <span class="icon" style="
               position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -115,19 +107,16 @@ function _renderModal(batches, profile, onSuccess) {
               style="padding-left: 38px;"
             >
           </div>
-          <!-- Dropdown list -->
           <div id="defect-batch-dropdown" style="
             display: none; position: relative; z-index: 10;
             border: 1px solid var(--color-border); border-top: none;
             border-radius: 0 0 var(--radius-md) var(--radius-md);
             background: var(--color-surface); max-height: 180px; overflow-y: auto;
             box-shadow: var(--shadow-md);
-          ">
-            <!-- Options injected by JS -->
-          </div>
+          "></div>
         </div>
 
-        <!-- Target Batch Info Card (hidden until batch selected) -->
+        <!-- Target Batch Info Card -->
         <div id="defect-batch-info" style="display: none;
           background: var(--color-surface-alt, #f8faf9);
           border: 1px solid var(--color-border);
@@ -144,106 +133,74 @@ function _renderModal(batches, profile, onSuccess) {
             <div id="info-commodity" style="font-weight: var(--font-weight-semibold);">—</div>
           </div>
           <div>
-            <div style="font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 4px;">Currently Active</div>
+            <div style="font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 4px;">Active Stock</div>
             <div id="info-quantity" style="font-weight: var(--font-weight-bold);">—</div>
+          </div>
+        </div>
+
+        <!-- Action to Take -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label form-label--required" for="defect-action">Action to Take</label>
+            <select id="defect-action" class="form-select">
+              <option value="Quarantined" selected>Quarantined (Under Observation)</option>
+              <option value="Returned">Returned (Return to Supplier)</option>
+              <option value="Disposed">Disposed (Condemned / Discarded)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label form-label--required" for="defect-qty">Quantity Affected</label>
+            <input type="number" id="defect-qty" class="form-input" min="1" placeholder="e.g. 5">
+            <span class="form-hint" id="defect-qty-hint"></span>
           </div>
         </div>
 
         <!-- Defect Classification -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="defect-classification">Defect Classification</label>
+          <label class="form-label form-label--required" for="defect-classification">Reason / Classification</label>
           <select id="defect-classification" class="form-select">
             <option value="">Select reason...</option>
             ${CLASSIFICATIONS.map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
 
-        <!-- Quantity + Action -->
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label form-label--required" for="defect-qty">Quantity Affected</label>
-            <input type="number" id="defect-qty" class="form-input" min="1" placeholder="e.g. 5">
-            <span class="form-hint" id="defect-qty-hint"></span>
-          </div>
-          <div class="form-group">
-            <label class="form-label form-label--required" for="defect-action">Action to Take</label>
-            <select id="defect-action" class="form-select">
-              <option value="Returned">Return to LGU (GSO) / Supplier</option>
-              <option value="Spoiled">In-House Spoilage / Condemned (Nutribun)</option>
-              <option value="Return Entire Batch">Return Entire Batch to LGU / Supplier</option>
-              <option value="Condemn Entire Batch">Condemn Entire Batch (In-House Spoilage)</option>
-              <option value="Quarantined">Hold / Under Inspection</option>
-            </select>
-            <div id="defect-action-hint" style="margin-top: 4px; font-size: 11px;"></div>
-          </div>
-        </div>
-
         <!-- Remarks -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="defect-remarks">Remarks / Incident Details</label>
+          <label class="form-label form-label--required" for="defect-remarks">Remarks / Details</label>
           <textarea
             id="defect-remarks"
             class="form-textarea"
             rows="3"
-            placeholder="Explain how the damage was discovered, batch delivery context, or attach DOH memo reference number..."
+            placeholder="Explain discovery, reason for hold or return, or reference memo number..."
           ></textarea>
         </div>
 
-        <!-- Photo Evidence -->
-        <div class="form-group">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <label class="form-label" for="defect-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
-            <button id="btn-toggle-defect-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-              <span class="icon" style="font-size: 14px;">qr_code_2</span>
-              <span>Upload via Phone</span>
-            </button>
-          </div>
-
-          <!-- Phone Upload QR Panel -->
-          <div id="defect-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
-            <div style="display: flex; gap: 14px; align-items: center;">
-              <div id="defect-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
-                <span class="icon" style="animation: spin 1s linear infinite; font-size: 20px; color: var(--color-text-muted);">progress_activity</span>
-              </div>
-              <div style="flex: 1; font-size: 12px; line-height: 1.4;">
-                <div style="font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: 2px;">Scan with your Phone Camera</div>
-                <div style="color: var(--color-text-muted);">Take a photo or choose from phone gallery. Image will automatically appear below!</div>
-                <div id="defect-phone-sync-status" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--color-primary); font-size: 11px;">
-                  <span style="width: 7px; height: 7px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
-                  <span>Awaiting phone photo...</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <!-- Photo Evidence (Dynamically HIDDEN when action is Quarantined) -->
+        <div class="form-group" id="defect-evidence-group" style="display: none;">
+          <label class="form-label" for="defect-evidence">Photo Attachment <span style="color: var(--color-text-muted); font-weight: normal;">(Optional for Slip Printout)</span></label>
           <div style="
             border: 2px dashed var(--color-border);
             border-radius: var(--radius-lg);
             padding: var(--space-4);
             text-align: center;
             cursor: pointer;
-            transition: border-color var(--transition-md3), background var(--transition-md3);
             position: relative;
           " id="defect-evidence-dropzone">
             <input type="file" id="defect-evidence" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
-            <span class="icon" style="font-size: 28px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
-            <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0;">Click or drag &amp; drop to upload image</p>
-            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 4px 0 0;">JPG, PNG, WEBP — Image will be embedded in the official PDF slip.</p>
+            <span class="icon" style="font-size: 24px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0;">Optional photo for immediate printable slip preview.</p>
           </div>
-
-          <!-- Preview -->
           <div id="defect-evidence-preview" style="display:none; margin-top: var(--space-3); position: relative;">
             <img id="defect-evidence-img" src="" alt="Evidence preview" style="
-              width: 100%; max-height: 180px; object-fit: cover;
+              width: 100%; max-height: 140px; object-fit: cover;
               border-radius: var(--radius-md); border: 1px solid var(--color-border);
             ">
             <button id="defect-evidence-remove" type="button" style="
               position: absolute; top: 6px; right: 6px;
               background: rgba(0,0,0,0.6); color: #fff; border: none;
-              border-radius: var(--radius-full); width: 26px; height: 26px;
+              border-radius: var(--radius-full); width: 24px; height: 24px;
               cursor: pointer; display: flex; align-items: center; justify-content: center;
-            "><span class="icon" style="font-size: 16px;">close</span></button>
-            <p id="defect-evidence-name" style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 6px;"></p>
+            "><span class="icon" style="font-size: 14px;">close</span></button>
           </div>
         </div>
 
@@ -261,186 +218,72 @@ function _renderModal(batches, profile, onSuccess) {
       ">
         <button id="defect-modal-cancel" class="btn btn-ghost">Cancel</button>
         <button id="defect-modal-generate" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
-          <span class="icon" style="font-size: 18px;">assignment_turned_in</span>
-          Log Defect &amp; Review Slip
+          <span class="icon" style="font-size: 18px;">save</span>
+          Log &amp; Preview Slip
         </button>
       </div>
     </div>
   `;
 
   document.body.appendChild(overlay);
-  _bindModalEvents(overlay, batches, profile, onSuccess);
+  _bindLogModalEvents(overlay, batches, profile, onSuccess);
 }
 
-// ─── Modal Events ─────────────────────────────────────────────────────────────
-
-function _bindModalEvents(overlay, batches, profile, onSuccess) {
+function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   let selectedBatch = null;
-  let imageData     = null; // base64 data URL of evidence photo
+  let ephemeralImageData = null;
 
-  const searchInput  = overlay.querySelector('#defect-batch-search');
-  const dropdown     = overlay.querySelector('#defect-batch-dropdown');
-  const batchInfo    = overlay.querySelector('#defect-batch-info');
-  const errorEl      = overlay.querySelector('#defect-modal-error');
-  const fileInput    = overlay.querySelector('#defect-evidence');
-  const preview      = overlay.querySelector('#defect-evidence-preview');
-  const previewImg   = overlay.querySelector('#defect-evidence-img');
-  const previewName  = overlay.querySelector('#defect-evidence-name');
-  const removeBtn    = overlay.querySelector('#defect-evidence-remove');
-  const dropzone     = overlay.querySelector('#defect-evidence-dropzone');
-  const actionSelect = overlay.querySelector('#defect-action');
-  const qtyInput     = overlay.querySelector('#defect-qty');
-  const qrToggleBtn  = overlay.querySelector('#btn-toggle-defect-qr');
-  const qrPanel      = overlay.querySelector('#defect-phone-qr-panel');
-  const qrContainer  = overlay.querySelector('#defect-qr-container');
-  const qrStatus     = overlay.querySelector('#defect-phone-sync-status');
+  const searchInput    = overlay.querySelector('#defect-batch-search');
+  const dropdown       = overlay.querySelector('#defect-batch-dropdown');
+  const batchInfo      = overlay.querySelector('#defect-batch-info');
+  const errorEl        = overlay.querySelector('#defect-modal-error');
+  const actionSelect   = overlay.querySelector('#defect-action');
+  const qtyInput       = overlay.querySelector('#defect-qty');
+  const evidenceGroup  = overlay.querySelector('#defect-evidence-group');
+  const fileInput      = overlay.querySelector('#defect-evidence');
+  const preview        = overlay.querySelector('#defect-evidence-preview');
+  const previewImg     = overlay.querySelector('#defect-evidence-img');
+  const removeBtn      = overlay.querySelector('#defect-evidence-remove');
 
-  let phoneSessionId   = null;
-  let realtimeChannel  = null;
-  let chunkBuffer      = {};
-
-  async function ensureQRCodeLib() {
-    if (window.QRCode) return true;
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = '/src/assets/libs/qrcode.min.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => reject(new Error('Failed to load local qrcode.min.js'));
-      document.head.appendChild(script);
-    });
-  }
-
-  function stopPhoneRealtime() {
-    if (realtimeChannel) {
-      try { supabase.removeChannel(realtimeChannel); } catch (_) {}
-      realtimeChannel = null;
-    }
-    chunkBuffer = {};
-  }
-
-  async function initPhoneQR() {
-    if (phoneSessionId) return;
-    try {
-      await ensureQRCodeLib();
-      phoneSessionId = 'def-' + Math.random().toString(36).slice(2, 9);
-      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const cloudScannerBase = isLocalHost ? 'https://nutrivision-mnao.vercel.app' : window.location.origin;
-      const phoneUrl = `${cloudScannerBase}/mobile-scan.html?s=${phoneSessionId}`;
-
-      qrContainer.innerHTML = '';
-      new window.QRCode(qrContainer, {
-        text: phoneUrl,
-        width: 100,
-        height: 100,
-        colorDark: '#0f172a',
-        colorLight: '#ffffff',
-        correctLevel: window.QRCode.CorrectLevel.M
-      });
-
-      const topic = `nv-scan-${phoneSessionId}`;
-      realtimeChannel = supabase.channel(topic);
-      realtimeChannel
-        .on('broadcast', { event: 'receipt-chunk' }, (msg) => {
-          const payload = msg?.payload;
-          if (!payload || !payload.id) return;
-          const { id, idx, total, chunk } = payload;
-          if (!chunkBuffer[id]) {
-            chunkBuffer[id] = { parts: new Array(total), received: 0, total };
-          }
-          const entry = chunkBuffer[id];
-          if (entry.parts[idx] === undefined) {
-            entry.parts[idx] = chunk;
-            entry.received += 1;
-          }
-          if (entry.received === entry.total) {
-            const fullDataUrl = entry.parts.join('');
-            delete chunkBuffer[id];
-            imageData = fullDataUrl;
-            previewImg.src = fullDataUrl;
-            previewName.textContent = `Phone_Upload_${new Date().toLocaleTimeString().replace(/:/g, '-')}.jpg`;
-            preview.style.display = 'block';
-            dropzone.style.display = 'none';
-            if (qrStatus) {
-              qrStatus.innerHTML = '<span class="icon" style="font-size: 14px; color: var(--color-primary);">check_circle</span> <span>Photo received from phone!</span>';
-            }
-          }
-        })
-        .subscribe();
-    } catch (err) {
-      console.error('[DefectsModal] Phone QR init error:', err);
-      qrContainer.innerHTML = '<span style="color:var(--color-danger);font-size:11px;">QR Failed</span>';
-    }
-  }
-
-  qrToggleBtn?.addEventListener('click', () => {
-    const isShown = qrPanel.style.display === 'block';
-    qrPanel.style.display = isShown ? 'none' : 'block';
-    qrToggleBtn.style.background = isShown ? '' : 'var(--color-primary-bg, #e8f5ee)';
-    qrToggleBtn.style.color = isShown ? '' : 'var(--color-primary)';
-    if (!isShown) {
-      initPhoneQR();
-    }
-  });
-
-  // ── Action selection / Qty auto-fill ───────────────────────────────────────
-  actionSelect.addEventListener('change', () => {
-    if (!selectedBatch) return;
-    const isEntireBatch = actionSelect.value.includes('Entire Batch');
-    if (isEntireBatch) {
-      qtyInput.value = selectedBatch.quantity;
-      qtyInput.readOnly = true;
-      qtyInput.style.background = 'var(--color-surface-alt)';
+  // Dynamic show/hide of photo upload based on action
+  // User Rule: If Quarantined -> hide photo evidence!
+  const updateDynamicFields = () => {
+    const act = actionSelect.value;
+    if (act === 'Quarantined') {
+      evidenceGroup.style.display = 'none';
+      ephemeralImageData = null;
     } else {
-      qtyInput.readOnly = false;
-      qtyInput.style.background = '';
+      evidenceGroup.style.display = 'block';
     }
-  });
+  };
+  actionSelect.addEventListener('change', updateDynamicFields);
+  updateDynamicFields();
 
-  // ── Image upload / preview ─────────────────────────────────────────────────
-  fileInput.addEventListener('change', () => {
+  // Image preview (for instant print preview only)
+  fileInput?.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
-    _readFileAsBase64(file, (dataUrl) => {
-      imageData = dataUrl;
-      previewImg.src  = dataUrl;
-      previewName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-      preview.style.display  = 'block';
-      dropzone.style.display = 'none';
-    });
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      ephemeralImageData = e.target.result;
+      previewImg.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
   });
 
-  // Drag-and-drop visual feedback
-  dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.style.borderColor = 'var(--color-primary)'; dropzone.style.background = '#f4fbf5'; });
-  dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--color-border)'; dropzone.style.background = ''; });
-  dropzone.addEventListener('drop',      e => {
-    e.preventDefault();
-    dropzone.style.borderColor = 'var(--color-border)'; dropzone.style.background = '';
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      _readFileAsBase64(file, (dataUrl) => {
-        imageData = dataUrl;
-        previewImg.src  = dataUrl;
-        previewName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        preview.style.display  = 'block';
-        dropzone.style.display = 'none';
-      });
-    }
+  removeBtn?.addEventListener('click', () => {
+    ephemeralImageData = null;
+    fileInput.value = '';
+    previewImg.src = '';
+    preview.style.display = 'none';
   });
 
-  // Remove evidence
-  removeBtn.addEventListener('click', () => {
-    imageData = null;
-    fileInput.value   = '';
-    previewImg.src    = '';
-    preview.style.display  = 'none';
-    dropzone.style.display = '';
-  });
-
-  // ── Batch search/filter ────────────────────────────────────────────────────
+  // Batch search
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.trim().toLowerCase();
     selectedBatch = null;
-    _hideBatchInfo(batchInfo);
+    batchInfo.style.display = 'none';
 
     if (!q) { dropdown.style.display = 'none'; return; }
 
@@ -450,14 +293,13 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
     ).slice(0, 10);
 
     if (!matches.length) {
-      dropdown.innerHTML = `<div style="padding: 10px 14px; color: var(--color-text-muted); font-size: var(--font-size-sm);">No batches found.</div>`;
+      dropdown.innerHTML = `<div style="padding: 10px 14px; color: var(--color-text-muted); font-size: var(--font-size-sm);">No active batches found.</div>`;
     } else {
       dropdown.innerHTML = matches.map(b => `
         <div class="defect-batch-option" data-id="${b.id}" style="
           padding: 10px 14px; cursor: pointer; font-size: var(--font-size-sm);
           border-bottom: 1px solid var(--color-border);
-          transition: background var(--transition-md3);
-        " onmouseover="this.style.background='var(--color-surface-alt)'" onmouseout="this.style.background=''">
+        ">
           <strong>${b.batch_number}</strong>
           <span style="color: var(--color-text-muted);"> — ${b.commodities?.name || '?'}</span>
           <span style="float:right; color: var(--color-text-muted);">${b.quantity} ${b.commodities?.unit || ''}</span>
@@ -466,207 +308,106 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
     }
     dropdown.style.display = 'block';
 
-    // Click handler on options
     dropdown.querySelectorAll('.defect-batch-option').forEach(opt => {
       opt.addEventListener('click', () => {
-        const bid = opt.dataset.id;
-        selectedBatch = batches.find(b => b.id === bid);
+        selectedBatch = batches.find(b => b.id === opt.dataset.id);
         if (!selectedBatch) return;
 
         searchInput.value = selectedBatch.batch_number;
         dropdown.style.display = 'none';
-        _showBatchInfo(batchInfo, selectedBatch, overlay);
+
+        batchInfo.style.display = 'grid';
+        overlay.querySelector('#info-batch-number').textContent = selectedBatch.batch_number;
+        overlay.querySelector('#info-commodity').textContent    = selectedBatch.commodities?.name || '—';
+        overlay.querySelector('#info-quantity').textContent     = `${selectedBatch.quantity} ${selectedBatch.commodities?.unit || ''}`;
+
+        const qtyHint = overlay.querySelector('#defect-qty-hint');
+        if (qtyHint) qtyHint.textContent = `Max available: ${selectedBatch.quantity}`;
+        qtyInput.max = selectedBatch.quantity;
       });
     });
   });
 
   // Close dropdown on outside click
   document.addEventListener('click', e => {
-    if (!overlay.querySelector('#defect-batch-search')?.contains(e.target) &&
-        !dropdown.contains(e.target)) {
+    if (!overlay.querySelector('#defect-batch-search')?.contains(e.target) && !dropdown.contains(e.target)) {
       dropdown.style.display = 'none';
     }
   });
 
-  // ── Modal Dismissal ────────────────────────────────────────────────────────
   const closeModal = () => {
-    stopPhoneRealtime();
     overlay.remove();
     document.removeEventListener('keydown', handleKeyDown);
   };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') closeModal();
-  };
-
+  const handleKeyDown = (e) => { if (e.key === 'Escape') closeModal(); };
   document.addEventListener('keydown', handleKeyDown);
 
-  // Close on outside backdrop click
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal();
-  });
-
-  // Close on X button
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
   overlay.querySelector('#defect-modal-close')?.addEventListener('click', closeModal);
-
-  // Close on Cancel button
   overlay.querySelector('#defect-modal-cancel')?.addEventListener('click', closeModal);
 
-  // ── Submit & Review Slip ──────────────────────────────────────────────────
+  // Submit button
   overlay.querySelector('#defect-modal-generate').addEventListener('click', () => {
     const classification = overlay.querySelector('#defect-classification').value;
-    const qty            = parseInt(overlay.querySelector('#defect-qty').value, 10);
-    const rawAction      = overlay.querySelector('#defect-action').value;
+    const qty            = parseInt(qtyInput.value, 10);
+    const actionTaken    = actionSelect.value;
     const remarks        = overlay.querySelector('#defect-remarks').value.trim();
 
-    // Validate
-    if (!selectedBatch) { _showError(errorEl, 'Please select a batch first.'); return; }
-    if (!classification) { _showError(errorEl, 'Please select a defect classification.'); return; }
+    if (!selectedBatch) { _showError(errorEl, 'Please select an active batch first.'); return; }
     if (!qty || qty < 1) { _showError(errorEl, 'Quantity affected must be at least 1.'); return; }
-    if (!remarks) { _showError(errorEl, 'Remarks / incident details are required.'); return; }
     if (qty > selectedBatch.quantity) { _showError(errorEl, `Quantity exceeds batch stock (max: ${selectedBatch.quantity}).`); return; }
+    if (!classification) { _showError(errorEl, 'Please select a reason / classification.'); return; }
+    if (!remarks) { _showError(errorEl, 'Remarks / log details are required.'); return; }
 
     errorEl.style.display = 'none';
-
-    // Normalize Action & Scope
-    let actionTaken = rawAction;
-    let scope       = 'partial';
-
-    if (rawAction === 'Return Entire Batch') {
-      actionTaken = 'Returned';
-      scope       = 'entire_batch';
-    } else if (rawAction === 'Condemn Entire Batch') {
-      actionTaken = 'Spoiled';
-      scope       = 'entire_batch';
-    } else if (qty >= selectedBatch.quantity) {
-      scope       = 'entire_batch';
-    }
 
     const incidentData = {
       batchId: selectedBatch.id,
       classification,
       quantityAffected: qty,
       actionTaken,
-      scope,
       remarks,
-      imageData
+      imageData: ephemeralImageData
     };
 
-    // Open print preview — DB write happens only on confirm in the slip modal
+    // Show slip preview immediately with confirm action
     showDefectPrintPreview(incidentData, selectedBatch, profile, async () => {
       const { data, error } = await logDefectIncident(incidentData, profile);
       if (error) {
-        await SystemDialog.alert('Error saving incident: ' + error, 'Save Incident Failed');
+        await SystemDialog.alert('Error recording event: ' + error, 'Save Failed');
         return;
       }
-      // Close modal and refresh page
       closeModal();
       if (typeof onSuccess === 'function') onSuccess(data, selectedBatch, incidentData);
     });
   });
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function _showBatchInfo(infoEl, batch, overlay) {
-  infoEl.style.display = 'grid';
-  overlay.querySelector('#info-batch-number').textContent = batch.batch_number;
-  overlay.querySelector('#info-commodity').textContent    = batch.commodities?.name || '—';
-  overlay.querySelector('#info-quantity').textContent     = `${batch.quantity} ${batch.commodities?.unit || ''}`;
-
-  // Update qty hint max
-  const qtyHint = overlay.querySelector('#defect-qty-hint');
-  if (qtyHint) qtyHint.textContent = `Max available: ${batch.quantity}`;
-  const qtyInput = overlay.querySelector('#defect-qty');
-  if (qtyInput) qtyInput.max = batch.quantity;
-
-  // Intelligent Nutribun / In-House Bakery detection
-  const commName = (batch.commodities?.name || '').toLowerCase();
-  const commCat  = (batch.commodities?.category || '').toLowerCase();
-  const isNutribun = commName.includes('nutribun') || commCat.includes('bakery') || commCat.includes('perishable');
-  const actionSelect = overlay.querySelector('#defect-action');
-  const classificationSelect = overlay.querySelector('#defect-classification');
-  const actionHint = overlay.querySelector('#defect-action-hint');
-
-  if (isNutribun) {
-    actionSelect.value = 'Spoiled';
-    if (!classificationSelect.value) {
-      classificationSelect.value = 'In-House Baking Spoilage / Mold';
-    }
-    if (actionHint) {
-      actionHint.innerHTML = `<span style="color: #b45309; display: flex; align-items: center; gap: 4px;"><span class="icon" style="font-size: 14px;">bakery_dining</span> In-house bakery batch: Logged as kitchen spoilage.</span>`;
-    }
-  } else {
-    actionSelect.value = 'Returned';
-    if (!classificationSelect.value) {
-      classificationSelect.value = 'Damaged on Delivery / Broken Seal';
-    }
-    if (actionHint) {
-      actionHint.innerHTML = `<span style="color: #0369a1; display: flex; align-items: center; gap: 4px;"><span class="icon" style="font-size: 14px;">assignment_return</span> Procured commodity: Official LGU GSO Property Return Slip.</span>`;
-    }
-  }
-}
-
-function _hideBatchInfo(infoEl) {
-  infoEl.style.display = 'none';
-}
-
 function _showError(el, msg) {
-  el.textContent    = msg;
-  el.style.display  = 'block';
+  el.textContent   = msg;
+  el.style.display = 'block';
 }
+
+// ─── Resolve Quarantine Modal ─────────────────────────────────────────────────
 
 /**
- * Reads a File object and returns a base64 data URL via callback.
+ * Opens the Quarantine Resolution Modal.
+ * Allows partial or full resolution with 3 choices:
+ *  - Restore to Active Stock
+ *  - Return to Supplier
+ *  - Dispose / Condemn
  */
-function _readFileAsBase64(file, callback) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const rawDataUrl = e.target.result;
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const MAX_DIM = 1200;
-        let { width, height } = img;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          if (width >= height) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          } else {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        callback(canvas.toDataURL('image/jpeg', 0.82));
-      } catch {
-        callback(rawDataUrl);
-      }
-    };
-    img.onerror = () => callback(rawDataUrl);
-    img.src = rawDataUrl;
-  };
-  reader.onerror = () => console.error('[DefectModal] FileReader error');
-  reader.readAsDataURL(file);
-}
+export function openResolveQuarantineModal(incident, profile, onSuccess) {
+  document.getElementById('resolve-modal-overlay')?.remove();
 
-// ─── Restore Modal ─────────────────────────────────────────────────────────────
-
-export function openRestoreModal(incident, profile, onSuccess) {
-  // Fallback for legacy records
-  const remaining = incident.remaining_quarantined !== null 
-    ? incident.remaining_quarantined 
+  const remaining = incident.remaining_quarantined !== null
+    ? incident.remaining_quarantined
     : incident.quantity_affected;
 
-  // Remove any existing modal
-  document.getElementById('restore-modal-overlay')?.remove();
+  const unit = incident.batches?.commodities?.unit || 'units';
 
   const overlay = document.createElement('div');
-  overlay.id = 'restore-modal-overlay';
+  overlay.id = 'resolve-modal-overlay';
   overlay.style.cssText = `
     position: fixed; inset: 0; z-index: 8000;
     background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
@@ -677,11 +418,12 @@ export function openRestoreModal(incident, profile, onSuccess) {
     <div style="
       background: var(--color-surface, #fff);
       border-radius: var(--radius-xl, 16px);
-      width: 100%; max-width: 480px;
+      width: 100%; max-width: 500px;
       max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
       overflow: hidden;
     ">
+      <!-- Modal Header -->
       <div style="
         padding: var(--space-5) var(--space-6);
         border-bottom: 1px solid var(--color-border);
@@ -689,14 +431,13 @@ export function openRestoreModal(incident, profile, onSuccess) {
         flex-shrink: 0;
       ">
         <div style="display: flex; align-items: center; gap: var(--space-3);">
-          <span class="icon" style="color: var(--color-primary); font-size: 24px;">settings_backup_restore</span>
-          <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin:0;">Restore from Quarantine</h2>
+          <span class="icon" style="color: var(--color-primary); font-size: 24px;">tune</span>
+          <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin:0;">Resolve Quarantine</h2>
         </div>
-        <button id="btn-restore-close" type="button" aria-label="Close" style="
+        <button id="btn-resolve-close" type="button" aria-label="Close" style="
           background: transparent; border: none; cursor: pointer; color: var(--color-text-muted);
           padding: 6px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-          transition: background 0.15s ease, color 0.15s ease;
-        " onmouseover="this.style.background='var(--color-surface-alt, #f1f5f9)'; this.style.color='var(--color-text, #111827)'" onmouseout="this.style.background='transparent'; this.style.color='var(--color-text-muted)'">
+        ">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -704,8 +445,10 @@ export function openRestoreModal(incident, profile, onSuccess) {
         </button>
       </div>
 
-      <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5);">
+      <!-- Modal Body -->
+      <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); flex: 1; overflow-y: auto;">
         
+        <!-- Batch & Remaining Info Card -->
         <div style="
           background: var(--color-surface-alt, #f8faf9);
           border: 1px solid var(--color-border);
@@ -715,33 +458,47 @@ export function openRestoreModal(incident, profile, onSuccess) {
         ">
           <div>
             <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Batch Number</div>
-            <div style="font-weight: var(--font-weight-bold); font-family: monospace;">${incident.batches?.batch_number}</div>
+            <div style="font-weight: var(--font-weight-bold); font-family: monospace;">${incident.batches?.batch_number || '—'}</div>
           </div>
           <div>
             <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Commodity</div>
-            <div style="font-weight: var(--font-weight-semibold);">${incident.batches?.commodities?.name}</div>
+            <div style="font-weight: var(--font-weight-semibold);">${incident.batches?.commodities?.name || '—'}</div>
           </div>
-          <div style="grid-column: span 2;">
-            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Remaining Quarantined</div>
-            <div style="font-weight: var(--font-weight-bold); color: var(--color-exp-near); font-size: 16px;">
-              ${remaining} ${incident.batches?.commodities?.unit || ''}
+          <div style="grid-column: span 2; border-top: 1px dashed var(--color-border); padding-top: 8px; margin-top: 2px;">
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase;">Under Observation</div>
+            <div style="font-weight: var(--font-weight-bold); color: #d97706; font-size: 16px;">
+              ${remaining} ${unit}
             </div>
           </div>
         </div>
 
+        <!-- Outcome Action -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="restore-qty">Quantity to Restore</label>
-          <input type="number" id="restore-qty" class="form-input" min="1" max="${remaining}" placeholder="e.g. 5">
+          <label class="form-label form-label--required" for="resolve-outcome">Resolution Decision</label>
+          <select id="resolve-outcome" class="form-select">
+            <option value="Restore">Restore to Active Stock (Cleared for use)</option>
+            <option value="Return">Return to Supplier (Send back for replacement)</option>
+            <option value="Dispose">Dispose (Confirmed spoiled or unusable)</option>
+          </select>
         </div>
 
+        <!-- Quantity to Resolve -->
         <div class="form-group">
-          <label class="form-label" for="restore-notes">Restoration Notes (Optional)</label>
-          <textarea id="restore-notes" class="form-textarea" rows="2" placeholder="Reason for restoration..."></textarea>
+          <label class="form-label form-label--required" for="resolve-qty">Quantity to Resolve</label>
+          <input type="number" id="resolve-qty" class="form-input" min="1" max="${remaining}" value="${remaining}">
+          <span class="form-hint" id="resolve-qty-hint" style="font-size: 11px; color: var(--color-text-muted);">Resolving all ${remaining} ${unit}.</span>
         </div>
 
-        <div id="restore-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
+        <!-- Notes -->
+        <div class="form-group">
+          <label class="form-label" for="resolve-notes">Resolution Notes / Reason</label>
+          <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="e.g. Visual inspection passed, supplier approved return..."></textarea>
+        </div>
+
+        <div id="resolve-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
       </div>
 
+      <!-- Modal Footer -->
       <div style="
         padding: var(--space-4) var(--space-6);
         border-top: 1px solid var(--color-border);
@@ -749,10 +506,10 @@ export function openRestoreModal(incident, profile, onSuccess) {
         flex-shrink: 0;
         background: var(--color-surface, #fff);
       ">
-        <button id="btn-restore-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="btn-restore-confirm" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
+        <button id="btn-resolve-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="btn-resolve-confirm" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
           <span class="icon" style="font-size: 18px;">check</span>
-          Confirm Restore
+          Confirm Decision
         </button>
       </div>
     </div>
@@ -760,56 +517,67 @@ export function openRestoreModal(incident, profile, onSuccess) {
 
   document.body.appendChild(overlay);
 
-  const errorEl = overlay.querySelector('#restore-error');
-  const qtyInput = overlay.querySelector('#restore-qty');
+  const errorEl     = overlay.querySelector('#resolve-error');
+  const qtyInput    = overlay.querySelector('#resolve-qty');
+  const qtyHint     = overlay.querySelector('#resolve-qty-hint');
+  const outcomeSel  = overlay.querySelector('#resolve-outcome');
+  const notesInput  = overlay.querySelector('#resolve-notes');
+  const confirmBtn  = overlay.querySelector('#btn-resolve-confirm');
 
-  const closeRestoreModal = () => {
-    overlay.remove();
-    document.removeEventListener('keydown', handleRestoreKeyDown);
-  };
-
-  const handleRestoreKeyDown = (e) => {
-    if (e.key === 'Escape') closeRestoreModal();
-  };
-
-  document.addEventListener('keydown', handleRestoreKeyDown);
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeRestoreModal();
+  // Dynamic remaining hint
+  qtyInput.addEventListener('input', () => {
+    const val = parseInt(qtyInput.value, 10) || 0;
+    if (val >= remaining) {
+      qtyHint.textContent = `Resolving all ${remaining} ${unit}.`;
+      qtyHint.style.color = 'var(--color-text-muted)';
+    } else if (val > 0) {
+      const left = remaining - val;
+      qtyHint.textContent = `Resolving ${val} ${unit} (${left} ${unit} will remain under Quarantine).`;
+      qtyHint.style.color = '#d97706';
+    } else {
+      qtyHint.textContent = `Enter a quantity between 1 and ${remaining}.`;
+      qtyHint.style.color = 'var(--color-danger)';
+    }
   });
 
-  overlay.querySelector('#btn-restore-close')?.addEventListener('click', closeRestoreModal);
-  overlay.querySelector('#btn-restore-cancel')?.addEventListener('click', closeRestoreModal);
+  const closeResolveModal = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', handleKeyDown);
+  };
+  const handleKeyDown = (e) => { if (e.key === 'Escape') closeResolveModal(); };
+  document.addEventListener('keydown', handleKeyDown);
 
-  overlay.querySelector('#btn-restore-confirm').addEventListener('click', async () => {
-    const qty = parseInt(qtyInput.value, 10);
-    const notes = overlay.querySelector('#restore-notes').value.trim();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeResolveModal(); });
+  overlay.querySelector('#btn-resolve-close')?.addEventListener('click', closeResolveModal);
+  overlay.querySelector('#btn-resolve-cancel')?.addEventListener('click', closeResolveModal);
+
+  confirmBtn.addEventListener('click', async () => {
+    const qty     = parseInt(qtyInput.value, 10);
+    const outcome = outcomeSel.value;
+    const notes   = notesInput.value.trim();
 
     if (!qty || qty < 1) {
-      errorEl.textContent = 'Please enter a valid quantity.';
-      errorEl.style.display = 'block';
+      _showError(errorEl, 'Please enter a valid quantity.');
       return;
     }
     if (qty > remaining) {
-      errorEl.textContent = `Cannot restore more than ${remaining}.`;
-      errorEl.style.display = 'block';
+      _showError(errorEl, `Cannot resolve more than ${remaining} ${unit}.`);
       return;
     }
 
-    const btn = overlay.querySelector('#btn-restore-confirm');
-    btn.disabled = true;
-    btn.textContent = 'Restoring...';
+    errorEl.style.display = 'none';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Saving...';
 
-    const { error } = await restoreFromQuarantine(incident.id, qty, profile, notes);
+    const { error } = await resolveQuarantineIncident(incident.id, { outcome, quantity: qty, notes }, profile);
     if (error) {
-      errorEl.textContent = 'Restoration failed: ' + error;
-      errorEl.style.display = 'block';
-      btn.disabled = false;
-      btn.innerHTML = '<span class="icon" style="font-size: 18px;">check</span> Confirm Restore';
+      _showError(errorEl, 'Resolution failed: ' + error);
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<span class="icon" style="font-size: 18px;">check</span> Confirm Decision';
       return;
     }
 
-    closeRestoreModal();
+    closeResolveModal();
     if (typeof onSuccess === 'function') onSuccess();
   });
 }

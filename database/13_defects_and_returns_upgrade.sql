@@ -20,3 +20,4 @@ CREATE INDEX IF NOT EXISTS idx_defect_incidents_action_taken
 -- 3. Document comments
 COMMENT ON TABLE public.defect_incidents IS 'Logs of damaged, returned to LGU/Supplier, or in-house spoiled commodities';
 COMMENT ON COLUMN public.defect_incidents.action_taken IS 'Action: Returned (to LGU/Supplier), Spoiled (in-house Nutribun/kitchen waste), Quarantined (legacy hold), Disposed (legacy disposal)';
+
