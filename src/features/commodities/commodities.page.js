@@ -213,11 +213,34 @@ function _attachPageListeners(content) {
   }, true);
 
   region?.addEventListener('click', async e => {
+    const kebabBtn   = e.target.closest('.card-kebab-btn');
     const stockBtn   = e.target.closest('[data-filter-commodity]');
     const graphBtn   = e.target.closest('.graph-commodity-btn');
     const editBtn    = e.target.closest('.edit-commodity-btn');
     const deleteBtn  = e.target.closest('.delete-commodity-btn');
     const previewBox = e.target.closest('.commodity-card__media[data-preview-id]');
+
+    if (kebabBtn) {
+      e.stopPropagation();
+      const wrap = kebabBtn.closest('.card-kebab-wrap');
+      const dropdown = wrap?.querySelector('.card-kebab-dropdown');
+      const isOpen = dropdown?.classList.contains('is-open');
+
+      document.querySelectorAll('.card-kebab-dropdown.is-open').forEach(el => {
+        if (el !== dropdown) {
+          el.classList.remove('is-open');
+          el.previousElementSibling?.setAttribute('aria-expanded', 'false');
+          el.previousElementSibling?.classList.remove('is-active');
+        }
+      });
+
+      if (dropdown) {
+        dropdown.classList.toggle('is-open', !isOpen);
+        kebabBtn.setAttribute('aria-expanded', String(!isOpen));
+        kebabBtn.classList.toggle('is-active', !isOpen);
+      }
+      return;
+    }
 
     if (stockBtn) {
       e.stopPropagation();
@@ -236,6 +259,7 @@ function _attachPageListeners(content) {
 
     if (editBtn) {
       e.stopPropagation();
+      editBtn.closest('.card-kebab-dropdown')?.classList.remove('is-open');
       const commodity = _commodities.find(c => c.id === editBtn.dataset.id);
       if (commodity) _openEditModal(commodity);
       return;
@@ -243,6 +267,7 @@ function _attachPageListeners(content) {
 
     if (deleteBtn) {
       e.stopPropagation();
+      deleteBtn.closest('.card-kebab-dropdown')?.classList.remove('is-open');
       const commodity = _commodities.find(c => c.id === deleteBtn.dataset.id);
       if (commodity) _handleDelete(commodity);
       return;
@@ -262,6 +287,17 @@ function _attachPageListeners(content) {
       if (descRow) {
         descRow.style.display = descRow.style.display === 'none' ? 'table-row' : 'none';
       }
+    }
+  });
+
+  // Close kebab menus on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.card-kebab-wrap')) {
+      document.querySelectorAll('.card-kebab-dropdown.is-open').forEach(el => {
+        el.classList.remove('is-open');
+        el.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        el.previousElementSibling?.classList.remove('is-active');
+      });
     }
   });
 }

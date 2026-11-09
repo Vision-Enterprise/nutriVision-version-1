@@ -245,24 +245,39 @@ export function renderCards(commodities, stockMap = {}) {
                   <span class="icon icon--sm" style="font-size: 16px;">account_tree</span>
                   Graph
                 </button>
-                <button
-                  class="btn-table-icon edit-commodity-btn"
-                  data-id="${c.id}"
-                  aria-label="Edit ${escapeHtml(c.name)}"
-                  title="Edit ${escapeHtml(c.name)}"
-                  type="button"
-                >
-                  <span class="icon" aria-hidden="true">edit</span>
-                </button>
-                <button
-                  class="btn-table-icon btn-table-icon--danger delete-commodity-btn"
-                  data-id="${c.id}"
-                  aria-label="Archive ${escapeHtml(c.name)}"
-                  title="Archive ${escapeHtml(c.name)}"
-                  type="button"
-                >
-                  <span class="icon" aria-hidden="true">delete</span>
-                </button>
+                <div class="card-kebab-wrap">
+                  <button
+                    class="btn-table-icon card-kebab-btn"
+                    data-kebab-id="${c.id}"
+                    aria-label="More actions for ${escapeHtml(c.name)}"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    title="More actions"
+                    type="button"
+                  >
+                    <span class="icon" aria-hidden="true">more_vert</span>
+                  </button>
+                  <div class="card-kebab-dropdown" id="kebab-menu-${c.id}" role="menu" aria-label="Commodity actions">
+                    <button
+                      class="card-kebab-item edit-commodity-btn"
+                      data-id="${c.id}"
+                      type="button"
+                      role="menuitem"
+                    >
+                      <span class="icon" aria-hidden="true">edit</span>
+                      <span>Edit Commodity</span>
+                    </button>
+                    <button
+                      class="card-kebab-item card-kebab-item--danger delete-commodity-btn"
+                      data-id="${c.id}"
+                      type="button"
+                      role="menuitem"
+                    >
+                      <span class="icon" aria-hidden="true">delete</span>
+                      <span>Archive Commodity</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </article>
