@@ -25,7 +25,13 @@ let _filterSearch = '';
 // ── Entry Point ─────────────────────────────────────────────────────────────
 export async function renderBatchesPage(profile) {
   _profile      = profile;
-  _filterComm   = 'all';
+
+  const hash = window.location.hash || '';
+  const queryPart = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
+  const searchParams = new URLSearchParams(queryPart);
+  const targetComm = searchParams.get('commodity');
+
+  _filterComm   = targetComm || 'all';
   _filterStatus = 'all';
   _filterSearch = '';
 

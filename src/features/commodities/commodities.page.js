@@ -213,10 +213,20 @@ function _attachPageListeners(content) {
   }, true);
 
   region?.addEventListener('click', async e => {
+    const stockBtn   = e.target.closest('[data-filter-commodity]');
     const graphBtn   = e.target.closest('.graph-commodity-btn');
     const editBtn    = e.target.closest('.edit-commodity-btn');
     const deleteBtn  = e.target.closest('.delete-commodity-btn');
     const previewBox = e.target.closest('.commodity-card__media[data-preview-id]');
+
+    if (stockBtn) {
+      e.stopPropagation();
+      const commId = stockBtn.dataset.filterCommodity;
+      if (commId) {
+        window.location.hash = `#/batches?commodity=${encodeURIComponent(commId)}`;
+      }
+      return;
+    }
 
     if (graphBtn) {
       e.stopPropagation();

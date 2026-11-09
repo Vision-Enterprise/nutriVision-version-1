@@ -191,8 +191,13 @@ export function renderCards(commodities, stockMap = {}) {
                 </div>
               </div>
 
-              <!-- Live Active Stock Snapshot -->
-              <div class="commodity-card__stock ${stock.activeBatchCount > 0 ? 'commodity-card__stock--active' : ''}">
+              <!-- Live Active Stock Snapshot (Click to filter Batches) -->
+              <button
+                type="button"
+                class="commodity-card__stock commodity-card__stock-btn ${stock.activeBatchCount > 0 ? 'commodity-card__stock--active' : ''}"
+                data-filter-commodity="${c.id}"
+                title="View batches for ${escapeHtml(c.name)} in Batch Management"
+              >
                 <div style="display:flex; align-items:center; gap:6px; min-width:0;">
                   <span class="icon" style="font-size:15px; color:${stock.activeBatchCount > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)'};">inventory_2</span>
                   ${stock.activeBatchCount > 0
@@ -202,13 +207,16 @@ export function renderCards(commodities, stockMap = {}) {
                        </span>`
                     : `<span style="color:var(--color-text-muted);">0 active stock</span>`}
                 </div>
-                ${stock.urgentBatchCount > 0
-                  ? `<span style="padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#fef3c7; color:#b45309; border:1px solid #fde68a; white-space:nowrap;"
-                           title="${stock.urgentBatchCount} active batch(es) Near Expiry or Expired">
-                       ${stock.urgentBatchCount} urgent
-                     </span>`
-                  : ''}
-              </div>
+                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                  ${stock.urgentBatchCount > 0
+                    ? `<span style="padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#fef3c7; color:#b45309; border:1px solid #fde68a; white-space:nowrap;"
+                             title="${stock.urgentBatchCount} active batch(es) Near Expiry or Expired">
+                         ${stock.urgentBatchCount} urgent
+                       </span>`
+                    : ''}
+                  <span class="icon commodity-card__stock-arrow" style="font-size:14px; color:var(--color-text-muted);" aria-hidden="true">arrow_forward</span>
+                </div>
+              </button>
 
               <!-- Compact Shelf-Life Threshold Summary -->
               <div style="font-size: 11px; color: var(--color-text-muted); line-height: 1.4;">
@@ -307,9 +315,16 @@ export function renderTable(commodities, stockMap = {}) {
               <td>${escapeHtml(c.category)}</td>
               <td>${escapeHtml(c.unit)}</td>
               <td style="font-size: var(--font-size-sm); white-space: nowrap;">
-                ${stock.activeBatchCount > 0
-                  ? `<strong>${stock.totalUnits.toLocaleString()}</strong> ${escapeHtml(c.unit)} <span style="color:var(--color-text-muted);">(${stock.activeBatchCount})</span>`
-                  : '<span style="color:var(--color-text-muted);">0</span>'}
+                <button
+                  type="button"
+                  class="commodity-table-stock-btn"
+                  data-filter-commodity="${c.id}"
+                  title="View batches for ${escapeHtml(c.name)} in Batch Management"
+                >
+                  ${stock.activeBatchCount > 0
+                    ? `<strong>${stock.totalUnits.toLocaleString()}</strong> ${escapeHtml(c.unit)} <span style="color:var(--color-text-muted);">(${stock.activeBatchCount})</span> <span class="icon" style="font-size:13px; vertical-align:middle; margin-left:2px; opacity:0.7;">arrow_forward</span>`
+                    : '<span style="color:var(--color-text-muted);">0 active stock</span>'}
+                </button>
               </td>
               <td style="color: var(--color-text-muted); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; white-space: nowrap;">
                 ${formatShortDate(c.created_at)}

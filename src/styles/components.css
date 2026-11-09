@@ -2017,6 +2017,51 @@
   font-size: 12px;
 }
 
+.commodity-card__stock-btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.commodity-card__stock-btn:hover {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.40);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.commodity-card__stock-btn:hover .commodity-card__stock-arrow {
+  color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+.commodity-card__stock-arrow {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.commodity-table-stock-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.commodity-table-stock-btn:hover {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.3);
+  color: var(--color-primary-dark);
+}
+
 .commodity-card__stock--active {
   background: rgba(5, 150, 105, 0.05);
   border-color: rgba(5, 150, 105, 0.20);
