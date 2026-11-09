@@ -15,16 +15,10 @@ export function renderDefectsLayout() {
         </p>
       </div>
 
-      <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
-        <button id="btn-generate-report" class="btn btn-secondary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap;">
-          <span class="icon" style="font-size: 18px;">print</span>
-          Generate Report
-        </button>
-        <button id="btn-log-incident" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; flex-shrink: 0;">
-          <span class="icon" style="font-size: 18px;">add</span>
-          Log Stock Event
-        </button>
-      </div>
+      <button id="btn-log-incident" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; flex-shrink: 0;">
+        <span class="icon" style="font-size: 18px;">add</span>
+        Log Stock Event
+      </button>
     </div>
 
     <!-- ── 3 KPI Cards: Quarantine, Return, Disposed (Dashboard Shape: 28px 0 28px 0) ── -->

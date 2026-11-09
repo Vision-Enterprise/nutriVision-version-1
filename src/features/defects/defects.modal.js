@@ -1,9 +1,10 @@
 /**
  * Defects Module — Log Event & Quarantine Resolution Modals
- * Supports instant phone QR upload with unique collision-free sessions.
+ * Supports on-the-fly PDF Report Generation and collision-free phone QR uploads.
  */
 
 import { fetchActiveBatchesForSelector, logDefectIncident, resolveQuarantineIncident } from './defects.service.js';
+import { showDefectPrintPreview } from './defects.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { supabase } from '../../core/supabase.js';
 
@@ -164,19 +165,19 @@ function _renderLogModal(batches, profile, onSuccess) {
           </select>
         </div>
 
-        <!-- Remarks (Required for Return and Dispose, or Quarantine) -->
+        <!-- Remarks -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="defect-remarks">Remarks / Details <span style="color:var(--color-danger);">*</span></label>
+          <label class="form-label form-label--required" for="defect-remarks">Remarks / Details</label>
           <textarea
             id="defect-remarks"
             class="form-textarea"
             rows="3"
-            placeholder="Required: Explain discovery, reason for hold or return, batch inspection findings..."
+            placeholder="Explain discovery, reason for hold or return, batch inspection findings..."
           ></textarea>
         </div>
 
-        <!-- Photo Evidence (Dynamically SHOWN for Returned / Disposed, HIDDEN for Quarantined) -->
-        <div class="form-group" id="defect-evidence-group" style="display: none;">
+        <!-- Photo Evidence (Default enabled for Quarantined, Returned, and Disposed) -->
+        <div class="form-group" id="defect-evidence-group">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
             <label class="form-label" for="defect-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
             <button id="btn-toggle-defect-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
@@ -242,8 +243,8 @@ function _renderLogModal(batches, profile, onSuccess) {
       ">
         <button id="defect-modal-cancel" class="btn btn-ghost">Cancel</button>
         <button id="defect-modal-generate" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
-          <span class="icon" style="font-size: 18px;">save</span>
-          Log Stock Event
+          <span class="icon" style="font-size: 18px;">picture_as_pdf</span>
+          Generate Report
         </button>
       </div>
     </div>
@@ -255,6 +256,7 @@ function _renderLogModal(batches, profile, onSuccess) {
 
 function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   let selectedBatch = null;
+  let ephemeralImageData = null;
 
   const searchInput    = overlay.querySelector('#defect-batch-search');
   const dropdown       = overlay.querySelector('#defect-batch-dropdown');
@@ -262,7 +264,6 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   const errorEl        = overlay.querySelector('#defect-modal-error');
   const actionSelect   = overlay.querySelector('#defect-action');
   const qtyInput       = overlay.querySelector('#defect-qty');
-  const evidenceGroup  = overlay.querySelector('#defect-evidence-group');
   const fileInput      = overlay.querySelector('#defect-evidence');
   const preview        = overlay.querySelector('#defect-evidence-preview');
   const previewImg     = overlay.querySelector('#defect-evidence-img');
@@ -333,6 +334,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
           if (entry.received === entry.total) {
             const fullDataUrl = entry.parts.join('');
             delete chunkBuffer[id];
+            ephemeralImageData = fullDataUrl;
             previewImg.src = fullDataUrl;
             preview.style.display = 'block';
             if (qrStatus) {
@@ -357,24 +359,12 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     }
   });
 
-  // Dynamic show/hide: Quarantined hides photo; Returned and Disposed show photo & QR!
-  const updateDynamicFields = () => {
-    const act = actionSelect.value;
-    if (act === 'Quarantined') {
-      evidenceGroup.style.display = 'none';
-      stopPhoneRealtime();
-    } else {
-      evidenceGroup.style.display = 'block';
-    }
-  };
-  actionSelect.addEventListener('change', updateDynamicFields);
-  updateDynamicFields();
-
   fileInput?.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
+      ephemeralImageData = e.target.result;
       previewImg.src = e.target.result;
       preview.style.display = 'block';
     };
@@ -382,6 +372,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   });
 
   removeBtn?.addEventListener('click', () => {
+    ephemeralImageData = null;
     fileInput.value = '';
     previewImg.src = '';
     preview.style.display = 'none';
@@ -454,7 +445,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   overlay.querySelector('#defect-modal-close')?.addEventListener('click', closeModal);
   overlay.querySelector('#defect-modal-cancel')?.addEventListener('click', closeModal);
 
-  // Submit button
+  // Generate Report button (saves event, then opens official printable preview with Cancel/Print/Save PDF)
   overlay.querySelector('#defect-modal-generate').addEventListener('click', async () => {
     const classification = overlay.querySelector('#defect-classification').value;
     const qty            = parseInt(qtyInput.value, 10);
@@ -474,7 +465,8 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
       classification,
       quantityAffected: qty,
       actionTaken,
-      remarks
+      remarks,
+      imageData: ephemeralImageData
     };
 
     const submitBtn = overlay.querySelector('#defect-modal-generate');
@@ -485,12 +477,15 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     if (error) {
       _showError(errorEl, 'Error recording event: ' + error);
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span class="icon" style="font-size: 18px;">save</span> Log Stock Event';
+      submitBtn.innerHTML = '<span class="icon" style="font-size: 18px;">picture_as_pdf</span> Generate Report';
       return;
     }
 
     closeModal();
     if (typeof onSuccess === 'function') onSuccess(data, selectedBatch, incidentData);
+
+    // Show PDF preview with Cancel, Print, and Save PDF
+    showDefectPrintPreview(incidentData, selectedBatch, profile, null);
   });
 }
 
@@ -594,8 +589,8 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
 
         <!-- Notes -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="resolve-notes">Resolution Notes / Reason <span style="color:var(--color-danger);">*</span></label>
-          <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="Required: Visual inspection passed, supplier approved return..."></textarea>
+          <label class="form-label form-label--required" for="resolve-notes">Resolution Notes / Reason</label>
+          <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="Visual inspection passed, supplier approved return..."></textarea>
         </div>
 
         <div id="resolve-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
@@ -612,7 +607,7 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
         <button id="btn-resolve-cancel" class="btn btn-ghost">Cancel</button>
         <button id="btn-resolve-confirm" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
           <span class="icon" style="font-size: 18px;">check</span>
-          Confirm Decision
+          <span id="btn-resolve-label">Confirm Restore</span>
         </button>
       </div>
     </div>
@@ -626,6 +621,23 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
   const outcomeSel  = overlay.querySelector('#resolve-outcome');
   const notesInput  = overlay.querySelector('#resolve-notes');
   const confirmBtn  = overlay.querySelector('#btn-resolve-confirm');
+  const btnLabel    = overlay.querySelector('#btn-resolve-label');
+
+  // Dynamic button label based on outcome:
+  // If Restore -> "Confirm Restore"
+  // If Return / Dispose -> "Generate Report"
+  const updateResolveBtn = () => {
+    const outcome = outcomeSel.value;
+    if (outcome === 'Restore') {
+      confirmBtn.querySelector('.icon').textContent = 'check';
+      btnLabel.textContent = 'Confirm Restore';
+    } else {
+      confirmBtn.querySelector('.icon').textContent = 'picture_as_pdf';
+      btnLabel.textContent = 'Generate Report';
+    }
+  };
+  outcomeSel.addEventListener('change', updateResolveBtn);
+  updateResolveBtn();
 
   qtyInput.addEventListener('input', () => {
     const val = parseInt(qtyInput.value, 10) || 0;
@@ -679,11 +691,23 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
     if (error) {
       _showError(errorEl, 'Resolution failed: ' + error);
       confirmBtn.disabled = false;
-      confirmBtn.innerHTML = '<span class="icon" style="font-size: 18px;">check</span> Confirm Decision';
+      updateResolveBtn();
       return;
     }
 
     closeResolveModal();
     if (typeof onSuccess === 'function') onSuccess();
+
+    // If Return or Dispose, show PDF preview with Cancel, Print, and Save PDF
+    if (outcome === 'Return' || outcome === 'Dispose') {
+      const simulatedIncident = {
+        classification: incident.classification || 'Quarantine Resolution',
+        quantityAffected: qty,
+        actionTaken: outcome === 'Return' ? 'Returned' : 'Disposed',
+        remarks: notes,
+        reported_at: new Date().toISOString()
+      };
+      showDefectPrintPreview(simulatedIncident, incident.batches, profile, null);
+    }
   });
 }
