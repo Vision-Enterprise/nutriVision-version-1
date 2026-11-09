@@ -582,7 +582,7 @@ export const MODULE_GUIDES = {
 
   defects: {
     key: 'defects',
-    title: 'Stock Returns & Dispositions',
+    title: 'Defects & Returns',
     icon: 'assignment_return',
     theme: 'green',
     adminOnly: false,

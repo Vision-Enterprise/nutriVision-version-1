@@ -9,7 +9,7 @@ export function renderDefectsLayout() {
   return `
     <div class="page-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap;">
       <div>
-        <h1 class="page-header__title" style="margin: 0;">Stock Returns &amp; Dispositions</h1>
+        <h1 class="page-header__title" style="margin: 0;">Defects &amp; Returns</h1>
         <p class="page-header__subtitle" style="margin-top: 4px; margin-bottom: 0;">
           Log sheet for quarantined stock under review, supplier returns, and condemned inventory disposals.
         </p>

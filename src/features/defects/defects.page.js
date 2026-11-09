@@ -173,3 +173,4 @@ function _updateTabStyles(activeFilter) {
     tab.style.borderColor = isActive ? 'var(--color-primary)' : 'var(--color-border)';
   });
 }
+
