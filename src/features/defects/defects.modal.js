@@ -1,11 +1,11 @@
 /**
  * Defects Module — Log Event & Quarantine Resolution Modals
- * Lightweight SaaS architecture (no base64 database bloat).
+ * Supports instant phone QR upload with unique collision-free sessions.
  */
 
 import { fetchActiveBatchesForSelector, logDefectIncident, resolveQuarantineIncident } from './defects.service.js';
-import { showDefectPrintPreview } from './defects.pdf.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
+import { supabase } from '../../core/supabase.js';
 
 const CLASSIFICATIONS = [
   'Damaged on Delivery / Broken Seal',
@@ -138,7 +138,7 @@ function _renderLogModal(batches, profile, onSuccess) {
           </div>
         </div>
 
-        <!-- Action to Take -->
+        <!-- Action to Take + Quantity -->
         <div class="form-row">
           <div class="form-group">
             <label class="form-label form-label--required" for="defect-action">Action to Take</label>
@@ -164,20 +164,44 @@ function _renderLogModal(batches, profile, onSuccess) {
           </select>
         </div>
 
-        <!-- Remarks -->
+        <!-- Remarks (Required for Return and Dispose, or Quarantine) -->
         <div class="form-group">
-          <label class="form-label form-label--required" for="defect-remarks">Remarks / Details</label>
+          <label class="form-label form-label--required" for="defect-remarks">Remarks / Details <span style="color:var(--color-danger);">*</span></label>
           <textarea
             id="defect-remarks"
             class="form-textarea"
             rows="3"
-            placeholder="Explain discovery, reason for hold or return, or reference memo number..."
+            placeholder="Required: Explain discovery, reason for hold or return, batch inspection findings..."
           ></textarea>
         </div>
 
-        <!-- Photo Evidence (Dynamically HIDDEN when action is Quarantined) -->
+        <!-- Photo Evidence (Dynamically SHOWN for Returned / Disposed, HIDDEN for Quarantined) -->
         <div class="form-group" id="defect-evidence-group" style="display: none;">
-          <label class="form-label" for="defect-evidence">Photo Attachment <span style="color: var(--color-text-muted); font-weight: normal;">(Optional for Slip Printout)</span></label>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <label class="form-label" for="defect-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+            <button id="btn-toggle-defect-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+              <span class="icon" style="font-size: 14px;">qr_code_2</span>
+              <span>Upload via Phone</span>
+            </button>
+          </div>
+
+          <!-- Phone Upload QR Panel -->
+          <div id="defect-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div id="defect-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
+                <span class="icon" style="animation: spin 1s linear infinite; font-size: 20px; color: var(--color-text-muted);">progress_activity</span>
+              </div>
+              <div style="flex: 1; font-size: 12px; line-height: 1.4;">
+                <div style="font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: 2px;">Scan with your Phone Camera</div>
+                <div style="color: var(--color-text-muted);">Dedicated, isolated session. Photo syncs automatically!</div>
+                <div id="defect-phone-sync-status" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--color-primary); font-size: 11px;">
+                  <span style="width: 7px; height: 7px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
+                  <span>Awaiting phone photo...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style="
             border: 2px dashed var(--color-border);
             border-radius: var(--radius-lg);
@@ -188,7 +212,7 @@ function _renderLogModal(batches, profile, onSuccess) {
           " id="defect-evidence-dropzone">
             <input type="file" id="defect-evidence" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
             <span class="icon" style="font-size: 24px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
-            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0;">Optional photo for immediate printable slip preview.</p>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0;">Click or drag &amp; drop to upload image</p>
           </div>
           <div id="defect-evidence-preview" style="display:none; margin-top: var(--space-3); position: relative;">
             <img id="defect-evidence-img" src="" alt="Evidence preview" style="
@@ -219,7 +243,7 @@ function _renderLogModal(batches, profile, onSuccess) {
         <button id="defect-modal-cancel" class="btn btn-ghost">Cancel</button>
         <button id="defect-modal-generate" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
           <span class="icon" style="font-size: 18px;">save</span>
-          Log &amp; Preview Slip
+          Log Stock Event
         </button>
       </div>
     </div>
@@ -231,7 +255,6 @@ function _renderLogModal(batches, profile, onSuccess) {
 
 function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   let selectedBatch = null;
-  let ephemeralImageData = null;
 
   const searchInput    = overlay.querySelector('#defect-batch-search');
   const dropdown       = overlay.querySelector('#defect-batch-dropdown');
@@ -244,14 +267,102 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   const preview        = overlay.querySelector('#defect-evidence-preview');
   const previewImg     = overlay.querySelector('#defect-evidence-img');
   const removeBtn      = overlay.querySelector('#defect-evidence-remove');
+  const qrToggleBtn    = overlay.querySelector('#btn-toggle-defect-qr');
+  const qrPanel        = overlay.querySelector('#defect-phone-qr-panel');
+  const qrContainer    = overlay.querySelector('#defect-qr-container');
+  const qrStatus       = overlay.querySelector('#defect-phone-sync-status');
 
-  // Dynamic show/hide of photo upload based on action
-  // User Rule: If Quarantined -> hide photo evidence!
+  let phoneSessionId   = null;
+  let realtimeChannel  = null;
+  let chunkBuffer      = {};
+
+  async function ensureQRCodeLib() {
+    if (window.QRCode) return true;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/src/assets/libs/qrcode.min.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load local qrcode.min.js'));
+      document.head.appendChild(script);
+    });
+  }
+
+  function stopPhoneRealtime() {
+    if (realtimeChannel) {
+      try { supabase.removeChannel(realtimeChannel); } catch (_) {}
+      realtimeChannel = null;
+    }
+    chunkBuffer = {};
+  }
+
+  // Multi-user safe: each QR code gets a guaranteed unique timestamp + random hash
+  async function initPhoneQR() {
+    if (phoneSessionId) return;
+    try {
+      await ensureQRCodeLib();
+      phoneSessionId = `def-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const cloudScannerBase = isLocalHost ? 'https://nutrivision-mnao.vercel.app' : window.location.origin;
+      const phoneUrl = `${cloudScannerBase}/mobile-scan.html?s=${phoneSessionId}`;
+
+      qrContainer.innerHTML = '';
+      new window.QRCode(qrContainer, {
+        text: phoneUrl,
+        width: 100,
+        height: 100,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.M
+      });
+
+      const topic = `nv-scan-${phoneSessionId}`;
+      realtimeChannel = supabase.channel(topic);
+      realtimeChannel
+        .on('broadcast', { event: 'receipt-chunk' }, (msg) => {
+          const payload = msg?.payload;
+          if (!payload || !payload.id) return;
+          const { id, idx, total, chunk } = payload;
+          if (!chunkBuffer[id]) {
+            chunkBuffer[id] = { parts: new Array(total), received: 0, total };
+          }
+          const entry = chunkBuffer[id];
+          if (entry.parts[idx] === undefined) {
+            entry.parts[idx] = chunk;
+            entry.received += 1;
+          }
+          if (entry.received === entry.total) {
+            const fullDataUrl = entry.parts.join('');
+            delete chunkBuffer[id];
+            previewImg.src = fullDataUrl;
+            preview.style.display = 'block';
+            if (qrStatus) {
+              qrStatus.innerHTML = '<span class="icon" style="font-size: 14px; color: var(--color-primary);">check_circle</span> <span>Photo received from phone!</span>';
+            }
+          }
+        })
+        .subscribe();
+    } catch (err) {
+      console.error('[DefectsModal] Phone QR init error:', err);
+      qrContainer.innerHTML = '<span style="color:var(--color-danger);font-size:11px;">QR Failed</span>';
+    }
+  }
+
+  qrToggleBtn?.addEventListener('click', () => {
+    const isShown = qrPanel.style.display === 'block';
+    qrPanel.style.display = isShown ? 'none' : 'block';
+    qrToggleBtn.style.background = isShown ? '' : 'var(--color-primary-bg, #e8f5ee)';
+    qrToggleBtn.style.color = isShown ? '' : 'var(--color-primary)';
+    if (!isShown) {
+      initPhoneQR();
+    }
+  });
+
+  // Dynamic show/hide: Quarantined hides photo; Returned and Disposed show photo & QR!
   const updateDynamicFields = () => {
     const act = actionSelect.value;
     if (act === 'Quarantined') {
       evidenceGroup.style.display = 'none';
-      ephemeralImageData = null;
+      stopPhoneRealtime();
     } else {
       evidenceGroup.style.display = 'block';
     }
@@ -259,13 +370,11 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   actionSelect.addEventListener('change', updateDynamicFields);
   updateDynamicFields();
 
-  // Image preview (for instant print preview only)
   fileInput?.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      ephemeralImageData = e.target.result;
       previewImg.src = e.target.result;
       preview.style.display = 'block';
     };
@@ -273,7 +382,6 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   });
 
   removeBtn?.addEventListener('click', () => {
-    ephemeralImageData = null;
     fileInput.value = '';
     previewImg.src = '';
     preview.style.display = 'none';
@@ -328,7 +436,6 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     });
   });
 
-  // Close dropdown on outside click
   document.addEventListener('click', e => {
     if (!overlay.querySelector('#defect-batch-search')?.contains(e.target) && !dropdown.contains(e.target)) {
       dropdown.style.display = 'none';
@@ -336,6 +443,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   });
 
   const closeModal = () => {
+    stopPhoneRealtime();
     overlay.remove();
     document.removeEventListener('keydown', handleKeyDown);
   };
@@ -347,7 +455,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   overlay.querySelector('#defect-modal-cancel')?.addEventListener('click', closeModal);
 
   // Submit button
-  overlay.querySelector('#defect-modal-generate').addEventListener('click', () => {
+  overlay.querySelector('#defect-modal-generate').addEventListener('click', async () => {
     const classification = overlay.querySelector('#defect-classification').value;
     const qty            = parseInt(qtyInput.value, 10);
     const actionTaken    = actionSelect.value;
@@ -357,7 +465,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     if (!qty || qty < 1) { _showError(errorEl, 'Quantity affected must be at least 1.'); return; }
     if (qty > selectedBatch.quantity) { _showError(errorEl, `Quantity exceeds batch stock (max: ${selectedBatch.quantity}).`); return; }
     if (!classification) { _showError(errorEl, 'Please select a reason / classification.'); return; }
-    if (!remarks) { _showError(errorEl, 'Remarks / log details are required.'); return; }
+    if (!remarks) { _showError(errorEl, 'Remarks / details are required.'); return; }
 
     errorEl.style.display = 'none';
 
@@ -366,20 +474,23 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
       classification,
       quantityAffected: qty,
       actionTaken,
-      remarks,
-      imageData: ephemeralImageData
+      remarks
     };
 
-    // Show slip preview immediately with confirm action
-    showDefectPrintPreview(incidentData, selectedBatch, profile, async () => {
-      const { data, error } = await logDefectIncident(incidentData, profile);
-      if (error) {
-        await SystemDialog.alert('Error recording event: ' + error, 'Save Failed');
-        return;
-      }
-      closeModal();
-      if (typeof onSuccess === 'function') onSuccess(data, selectedBatch, incidentData);
-    });
+    const submitBtn = overlay.querySelector('#defect-modal-generate');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    const { data, error } = await logDefectIncident(incidentData, profile);
+    if (error) {
+      _showError(errorEl, 'Error recording event: ' + error);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span class="icon" style="font-size: 18px;">save</span> Log Stock Event';
+      return;
+    }
+
+    closeModal();
+    if (typeof onSuccess === 'function') onSuccess(data, selectedBatch, incidentData);
   });
 }
 
@@ -390,13 +501,6 @@ function _showError(el, msg) {
 
 // ─── Resolve Quarantine Modal ─────────────────────────────────────────────────
 
-/**
- * Opens the Quarantine Resolution Modal.
- * Allows partial or full resolution with 3 choices:
- *  - Restore to Active Stock
- *  - Return to Supplier
- *  - Dispose / Condemn
- */
 export function openResolveQuarantineModal(incident, profile, onSuccess) {
   document.getElementById('resolve-modal-overlay')?.remove();
 
@@ -448,7 +552,6 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
       <!-- Modal Body -->
       <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); flex: 1; overflow-y: auto;">
         
-        <!-- Batch & Remaining Info Card -->
         <div style="
           background: var(--color-surface-alt, #f8faf9);
           border: 1px solid var(--color-border);
@@ -491,8 +594,8 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
 
         <!-- Notes -->
         <div class="form-group">
-          <label class="form-label" for="resolve-notes">Resolution Notes / Reason</label>
-          <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="e.g. Visual inspection passed, supplier approved return..."></textarea>
+          <label class="form-label form-label--required" for="resolve-notes">Resolution Notes / Reason <span style="color:var(--color-danger);">*</span></label>
+          <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="Required: Visual inspection passed, supplier approved return..."></textarea>
         </div>
 
         <div id="resolve-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
@@ -524,7 +627,6 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
   const notesInput  = overlay.querySelector('#resolve-notes');
   const confirmBtn  = overlay.querySelector('#btn-resolve-confirm');
 
-  // Dynamic remaining hint
   qtyInput.addEventListener('input', () => {
     const val = parseInt(qtyInput.value, 10) || 0;
     if (val >= remaining) {
@@ -562,6 +664,10 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
     }
     if (qty > remaining) {
       _showError(errorEl, `Cannot resolve more than ${remaining} ${unit}.`);
+      return;
+    }
+    if (!notes) {
+      _showError(errorEl, 'Resolution notes / reasons are required.');
       return;
     }
 

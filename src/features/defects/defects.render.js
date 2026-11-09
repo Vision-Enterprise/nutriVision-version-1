@@ -9,53 +9,53 @@ export function renderDefectsLayout() {
   return `
     <div class="page-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap;">
       <div>
-        <div style="display: flex; align-items: center; gap: var(--space-2);">
-          <h1 class="page-header__title" style="margin: 0;">Stock Returns &amp; Dispositions</h1>
-          <button class="btn btn-ghost" id="btn-guide-defects" title="Module Guide" style="padding: 2px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--color-border); border-radius: var(--radius-full);">
-            <span class="icon" style="font-size: 14px;">help_outline</span>
-            <span>Guide</span>
-          </button>
-        </div>
+        <h1 class="page-header__title" style="margin: 0;">Stock Returns &amp; Dispositions</h1>
         <p class="page-header__subtitle" style="margin-top: 4px; margin-bottom: 0;">
           Log sheet for quarantined stock under review, supplier returns, and condemned inventory disposals.
         </p>
       </div>
 
-      <button id="btn-log-incident" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; flex-shrink: 0;">
-        <span class="icon" style="font-size: 18px;">add</span>
-        Log Stock Event
-      </button>
+      <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+        <button id="btn-generate-report" class="btn btn-secondary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap;">
+          <span class="icon" style="font-size: 18px;">print</span>
+          Generate Report
+        </button>
+        <button id="btn-log-incident" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; flex-shrink: 0;">
+          <span class="icon" style="font-size: 18px;">add</span>
+          Log Stock Event
+        </button>
+      </div>
     </div>
 
-    <!-- ── 3 KPI Cards: Quarantine, Return, Disposed ───────────────────── -->
+    <!-- ── 3 KPI Cards: Quarantine, Return, Disposed (Dashboard Shape: 28px 0 28px 0) ── -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
       <!-- 1. Quarantined -->
-      <div class="stat-card" style="border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);">
+      <div class="stat-card">
         <div class="stat-card__label" style="display: flex; align-items: center; justify-content: space-between;">
           <span>Quarantined</span>
           <span class="icon" style="font-size: 18px; color: #d97706;">visibility</span>
         </div>
-        <div class="stat-card__value" id="kpi-quarantined" style="font-size: 26px; margin-top: 6px; color: #d97706;">0</div>
+        <div class="stat-card__value" id="kpi-quarantined" style="color: #d97706;">0</div>
         <div class="stat-card__footer">Units under active observation</div>
       </div>
 
       <!-- 2. Returned -->
-      <div class="stat-card" style="border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);">
+      <div class="stat-card">
         <div class="stat-card__label" style="display: flex; align-items: center; justify-content: space-between;">
           <span>Returned</span>
           <span class="icon" style="font-size: 18px; color: #0284c7;">assignment_return</span>
         </div>
-        <div class="stat-card__value" id="kpi-returned" style="font-size: 26px; margin-top: 6px; color: #0284c7;">0</div>
+        <div class="stat-card__value" id="kpi-returned" style="color: #0284c7;">0</div>
         <div class="stat-card__footer">Units returned to supplier / source</div>
       </div>
 
       <!-- 3. Disposed -->
-      <div class="stat-card" style="border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);">
+      <div class="stat-card">
         <div class="stat-card__label" style="display: flex; align-items: center; justify-content: space-between;">
           <span>Disposed</span>
           <span class="icon" style="font-size: 18px; color: #dc2626;">delete_outline</span>
         </div>
-        <div class="stat-card__value" id="kpi-disposed" style="font-size: 26px; margin-top: 6px; color: #dc2626;">0</div>
+        <div class="stat-card__value" id="kpi-disposed" style="color: #dc2626;">0</div>
         <div class="stat-card__footer">Units condemned / written off</div>
       </div>
     </div>
@@ -148,8 +148,8 @@ export function renderIncidentRows(incidents = [], currentFilter = 'Quarantined'
     if (currentFilter === 'Quarantined') {
       const remaining = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
       const initial   = inc.quantity_affected;
-      
-      const qtySub = remaining < initial 
+
+      const qtySub = remaining < initial
         ? `<span style="font-size: 10px; color: var(--color-text-muted);">${remaining} of ${initial} remaining</span>`
         : `<span style="font-size: 10px; color: #d97706; font-weight: 500;">Active Hold</span>`;
 
@@ -164,19 +164,11 @@ export function renderIncidentRows(incidents = [], currentFilter = 'Quarantined'
         <button class="btn-table-action btn-resolve-quarantine" data-id="${inc.id}" type="button" style="color: var(--color-primary); font-weight: 600;" title="Resolve quarantined stock (Restore, Return, or Dispose)">
           <span class="icon icon--sm" style="font-size: 15px;">tune</span> Resolve
         </button>
-        <button class="btn-table-action btn-view-incident-pdf" data-id="${inc.id}" type="button" title="View / Print Document Slip">
-          <span class="icon icon--sm" style="font-size: 15px;">description</span> Slip
-        </button>
       `;
     } else {
       const color = currentFilter === 'Returned' ? '#0284c7' : '#dc2626';
       qtyDisplay = `<span style="font-weight: var(--font-weight-bold); font-size: 13px; color: ${color};">${inc.quantity_affected} ${unit}</span>`;
-
-      actionButtons = `
-        <button class="btn-table-action btn-view-incident-pdf" data-id="${inc.id}" type="button" title="View / Print Document Slip">
-          <span class="icon icon--sm" style="font-size: 15px;">description</span> View Slip
-        </button>
-      `;
+      actionButtons = `<span style="color: var(--color-text-subtle); font-size: 11px;">Recorded</span>`;
     }
 
     return `

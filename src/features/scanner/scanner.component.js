@@ -538,7 +538,8 @@ export class ScannerComponent {
       await this.ensureQRCodeLib();
 
       // Always use Instant Cross-Network QR via Vercel + Supabase Realtime (works across any Wi-Fi or Mobile Data)
-      this.mobileSessionId = Math.random().toString(36).slice(2, 10);
+      // Collision-safe unique timestamp + random entropy for multi-user safety
+      this.mobileSessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
       this.lastProcessedImageUrl = null;
       this.isProcessingMobile = false;
       this.mobileScanCount = 0;
