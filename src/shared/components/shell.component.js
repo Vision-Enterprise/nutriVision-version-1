@@ -181,10 +181,10 @@ export function renderShell(profile, onLogout) {
             data-route="defects"
             id="nav-defects"
             type="button"
-            aria-label="Defect and Quarantine Log"
+            aria-label="Defects and Returns"
           >
-            <span class="icon" aria-hidden="true">warning</span>
-            <span class="sidebar__nav-text">Defect Log</span>
+            <span class="icon" aria-hidden="true">assignment_return</span>
+            <span class="sidebar__nav-text">Defects &amp; Returns</span>
           </button>
 
           ${isAdmin ? `

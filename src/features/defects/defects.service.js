@@ -41,7 +41,7 @@ export async function fetchActiveBatchesForSelector() {
 
 /**
  * Fetch all defect incidents, newest first, with batch + commodity info.
- * @param {'all'|'Disposed'|'Quarantined'} filter
+ * @param {'all'|'Returned'|'Spoiled'|'Quarantined'|'Disposed'} filter
  */
 export async function fetchDefectIncidents(filter = 'all') {
   try {
@@ -53,14 +53,10 @@ export async function fetchDefectIncidents(filter = 'all') {
         scope, remaining_quarantined,
         batches!inner (
           id, batch_number, quantity, commodity_id, delivery_date, expiration_date, supplier, created_at,
-          commodities!inner ( id, name, commodity_code, unit )
+          commodities!inner ( id, name, commodity_code, unit, category )
         )
       `)
       .order('reported_at', { ascending: false });
-
-    if (filter !== 'all') {
-      query = query.eq('action_taken', filter);
-    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -77,13 +73,44 @@ export async function fetchDefectIncidents(filter = 'all') {
     const batchList = (data || []).map(i => i.batches).filter(Boolean);
     await upgradeLegacyBatchCodes(batchList);
 
-    const incidents = (data || []).map(i => ({
-      ...i,
-      reporter_name: nameMap[i.reported_by] || 'Unknown'
-    }));
+    const incidents = (data || []).map(i => {
+      let resolvedAction = i.action_taken;
+      if (i.action_taken === 'Returned' || i.action_taken === 'Spoiled') {
+        resolvedAction = i.action_taken;
+      } else if (i.remarks && i.remarks.startsWith('[Action: Returned]')) {
+        resolvedAction = 'Returned';
+      } else if (i.remarks && i.remarks.startsWith('[Action: Spoiled]')) {
+        resolvedAction = 'Spoiled';
+      }
 
-    console.log(`${MODULE} fetchDefectIncidents [${filter}]: ${incidents.length} rows`);
-    return { data: incidents, error: null };
+      // Clean display remarks if action tag was prepended
+      let cleanRemarks = i.remarks || '';
+      if (cleanRemarks.startsWith('[Action: Returned]\n')) {
+        cleanRemarks = cleanRemarks.replace('[Action: Returned]\n', '');
+      } else if (cleanRemarks.startsWith('[Action: Spoiled]\n')) {
+        cleanRemarks = cleanRemarks.replace('[Action: Spoiled]\n', '');
+      }
+
+      return {
+        ...i,
+        resolved_action: resolvedAction,
+        display_remarks: cleanRemarks,
+        reporter_name:   nameMap[i.reported_by] || 'Unknown'
+      };
+    });
+
+    const filtered = filter === 'all'
+      ? incidents
+      : incidents.filter(i => {
+          if (filter === 'Returned') return i.resolved_action === 'Returned';
+          if (filter === 'Spoiled')  return i.resolved_action === 'Spoiled';
+          if (filter === 'Quarantined') return i.resolved_action === 'Quarantined';
+          if (filter === 'Disposed') return i.resolved_action === 'Disposed';
+          return i.resolved_action === filter || i.action_taken === filter;
+        });
+
+    console.log(`${MODULE} fetchDefectIncidents [${filter}]: ${filtered.length} rows`);
+    return { data: filtered, error: null };
   } catch (err) {
     console.error(`${MODULE} fetchDefectIncidents:`, err);
     return { data: [], error: 'Failed to load defect incidents.' };
@@ -94,47 +121,88 @@ export async function fetchDefectIncidents(filter = 'all') {
 
 /**
  * Log a defect incident and update the batch status.
- * Called ONLY after user confirms print in the preview modal.
+ * Supports:
+ *   - 'Returned' (Returned to LGU / Supplier)
+ *   - 'Spoiled'  (In-House Spoilage / Condemned for Nutribun & kitchen prep)
+ *   - 'Quarantined' & 'Disposed' (legacy compatibility)
  *
- * @param {{
- *   batchId: string,
- *   classification: string,
- *   quantityAffected: number,
- *   actionTaken: 'Dispose'|'Quarantine'|'Dispose Entire Batch'|'Quarantine Entire Batch',
- *   remarks: string
- * }} incidentData
- * @param {Object} profile - logged-in user profile
- * @returns {Promise<{ data: Object|null, error: string|null }>}
+ * Automatically falls back to DB-supported actions with metadata tag
+ * if Supabase constraint hasn't been migrated yet.
  */
 export async function logDefectIncident(incidentData, profile) {
   const { batchId, classification, quantityAffected, actionTaken, remarks, imageData } = incidentData;
 
-  const dbActionTaken = actionTaken.includes('Dispose') ? 'Disposed' : 'Quarantined';
-  const scope = actionTaken.includes('Entire Batch') ? 'entire_batch' : 'partial';
-  const remainingQuarantined = dbActionTaken === 'Quarantined' ? quantityAffected : null;
+  const lowerAction   = String(actionTaken || '').toLowerCase();
+  const isEntireBatch = lowerAction.includes('entire');
+  const scope         = isEntireBatch ? 'entire_batch' : 'partial';
+
+  let primaryAction = 'Returned';
+  if (lowerAction.includes('spoil')) {
+    primaryAction = 'Spoiled';
+  } else if (lowerAction.includes('quarantin')) {
+    primaryAction = 'Quarantined';
+  } else if (lowerAction.includes('dispos')) {
+    primaryAction = 'Disposed';
+  } else {
+    primaryAction = 'Returned';
+  }
+
+  const remainingQuarantined = primaryAction === 'Quarantined' ? quantityAffected : null;
+  let finalRemarks = remarks ? String(remarks).trim() : null;
 
   try {
-    // 1. Insert the incident record
-    const { data: incident, error: insertErr } = await supabase
+    // 1. Try to insert with primaryAction
+    let incident = null;
+    const { data: directData, error: insertErr } = await supabase
       .from('defect_incidents')
       .insert({
-        batch_id:          batchId,
+        batch_id:              batchId,
         classification,
-        quantity_affected: quantityAffected,
-        action_taken:      dbActionTaken,
+        quantity_affected:     quantityAffected,
+        action_taken:          primaryAction,
         scope,
         remaining_quarantined: remainingQuarantined,
-        remarks:           remarks || null,
-        evidence_url:      imageData || null,
-        reported_by:       profile.id,
-        reported_at:       new Date().toISOString(),
+        remarks:               finalRemarks,
+        evidence_url:          imageData || null,
+        reported_by:           profile.id,
+        reported_at:           new Date().toISOString(),
       })
       .select()
       .single();
 
-    if (insertErr) throw insertErr;
+    if (insertErr) {
+      // Check if constraint error (table check constraint rejects 'Returned' or 'Spoiled')
+      const isConstraintErr = insertErr.code === '23514' || String(insertErr.message).includes('defect_incidents_action_taken_check');
+      if (isConstraintErr) {
+        console.warn(`${MODULE} Migration 13 pending in DB. Falling back to Disposed with [Action: ${primaryAction}] metadata.`);
+        const fallbackDbAction = primaryAction === 'Quarantined' ? 'Quarantined' : 'Disposed';
+        const taggedRemarks = `[Action: ${primaryAction}]\n${finalRemarks || ''}`.trim();
+        const retry = await supabase
+          .from('defect_incidents')
+          .insert({
+            batch_id:              batchId,
+            classification,
+            quantity_affected:     quantityAffected,
+            action_taken:          fallbackDbAction,
+            scope,
+            remaining_quarantined: fallbackDbAction === 'Quarantined' ? quantityAffected : null,
+            remarks:               taggedRemarks,
+            evidence_url:          imageData || null,
+            reported_by:           profile.id,
+            reported_at:           new Date().toISOString(),
+          })
+          .select()
+          .single();
+        if (retry.error) throw retry.error;
+        incident = retry.data;
+      } else {
+        throw insertErr;
+      }
+    } else {
+      incident = directData;
+    }
 
-    // 2. Fetch current quantity to compute remainder
+    // 2. Update batch inventory quantity and status
     const { data: current, error: fetchErr } = await supabase
       .from('batches')
       .select('quantity, record_status')
@@ -143,15 +211,13 @@ export async function logDefectIncident(incidentData, profile) {
 
     if (fetchErr) throw fetchErr;
 
-    // Calculate new quantity
-    const newQuantity = scope === 'entire_batch' 
-      ? 0 
+    const newQuantity = scope === 'entire_batch'
+      ? 0
       : Math.max(0, (current.quantity || 0) - quantityAffected);
 
-    // Calculate new status
     let newStatus = current.record_status;
     if (newQuantity === 0 || scope === 'entire_batch') {
-      newStatus = dbActionTaken; // 'Disposed' or 'Quarantined'
+      newStatus = primaryAction === 'Quarantined' ? RECORD_STATUS.QUARANTINED : RECORD_STATUS.DISPOSED;
     } else {
       newStatus = RECORD_STATUS.ACTIVE;
     }
@@ -163,20 +229,20 @@ export async function logDefectIncident(incidentData, profile) {
 
     if (updateErr) throw updateErr;
 
-    // 3. Audit log (best-effort, non-blocking)
+    // 3. Audit log (best-effort)
     try {
       await supabase.from('audit_logs').insert({
         user_id:     profile.id,
         action:      AUDIT_ACTIONS.FLAG_DEFECT,
         entity_type: 'batch',
         entity_id:   batchId,
-        description: `${actionTaken} batch. Classification: ${classification}. Qty affected: ${quantityAffected}.`,
+        description: `${primaryAction} batch (${scope}). Classification: ${classification}. Qty affected: ${quantityAffected}.`,
       });
     } catch (auditErr) {
       console.warn(`${MODULE} audit log failed (non-blocking):`, auditErr);
     }
 
-    console.log(`${MODULE} logDefectIncident: incident ${incident.id} logged, batch ${batchId} → ${newStatus}`);
+    console.log(`${MODULE} logDefectIncident: incident ${incident?.id} logged (${primaryAction}), batch ${batchId} → ${newStatus}`);
     return { data: incident, error: null };
   } catch (err) {
     console.error(`${MODULE} logDefectIncident:`, err);

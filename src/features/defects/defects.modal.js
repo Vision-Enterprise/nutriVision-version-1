@@ -1,26 +1,27 @@
 /**
- * Defects Module — Log Incident Modal
+ * Defects Module — Log Incident & Return Modal
  * Searchable batch selector → batch info card → form → print preview.
  */
 
 import { fetchActiveBatchesForSelector } from './defects.service.js';
 import { showDefectPrintPreview, getDefectPdfFileName } from './defects.pdf.js';
-import { logDefectIncident } from './defects.service.js';
+import { logDefectIncident, restoreFromQuarantine } from './defects.service.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { supabase } from '../../core/supabase.js';
 
 const CLASSIFICATIONS = [
-  'Damaged Packaging / Torn',
-  'Contamination / Spoilage',
-  'Pest Infestation',
-  'DOH Recall / Safety Hold',
-  'Expired Stock',
+  'In-House Baking Spoilage / Mold',
+  'Damaged on Delivery / Broken Seal',
+  'Compromised Packaging / Tears',
+  'Expired Prior to Distribution',
+  'Pest / Water Contamination',
+  'DOH / FDA Quality Recall',
   'Physical Damage',
-  'Other',
+  'Other Quality Defect',
 ];
 
 /**
- * Opens the Log Incident modal.
+ * Opens the Log Incident & Return modal.
  * @param {Object}   profile    - logged-in user
  * @param {Function} onSuccess  - called after incident is confirmed & saved
  */
@@ -53,7 +54,7 @@ function _renderModal(batches, profile, onSuccess) {
     <div style="
       background: var(--color-surface, #fff);
       border-radius: var(--radius-xl, 16px);
-      width: 100%; max-width: 560px;
+      width: 100%; max-width: 580px;
       max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
       overflow: hidden;
@@ -68,14 +69,14 @@ function _renderModal(batches, profile, onSuccess) {
         <div style="display: flex; align-items: flex-start; gap: var(--space-4);">
           <div style="
             width: 44px; height: 44px; border-radius: var(--radius-full); flex-shrink: 0;
-            background: #fde8e8; display: flex; align-items: center; justify-content: center;
+            background: #e0f2fe; display: flex; align-items: center; justify-content: center;
           ">
-            <span class="icon" style="color: #c62828; font-size: 22px;">report</span>
+            <span class="icon" style="color: #0284c7; font-size: 22px;">assignment_return</span>
           </div>
           <div>
-            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Report Defective Stock</h2>
+            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Log Defect &amp; Return</h2>
             <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 0;">
-              Log damaged or recalled commodities to remove them from active inventory.
+              Record damaged commodities to deduct from active stock and generate an official LGU turnover receipt or spoilage slip.
             </p>
           </div>
         </div>
@@ -132,7 +133,7 @@ function _renderModal(batches, profile, onSuccess) {
           border: 1px solid var(--color-border);
           border-radius: var(--radius-lg);
           padding: var(--space-4);
-          display: none; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4);
+          grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4);
         ">
           <div>
             <div style="font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 4px;">Target Batch</div>
@@ -167,11 +168,13 @@ function _renderModal(batches, profile, onSuccess) {
           <div class="form-group">
             <label class="form-label form-label--required" for="defect-action">Action to Take</label>
             <select id="defect-action" class="form-select">
-              <option value="Dispose">Dispose (Partial/Full)</option>
-              <option value="Quarantine">Quarantine (Partial/Full)</option>
-              <option value="Dispose Entire Batch">Dispose Entire Batch</option>
-              <option value="Quarantine Entire Batch">Quarantine Entire Batch</option>
+              <option value="Returned">Return to LGU (GSO) / Supplier</option>
+              <option value="Spoiled">In-House Spoilage / Condemned (Nutribun)</option>
+              <option value="Return Entire Batch">Return Entire Batch to LGU / Supplier</option>
+              <option value="Condemn Entire Batch">Condemn Entire Batch (In-House Spoilage)</option>
+              <option value="Quarantined">Hold / Under Inspection</option>
             </select>
+            <div id="defect-action-hint" style="margin-top: 4px; font-size: 11px;"></div>
           </div>
         </div>
 
@@ -182,7 +185,7 @@ function _renderModal(batches, profile, onSuccess) {
             id="defect-remarks"
             class="form-textarea"
             rows="3"
-            placeholder="Explain how the damage was discovered or attach DOH memo reference number..."
+            placeholder="Explain how the damage was discovered, batch delivery context, or attach DOH memo reference number..."
           ></textarea>
         </div>
 
@@ -196,7 +199,7 @@ function _renderModal(batches, profile, onSuccess) {
             </button>
           </div>
 
-          <!-- Phone Upload QR Panel (toggled on demand) -->
+          <!-- Phone Upload QR Panel -->
           <div id="defect-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
             <div style="display: flex; gap: 14px; align-items: center;">
               <div id="defect-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
@@ -212,6 +215,7 @@ function _renderModal(batches, profile, onSuccess) {
               </div>
             </div>
           </div>
+
           <div style="
             border: 2px dashed var(--color-border);
             border-radius: var(--radius-lg);
@@ -224,8 +228,9 @@ function _renderModal(batches, profile, onSuccess) {
             <input type="file" id="defect-evidence" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
             <span class="icon" style="font-size: 28px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
             <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0;">Click or drag &amp; drop to upload image</p>
-            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 4px 0 0;">JPG, PNG, WEBP — Image will be embedded in the PDF report.</p>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 4px 0 0;">JPG, PNG, WEBP — Image will be embedded in the official PDF slip.</p>
           </div>
+
           <!-- Preview -->
           <div id="defect-evidence-preview" style="display:none; margin-top: var(--space-3); position: relative;">
             <img id="defect-evidence-img" src="" alt="Evidence preview" style="
@@ -256,8 +261,8 @@ function _renderModal(batches, profile, onSuccess) {
       ">
         <button id="defect-modal-cancel" class="btn btn-ghost">Cancel</button>
         <button id="defect-modal-generate" class="btn btn-primary" style="display: flex; align-items: center; gap: var(--space-2);">
-          <span class="icon" style="font-size: 18px;">picture_as_pdf</span>
-          Generate PDF
+          <span class="icon" style="font-size: 18px;">assignment_turned_in</span>
+          Log Defect &amp; Review Slip
         </button>
       </div>
     </div>
@@ -507,11 +512,11 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
   // Close on Cancel button
   overlay.querySelector('#defect-modal-cancel')?.addEventListener('click', closeModal);
 
-  // ── Generate PDF ───────────────────────────────────────────────────────────
+  // ── Submit & Review Slip ──────────────────────────────────────────────────
   overlay.querySelector('#defect-modal-generate').addEventListener('click', () => {
     const classification = overlay.querySelector('#defect-classification').value;
     const qty            = parseInt(overlay.querySelector('#defect-qty').value, 10);
-    const action         = overlay.querySelector('#defect-action').value;
+    const rawAction      = overlay.querySelector('#defect-action').value;
     const remarks        = overlay.querySelector('#defect-remarks').value.trim();
 
     // Validate
@@ -523,9 +528,31 @@ function _bindModalEvents(overlay, batches, profile, onSuccess) {
 
     errorEl.style.display = 'none';
 
-    const incidentData = { batchId: selectedBatch.id, classification, quantityAffected: qty, actionTaken: action, remarks, imageData };
+    // Normalize Action & Scope
+    let actionTaken = rawAction;
+    let scope       = 'partial';
 
-    // Open print preview — DB write happens only on confirm
+    if (rawAction === 'Return Entire Batch') {
+      actionTaken = 'Returned';
+      scope       = 'entire_batch';
+    } else if (rawAction === 'Condemn Entire Batch') {
+      actionTaken = 'Spoiled';
+      scope       = 'entire_batch';
+    } else if (qty >= selectedBatch.quantity) {
+      scope       = 'entire_batch';
+    }
+
+    const incidentData = {
+      batchId: selectedBatch.id,
+      classification,
+      quantityAffected: qty,
+      actionTaken,
+      scope,
+      remarks,
+      imageData
+    };
+
+    // Open print preview — DB write happens only on confirm in the slip modal
     showDefectPrintPreview(incidentData, selectedBatch, profile, async () => {
       const { data, error } = await logDefectIncident(incidentData, profile);
       if (error) {
@@ -552,6 +579,32 @@ function _showBatchInfo(infoEl, batch, overlay) {
   if (qtyHint) qtyHint.textContent = `Max available: ${batch.quantity}`;
   const qtyInput = overlay.querySelector('#defect-qty');
   if (qtyInput) qtyInput.max = batch.quantity;
+
+  // Intelligent Nutribun / In-House Bakery detection
+  const commName = (batch.commodities?.name || '').toLowerCase();
+  const commCat  = (batch.commodities?.category || '').toLowerCase();
+  const isNutribun = commName.includes('nutribun') || commCat.includes('bakery') || commCat.includes('perishable');
+  const actionSelect = overlay.querySelector('#defect-action');
+  const classificationSelect = overlay.querySelector('#defect-classification');
+  const actionHint = overlay.querySelector('#defect-action-hint');
+
+  if (isNutribun) {
+    actionSelect.value = 'Spoiled';
+    if (!classificationSelect.value) {
+      classificationSelect.value = 'In-House Baking Spoilage / Mold';
+    }
+    if (actionHint) {
+      actionHint.innerHTML = `<span style="color: #b45309; display: flex; align-items: center; gap: 4px;"><span class="icon" style="font-size: 14px;">bakery_dining</span> In-house bakery batch: Logged as kitchen spoilage.</span>`;
+    }
+  } else {
+    actionSelect.value = 'Returned';
+    if (!classificationSelect.value) {
+      classificationSelect.value = 'Damaged on Delivery / Broken Seal';
+    }
+    if (actionHint) {
+      actionHint.innerHTML = `<span style="color: #0369a1; display: flex; align-items: center; gap: 4px;"><span class="icon" style="font-size: 14px;">assignment_return</span> Procured commodity: Official LGU GSO Property Return Slip.</span>`;
+    }
+  }
 }
 
 function _hideBatchInfo(infoEl) {
@@ -602,8 +655,6 @@ function _readFileAsBase64(file, callback) {
 }
 
 // ─── Restore Modal ─────────────────────────────────────────────────────────────
-
-import { restoreFromQuarantine } from './defects.service.js';
 
 export function openRestoreModal(incident, profile, onSuccess) {
   // Fallback for legacy records
@@ -748,12 +799,10 @@ export function openRestoreModal(incident, profile, onSuccess) {
     const btn = overlay.querySelector('#btn-restore-confirm');
     btn.disabled = true;
     btn.textContent = 'Restoring...';
-    errorEl.style.display = 'none';
 
-    const { error } = await restoreFromQuarantine(incident.id, incident.batches.id, qty, profile, notes);
-    
+    const { error } = await restoreFromQuarantine(incident.id, qty, profile, notes);
     if (error) {
-      errorEl.textContent = 'Error: ' + error;
+      errorEl.textContent = 'Restoration failed: ' + error;
       errorEl.style.display = 'block';
       btn.disabled = false;
       btn.innerHTML = '<span class="icon" style="font-size: 18px;">check</span> Confirm Restore';
@@ -762,42 +811,5 @@ export function openRestoreModal(incident, profile, onSuccess) {
 
     closeRestoreModal();
     if (typeof onSuccess === 'function') onSuccess();
-  });
-}
-
-/**
- * Compresses an image file or dataUrl to max 800px width/height and quality 0.7 JPEG (~30-50KB).
- */
-function _compressImage(fileOrDataUrl, maxWidth = 800, maxHeight = 800, quality = 0.7) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      if (width > maxWidth || height > maxHeight) {
-        if (width / height > maxWidth / maxHeight) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        } else {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = () => resolve(null);
-
-    if (typeof fileOrDataUrl === 'string') {
-      img.src = fileOrDataUrl;
-    } else {
-      const reader = new FileReader();
-      reader.onload = (e) => { img.src = e.target.result; };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(fileOrDataUrl);
-    }
   });
 }

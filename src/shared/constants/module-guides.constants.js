@@ -582,43 +582,47 @@ export const MODULE_GUIDES = {
 
   defects: {
     key: 'defects',
-    title: 'Defect & Quarantine Log',
-    icon: 'warning',
+    title: 'Defects & Returns',
+    icon: 'assignment_return',
     theme: 'green',
     adminOnly: false,
     purpose:
-      'Documents damaged, spoiled, tampered, or recalled commodity stock with photo evidence, separating Quarantined holds from permanently Disposed units.',
+      'Tracks damaged, recalled, or defective commodities, manages official property returns to LGU General Services Office (GSO) / suppliers, and documents in-house Nutribun kitchen spoilage.',
     navigation: [
       {
-        label: '+ Log Incident Button',
-        detail: 'Opens the Defect Incident modal to flag affected units from any active batch and attach photo evidence.',
+        label: '+ Report Defect / Return Button',
+        detail: 'Opens the incident dialog to flag affected batch units, choose Return to LGU or In-House Spoilage, and attach photo evidence.',
       },
       {
-        label: 'Status Filter Pills',
-        detail: 'Switch between All Incidents, Quarantined Only (awaiting inspection decision), and Disposed.',
+        label: 'KPI Summary Cards',
+        detail: 'Monitor Total Incidents, Goods Returned to LGU, In-House Kitchen Spoilage, and Distinct Batches Affected.',
       },
       {
-        label: 'Photo Evidence Viewer & Quarantine Actions',
-        detail: 'Click any photo thumbnail to inspect full-size defect evidence; Quarantined rows offer Restore to Active Stock or Dispose actions.',
+        label: 'Filter Tabs & Instant Search',
+        detail: 'Quickly isolate Returned to LGU, In-House Spoilage, On Hold / Quarantined, or search by batch ID and commodity.',
+      },
+      {
+        label: 'View Slip & Official Documents',
+        detail: 'Click [View Slip] to review and print official LGU GSO Property Turnover Slips or In-House Condemnation Records.',
       },
     ],
     howToUse: [
       {
-        stepTitle: 'Flag Damaged or Suspect Stock',
-        detail: 'Click + Log Incident, choose the affected active batch, enter Quantity Affected, select defect classification, and upload a photo of the defect.',
+        stepTitle: 'Select Defective Batch',
+        detail: 'Click + Report Defect / Return and search the active batch. If Nutribun is selected, the system automatically configures in-house kitchen spoilage; for external goods, it prepares an LGU GSO return.',
       },
       {
-        stepTitle: 'Choose Quarantine vs. Immediate Disposal',
-        detail: 'Select Quarantine if units need inspection (temporarily holds stock out of circulation), or Dispose if units are confirmed unusable.',
+        stepTitle: 'Specify Reason & Evidence',
+        detail: 'Select the defect classification (e.g. Broken Seal, Baking Mold, Delivery Damage), enter quantity affected, and upload photo evidence via file or phone scan.',
       },
       {
-        stepTitle: 'Resolve Quarantined Stock Later',
-        detail: 'Filter by Quarantined Only: click Restore if cleared for safe use (returns units to batch) or Dispose if rejected.',
+        stepTitle: 'Review & Print Official Turnover Slip',
+        detail: 'Click Log Defect & Review Slip to inspect the printable A4 turnover or condemnation receipt with official signature blocks.',
       },
     ],
     rulesAndBadges: [
-      'Quarantined units are immediately deducted from releasable batch stock so staff cannot accidentally distribute suspect goods.',
-      'Defect photo evidence works offline/desktop-safe with dual storage fallback.',
+      'Returned and Spoiled quantities are immediately deducted from active batch inventory to protect distribution safety.',
+      'Procured goods (Vita Meena, MMS, Milk) produce LGU GSO Property Return Slips for replacement; Nutribun produces MNAO kitchen spoilage records.',
     ],
     relatedRoutes: [
       { route: 'batches', label: 'Batch Management' },

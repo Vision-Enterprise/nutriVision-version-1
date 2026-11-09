@@ -1,9 +1,7 @@
 import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 /**
- * Defects Module — PDF Print Preview
- * Generates the official Incident/Quarantine Report HTML and shows
- * it in a print preview modal — identical pattern to reports.pdf.js.
- * onConfirm() is called ONLY when the user clicks "Print / Save PDF".
+ * Defects Module — Official Slip & Document Generator
+ * Produces official LGU GSO Property Turnover Slips or In-House Spoilage Records.
  */
 
 import { APP_ORGANIZATION } from '../../shared/constants/app.constants.js';
@@ -18,14 +16,26 @@ const ORG_ADDRESS = 'Manolo Fortich, Bukidnon';
  * @param {Function} onConfirm   - called only when user clicks Print/Save
  */
 export function showDefectPrintPreview(incident, batch, profile, onConfirm, originalDate = null) {
-  const isDispose  = (incident.actionTaken || incident.action_taken || '').toLowerCase().includes('dispos');
-  const prefix     = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
+  const act = (incident.actionTaken || incident.action_taken || '').toLowerCase();
+  let prefix = 'LGU_Return_Slip';
+  let modalTitle = 'Commodity Return Slip';
+
+  if (act.includes('spoil')) {
+    prefix = 'InHouse_Spoilage_Record';
+    modalTitle = 'In-House Spoilage Record';
+  } else if (act.includes('quarantin')) {
+    prefix = 'Quarantine_Hold_Notice';
+    modalTitle = 'Quarantine Hold Notice';
+  } else if (act.includes('dispos')) {
+    prefix = 'Disposal_Record';
+    modalTitle = 'Disposal Record';
+  }
+
   const cleanBatch = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr    = new Date().toISOString().split('T')[0];
   const pdfTitle   = `${prefix}_${cleanBatch}_${dateStr}`;
   const originalTitle = document.title;
 
-  // Set top-level document title so browser print dialog pre-fills exact file name
   document.title = pdfTitle;
 
   const html = _generateIncidentReportHTML(incident, batch, profile, originalDate);
@@ -50,7 +60,10 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
         display: flex; align-items: center; justify-content: space-between;
         padding: 16px 24px; border-bottom: 1px solid #e0e0e0; flex-shrink: 0;
       ">
-        <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Print Preview — Incident Report</h3>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="icon" style="color: var(--color-primary); font-size: 20px;">description</span>
+          <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Print Preview — ${modalTitle}</h3>
+        </div>
         <div style="display: flex; gap: 10px; align-items: center;">
           <button id="defect-preview-cancel" style="
             padding: 8px 18px; border-radius: 8px; border: 1px solid #ccc;
@@ -88,6 +101,7 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
   const iframe   = overlay.querySelector('#defect-preview-iframe');
   const cancelBtn = overlay.querySelector('#defect-preview-cancel');
   const printBtn  = overlay.querySelector('#defect-preview-print');
+  const saveBtn   = overlay.querySelector('#defect-preview-save');
 
   // Write content into iframe via Blob URL
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -103,8 +117,6 @@ export function showDefectPrintPreview(incident, batch, profile, onConfirm, orig
       document.body.removeChild(overlay);
     }
   };
-
-  const saveBtn = overlay.querySelector('#defect-preview-save');
 
   cancelBtn.onclick = cleanup;
   printBtn.onclick  = () => {
@@ -135,22 +147,47 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
   const dateStr      = now.toISOString().split('T')[0];
   const generatedStr = now.toLocaleString('en-PH', { dateStyle: 'long', timeStyle: 'short' });
   const comm         = batch?.commodities;
-  
-  const actionStr    = (incident.actionTaken || incident.action_taken || '').toLowerCase();
-  const isDispose    = actionStr.includes('dispos');
-  const actionLabel  = isDispose ? 'Disposal Record' : 'Quarantine Notice';
-  const prefix       = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
-  const cleanBatch   = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const pdfTitle     = `${prefix}_${cleanBatch}_${dateStr}`;
 
+  const act = (incident.actionTaken || incident.action_taken || '').toLowerCase();
+  let documentTitle = 'COMMODITY DEFECT & LGU RETURN SLIP';
+  let documentSubtitle = 'Official Property Turnover to General Services Office (GSO) / Supplier for Replacement or Credit';
+  let sigRole1 = 'Turned Over By (MNAO Custodian):';
+  let sigRole2 = 'Received By (LGU GSO / Supplier):';
+  let sigTitle2 = 'LGU GSO / Supplier Representative';
+
+  if (act.includes('spoil')) {
+    documentTitle = 'IN-HOUSE COMMODITY SPOILAGE & CONDEMNATION RECORD';
+    documentSubtitle = 'Official MNAO Kitchen / In-House Bakery Spoilage & Waste Assessment';
+    sigRole1 = 'Prepared By (Baker / Personnel):';
+    sigRole2 = 'Approved By (Action Officer):';
+    sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
+  } else if (act.includes('quarantin')) {
+    documentTitle = 'COMMODITY QUARANTINE & HOLD ORDER';
+    documentSubtitle = 'Official Notice of Temporary Hold Pending Quality / Laboratory Verification';
+    sigRole1 = 'Inspected & Held By:';
+    sigRole2 = 'Noted By (Action Officer):';
+    sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
+  } else if (act.includes('dispos')) {
+    documentTitle = 'COMMODITY CONDEMNATION & DISPOSAL RECORD';
+    documentSubtitle = 'Official Condemnation & Safe Disposal Certificate';
+    sigRole1 = 'Condemned By:';
+    sigRole2 = 'Approved By (Action Officer):';
+    sigTitle2 = 'Municipal Nutrition Action Officer (MNAO)';
+  }
+
+  const cleanBatch   = (batch?.batch_number || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfTitle     = `${documentTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${cleanBatch}_${dateStr}`;
   const evidenceImg  = incident.imageData || incident.evidenceUrl || incident.evidence_url;
+
+  const reporterName = profile?.full_name || incident.reporter_name || 'Authorized Staff';
+  const scopeText    = incident.scope === 'entire_batch' ? 'Entire Batch' : 'Partial Batch';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>${pdfTitle}</title>
-<style>
+  <style>
     @page {
       size: A4 portrait;
       margin: 15mm 20mm;
@@ -168,28 +205,29 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
     @media print {
       body { padding: 0; }
     }
-    .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 16px; }
-    .header .agency-line { font-size: 10.5px; color: #444; margin: 1px 0; }
+    .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 14px; }
+    .header .agency-line { font-size: 10px; color: #444; margin: 1px 0; }
     .header h1 { font-size: 14px; font-weight: bold; color: #111; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.5px; }
-    .report-title { font-size: 13px; font-weight: bold; text-align: center; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.8px; }
-    .meta { display: flex; justify-content: space-between; font-size: 10px; color: #444; margin-bottom: 16px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #333; margin-bottom: 16px; }
+    .report-title { font-size: 13px; font-weight: bold; text-align: center; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .report-subtitle { font-size: 9.5px; text-align: center; color: #555; margin-bottom: 12px; }
+    .meta { display: flex; justify-content: space-between; font-size: 10px; color: #444; margin-bottom: 14px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #333; margin-bottom: 14px; }
     .info-cell { padding: 8px 12px; border-right: 1px solid #333; background: #fafafa; }
     .info-cell:last-child { border-right: none; }
     .info-cell label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #555; display: block; margin-bottom: 2px; font-weight: bold; }
     .info-cell span  { font-size: 12px; font-weight: bold; color: #111; }
-    .section-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #111; margin: 14px 0 6px; border-bottom: 1px solid #222; padding-bottom: 3px; }
+    .section-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #111; margin: 12px 0 6px; border-bottom: 1px solid #222; padding-bottom: 3px; }
     .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
     .detail-table td { padding: 6px 10px; font-size: 11px; border: 1px solid #ccc; }
     .detail-table td:first-child { font-weight: bold; color: #333; width: 35%; background: #f7f7f7; }
     .action-text { font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-    .remarks-box { border: 1px solid #333; padding: 10px 12px; font-size: 11px; color: #111; min-height: 50px; margin-top: 6px; white-space: pre-wrap; background: #fafafa; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 36px; page-break-inside: avoid; }
-    .sig-block { text-align: center; width: 220px; }
-    .sig-role  { text-align: left; font-size: 10px; color: #333; margin-bottom: 30px; }
+    .remarks-box { border: 1px solid #333; padding: 10px 12px; font-size: 11px; color: #111; min-height: 48px; margin-top: 4px; white-space: pre-wrap; background: #fafafa; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 32px; page-break-inside: avoid; }
+    .sig-block { text-align: center; width: 230px; }
+    .sig-role  { text-align: left; font-size: 10px; color: #333; margin-bottom: 28px; }
     .sig-line  { border-top: 1px solid #222; padding-top: 4px; font-size: 10px; text-transform: uppercase; }
-    .sig-title { font-size: 9.5px; color: #555; text-transform: none; }
-    .footer { text-align: center; margin-top: 30px; font-size: 9.5px; color: #666; border-top: 1px solid #ccc; padding-top: 8px; }
+    .sig-title { font-size: 9px; color: #555; text-transform: none; }
+    .footer { text-align: center; margin-top: 26px; font-size: 9px; color: #666; border-top: 1px solid #ccc; padding-top: 8px; }
   </style>
 </head>
 <body>
@@ -200,17 +238,19 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
     <h1>${ORG_NAME}</h1>
   </div>
 
-  <div class="report-title">${actionLabel}</div>
+  <div class="report-title">${documentTitle}</div>
+  <div class="report-subtitle">${documentSubtitle}</div>
+
   <div class="meta">
-    <span><strong>REFERENCE:</strong> ${batch.batch_number}</span>
-    <span><strong>DATE GENERATED:</strong> ${generatedStr}</span>
+    <span><strong>BATCH REFERENCE:</strong> ${batch?.batch_number || '—'}</span>
+    <span><strong>DOCUMENT DATE:</strong> ${generatedStr}</span>
   </div>
 
   <!-- Batch Summary -->
   <div class="info-grid">
     <div class="info-cell">
       <label>Target Batch</label>
-      <span>${batch.batch_number}</span>
+      <span>${batch?.batch_number || '—'}</span>
     </div>
     <div class="info-cell">
       <label>Commodity</label>
@@ -218,59 +258,59 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
     </div>
     <div class="info-cell">
       <label>Quantity Affected</label>
-      <span>${incident.quantityAffected} ${comm?.unit || ''}</span>
+      <span>${incident.quantityAffected} ${comm?.unit || ''} (${scopeText})</span>
     </div>
   </div>
 
   <!-- Incident Details -->
-  <div class="section-title">Incident Details</div>
+  <div class="section-title">Incident &amp; Inspection Assessment</div>
   <table class="detail-table">
     <tr><td>Defect Classification</td><td>${incident.classification || 'Inspection / Damage'}</td></tr>
-    <tr><td>Action Taken</td><td><span class="action-text">${(incident.actionTaken || incident.action_taken || (isDispose ? 'Disposed' : 'Quarantined')).toUpperCase()}</span></td></tr>
-    <tr><td>Date Reported</td><td>${generatedStr}</td></tr>
-    <tr><td>Reported By</td><td>${profile?.full_name || 'Authorized Staff'}</td></tr>
+    <tr><td>Action / Status</td><td><span class="action-text">${(incident.actionTaken || incident.action_taken || 'Logged').toUpperCase()}</span></td></tr>
+    <tr><td>Date Logged</td><td>${generatedStr}</td></tr>
+    <tr><td>Assessed / Inspected By</td><td>${reporterName}</td></tr>
   </table>
 
   <!-- Remarks -->
-  <div class="section-title">Remarks / Incident Details</div>
+  <div class="section-title">Findings &amp; Remarks</div>
   <div class="remarks-box">${incident.remarks || 'No additional remarks provided.'}</div>
 
   <!-- Photographic Evidence -->
   ${evidenceImg ? `
-  <div class="section-title" style="margin-top: 18px;">Photographic Evidence</div>
+  <div class="section-title" style="margin-top: 14px;">Photographic Inspection Evidence</div>
   <div style="text-align:center; margin-top: 8px;">
     <img src="${evidenceImg}"
       alt="Defect evidence"
-      style="max-width: 100%; max-height: 280px; object-fit: contain;
+      style="max-width: 100%; max-height: 250px; object-fit: contain;
              border: 1px solid #333; padding: 4px;"
     >
-    <p style="font-size: 9.5px; color: #555; margin-top: 4px;">Attached photographic inspection evidence.</p>
+    <p style="font-size: 9px; color: #555; margin-top: 4px;">Attached photographic inspection documentation.</p>
   </div>
   ` : `
-  <div class="section-title" style="margin-top: 18px;">Photographic Evidence</div>
-  <p style="font-size: 11px; color: #888; font-style: italic; margin-top: 6px;">No photographic evidence provided.</p>
+  <div class="section-title" style="margin-top: 14px;">Photographic Inspection Evidence</div>
+  <p style="font-size: 10.5px; color: #888; font-style: italic; margin-top: 4px;">No photographic evidence attached.</p>
   `}
 
   <!-- Signatures -->
   <div class="signatures">
     <div class="sig-block">
-      <div class="sig-role">Prepared by:</div>
+      <div class="sig-role">${sigRole1}</div>
       <div class="sig-line">
-        <strong>${(profile?.full_name || 'Staff').toUpperCase()}</strong><br>
-        <span class="sig-title">Nutrition Personnel</span>
+        <strong>${reporterName.toUpperCase()}</strong><br>
+        <span class="sig-title">Nutrition Staff / Inspector</span>
       </div>
     </div>
     <div class="sig-block">
-      <div class="sig-role">Noted by:</div>
+      <div class="sig-role">${sigRole2}</div>
       <div class="sig-line">
-        <strong>MNAO OFFICER</strong><br>
-        <span class="sig-title">Municipal Nutrition Action Office</span>
+        <strong>&nbsp;</strong><br>
+        <span class="sig-title">${sigTitle2}</span>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    Official Document &bull; Municipal Nutrition Action Office, Manolo Fortich, Bukidnon
+    Official LGU Record &bull; Municipal Nutrition Action Office &bull; Manolo Fortich, Bukidnon
   </div>
 </body>
 </html>`;
@@ -281,8 +321,15 @@ function _generateIncidentReportHTML(incident, batch, profile, originalDate = nu
  */
 export function getDefectPdfFileName(batchNumber, action) {
   const date       = new Date().toISOString().split('T')[0];
-  const isDispose  = (action || '').toLowerCase().includes('dispos');
-  const prefix     = isDispose ? 'Disposal_Record' : 'Quarantine_Notice';
+  const act        = (action || '').toLowerCase();
+  let prefix = 'LGU_Return_Slip';
+  if (act.includes('spoil')) {
+    prefix = 'InHouse_Spoilage_Record';
+  } else if (act.includes('quarantin')) {
+    prefix = 'Quarantine_Hold_Notice';
+  } else if (act.includes('dispos')) {
+    prefix = 'Disposal_Record';
+  }
   const cleanBatch = (batchNumber || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
   return `${prefix}_${cleanBatch}_${date}.pdf`;
 }
