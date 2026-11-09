@@ -71,20 +71,24 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 .btn--ice {
   background: var(--color-milk-primary) !important;
   color: #fff !important;
-  border: none !important;
+  border: 1.5px solid #0369a1 !important;
+  border-radius: var(--radius-md, 8px);
   box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+  transition: all 0.15s ease;
 }
 
 .btn--ice:hover {
   background: var(--color-milk-primary-dark) !important;
+  border-color: #0c4a6e !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
 /* ── Section 2: Milk Bank Workspace (Spreadsheet & Logs) ────────────── */
 .milk-workspace {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid #bae6fd;
   border-radius: var(--radius-xl, 16px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -98,20 +102,20 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   flex-wrap: wrap;
   gap: 12px;
   padding: 12px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--color-border);
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .milk-tabs {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .milk-tab {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 8px 14px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  padding: 8px 16px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--color-text-muted);
@@ -121,17 +125,20 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   gap: 8px;
   border-radius: var(--radius-md, 8px);
   transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .milk-tab:hover {
   color: var(--color-text);
-  background-color: #e2e8f0;
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .milk-tab--active {
   color: var(--color-milk-primary-dark) !important;
   background-color: #e0f2fe !important;
-  border-color: #bae6fd !important;
+  border: 1.5px solid #0284c7 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.18) !important;
 }
 
 .milk-tab__count {
@@ -148,7 +155,7 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   color: #ffffff;
 }
 
-/* ── Sheet Action Toolbar ──────────────────────────────────────────── */
+/* ── Sheet Action Toolbar (Second Section - Light Blue Accent & Defined Borders) ── */
 .milk-sheet-toolbar {
   display: flex;
   align-items: center;
@@ -156,8 +163,8 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   flex-wrap: wrap;
   gap: 12px;
   padding: 14px 20px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, #f0f9ff 0%, #e6f4fc 100%);
+  border-bottom: 1.5px solid #bae6fd;
 }
 
 .milk-sheet-title {
@@ -166,14 +173,20 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   gap: 8px;
   font-size: 15px;
   font-weight: 700;
-  color: var(--color-text);
+  color: #0c4a6e;
+  letter-spacing: -0.01em;
 }
 
 .milk-sheet-subtitle {
   font-size: 12px;
-  color: var(--color-text-muted);
-  font-weight: 400;
+  color: #0369a1;
+  font-weight: 600;
   margin-left: 6px;
+  background: #ffffff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #bae6fd;
+  box-shadow: 0 1px 2px rgba(2, 132, 199, 0.06);
 }
 
 .milk-sheet-actions {
@@ -181,6 +194,63 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.milk-sheet-actions .btn-secondary {
+  background: #ffffff !important;
+  border: 1.5px solid #7dd3fc !important;
+  color: #0369a1 !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-md, 8px) !important;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.1) !important;
+  transition: all 0.15s ease !important;
+}
+
+.milk-sheet-actions .btn-secondary:hover:not(:disabled) {
+  background: #e0f2fe !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.milk-sheet-actions .btn-secondary .icon {
+  color: #0284c7 !important;
+}
+
+.milk-sheet-actions .btn-primary,
+.milk-sheet-actions .btn--ice {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: 1.5px solid #0369a1 !important;
+  border-radius: var(--radius-md, 8px) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25) !important;
+  transition: all 0.15s ease !important;
+}
+
+.milk-sheet-actions .btn-primary:hover:not(:disabled),
+.milk-sheet-actions .btn--ice:hover:not(:disabled) {
+  background: #0369a1 !important;
+  border-color: #0c4a6e !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.milk-sheet-actions .form-input,
+.milk-sheet-actions select {
+  background: #ffffff !important;
+  border: 1.5px solid #bae6fd !important;
+  border-radius: var(--radius-md, 8px) !important;
+  box-shadow: 0 1px 2px rgba(2, 132, 199, 0.06) !important;
+  color: #0f172a !important;
+}
+
+.milk-sheet-actions .form-input:focus,
+.milk-sheet-actions select:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+  outline: none !important;
 }
 
 /* View Switcher Pills (Option B: Table vs Virtual Freezer) - Prominent Blue Theme */
@@ -199,8 +269,8 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   flex-wrap: wrap;
   gap: 12px;
   padding: 10px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, #f0f9ff 0%, #e6f4fc 100%);
+  border-bottom: 1.5px solid #bae6fd;
 }
 
 .milk-view-switcher {
@@ -262,10 +332,11 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   align-items: center;
   gap: 10px;
   background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #bae6fd;
+  border-top: none;
   border-bottom: 2px solid var(--color-milk-primary, #0284c7);
-  border-radius: 6px 6px 0 0;
-  padding: 6px 12px;
+  border-radius: 0;
+  padding: 8px 16px;
   margin-bottom: 0;
   transition: all 0.15s ease;
 }
@@ -486,31 +557,35 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 .btn-grid-save {
   background: #0284c7;
   color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  padding: 5px 9px;
+  border: 1px solid #0369a1;
+  border-radius: 6px;
+  padding: 5px 10px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  box-shadow: 0 1px 2px rgba(2, 132, 199, 0.2);
+  transition: all 0.15s ease;
 }
 
 .btn-grid-save:hover {
   background: #0369a1;
+  border-color: #0c4a6e;
 }
 
 .btn-grid-discard {
-  background: transparent;
+  background: #ffffff;
   color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   padding: 5px 8px;
   font-size: 12px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  transition: all 0.15s ease;
 }
 
 .btn-grid-discard:hover {
