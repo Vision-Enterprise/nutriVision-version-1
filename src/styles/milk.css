@@ -1370,127 +1370,57 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   border-radius: var(--radius-md, 8px);
 }
 
-.milk-analytics-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+/* ── Milk Bank Operations Analytics Console (Advisor-Style) ── */
+.milk-console-card {
+  border: 1.5px solid #bae6fd;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08);
 }
 
-/* Podium Cards */
-.milk-podium-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+.milk-channel-btn {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border-radius: var(--radius-md, 8px) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
 }
 
-.milk-podium-card {
-  border-radius: 14px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  border: 1.5px solid transparent;
+.milk-channel-btn:hover {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+  transform: translateY(-1px);
 }
 
-.milk-podium-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.12);
+.milk-channel-btn .icon {
+  color: #64748b;
+  transition: color 0.15s ease;
 }
 
-.milk-podium-card--1 {
-  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
-  border-color: #fcd34d;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+.milk-channel-btn--active {
+  background: #e0f2fe !important;
+  border: 1.5px solid #0284c7 !important;
+  color: #0369a1 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2) !important;
 }
 
-.milk-podium-card--2 {
-  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
-  border-color: #cbd5e1;
+.milk-channel-btn--active .icon {
+  color: #0284c7 !important;
 }
 
-.milk-podium-card--3 {
-  background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 100%);
-  border-color: #fed7aa;
+.milk-channel-btn--active strong {
+  color: #0369a1 !important;
 }
 
-.milk-podium-medal {
-  font-size: 38px;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-
-.milk-podium-rank {
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-
-.milk-podium-card--1 .milk-podium-rank { color: #b45309; }
-.milk-podium-card--2 .milk-podium-rank { color: #475569; }
-.milk-podium-card--3 .milk-podium-rank { color: #c2410c; }
-
-.milk-podium-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text, #0f172a);
-  margin-bottom: 6px;
-}
-
-.milk-podium-vol {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #0284c7;
-  margin-bottom: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-.milk-podium-citation {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.milk-podium-card--1 .milk-podium-citation { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
-.milk-podium-card--2 .milk-podium-citation { background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; }
-.milk-podium-card--3 .milk-podium-citation { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-
-.milk-podium-meta {
-  font-size: 0.76rem;
-  color: var(--color-text-muted, #64748b);
-}
-
-.milk-analytics-charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: 20px;
-}
-
-.milk-badge--gold {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-}
-
-.milk-badge--silver {
-  background: #e2e8f0;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-}
-
-.milk-badge--bronze {
-  background: #ffedd5;
-  color: #9a3412;
-  border: 1px solid #fed7aa;
-}
 
 

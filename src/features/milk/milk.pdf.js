@@ -789,9 +789,9 @@ export function exportMilkAuditCSV(auditLogs = []) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function showMilkAnalyticsPrintPreview(analyticsData = {}, profile = null) {
   const dateStr = new Date().toISOString().split('T')[0];
-  const pdfTitle = `MILK_BANK_DISTRIBUTION_AND_AWARDS_${dateStr}`;
+  const pdfTitle = `MILK_BANK_OPERATIONS_REPORT_${dateStr}`;
   const html = generateMilkAnalyticsReportHTML(analyticsData, profile);
-  showPrintPreviewOverlay('Print Preview — Milk Bank Distribution Analytics & Donor Recognition', pdfTitle, html);
+  showPrintPreviewOverlay('Print Preview — Milk Bank Operations & Distribution Analytics Report', pdfTitle, html);
 }
 
 function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
@@ -803,41 +803,39 @@ function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
     minute: '2-digit',
   });
 
-  const periodLabel = data.period === 'year-2026'
-    ? 'Calendar Year 2026'
-    : (data.period === 'year-2025'
-      ? 'Calendar Year 2025'
-      : (data.period === 'custom'
-        ? `Custom Period (${data.customStart || 'Start'} to ${data.customEnd || 'End'})`
-        : 'All-Time Historical Cumulative'));
+  const rawDonations = data.rawDonations || [];
+  const rawDispatches = data.rawDispatches || [];
+  const rawBatches = data.rawBatches || [];
 
-  const rankedDonors = data.rankedDonors || [];
-  const sortedBarangays = data.sortedBarangays || [];
-  const topDonor = data.topDonor;
-  const topBarangay = data.topBarangay;
+  let totalCollectedBags = 0;
+  rawDonations.forEach(d => {
+    totalCollectedBags += Number(d.bags_count || 1);
+  });
 
-  const donorRowsHtml = rankedDonors.slice(0, 15).map(d => `
-    <tr>
-      <td style="text-align: center; font-weight: bold;">#${d.rank}</td>
-      <td style="font-weight: 600;">${escapeHtml(d.name)}</td>
-      <td>${escapeHtml(d.barangay || 'Manolo Fortich')}</td>
-      <td style="text-align: right; font-weight: bold; color: #0284c7;">
-        ${d.volumeMl > 0 ? d.volumeMl.toLocaleString() + ' mL' : d.bags + ' Bags'}
-      </td>
-      <td style="text-align: center;">${d.bags}</td>
-      <td style="text-align: center;">${d.intakesCount}</td>
-      <td style="font-weight: 600; color: #0f172a;">${escapeHtml(d.citation)}</td>
-    </tr>
-  `).join('');
+  let totalDispensedBags = 0;
+  const brgyMap = {};
+  rawDispatches.forEach(disp => {
+    const b = String(disp.barangay || 'Unspecified').trim();
+    const qty = Number(disp.bags_dispensed || 0);
+    totalDispensedBags += qty;
+    brgyMap[b] = (brgyMap[b] || 0) + qty;
+  });
 
-  const brgyRowsHtml = sortedBarangays.slice(0, 15).map((b, idx) => `
+  const sortedBrgy = Object.keys(brgyMap).map(b => ({
+    barangay: b,
+    bags: brgyMap[b],
+  })).sort((a, b) => b.bags - a.bags);
+
+  let totalRemainingBags = 0;
+  rawBatches.forEach(b => {
+    totalRemainingBags += Number(b.remaining_bags || 0);
+  });
+
+  const brgyRowsHtml = sortedBrgy.slice(0, 15).map((b, idx) => `
     <tr>
       <td style="text-align: center;">${idx + 1}.</td>
       <td style="font-weight: 600;">${escapeHtml(b.barangay)}</td>
-      <td style="text-align: right; font-weight: bold; color: #059669;">${b.bags.toLocaleString()} Bags</td>
-      <td style="text-align: center;">${b.dispatchesCount}</td>
-      <td style="text-align: center;">${b.recipientCount}</td>
-      <td>${escapeHtml(b.topIndication)}</td>
+      <td style="text-align: right; font-weight: bold; color: #0284c7;">${b.bags.toLocaleString()} Bags</td>
     </tr>
   `).join('');
 
@@ -846,14 +844,13 @@ function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>MILK BANK DISTRIBUTION &amp; AWARDS</title>
+      <title>MILK BANK OPERATIONS &amp; DISTRIBUTION REPORT</title>
       <style>${getBasePrintStyles()}</style>
     </head>
     <body>
-      ${getHeaderHTML('HUMAN MILK BANK — DISTRIBUTION ANALYTICS &amp; DONOR RECOGNITION REPORT')}
+      ${getHeaderHTML('HUMAN MILK BANK — OPERATIONS &amp; DISTRIBUTION REPORT')}
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #334155; margin-bottom: 8px;">
-        <div><strong>Period Scope:</strong> ${escapeHtml(periodLabel)}</div>
         <div><strong>Report Generated:</strong> ${escapeHtml(generatedAt)}</div>
       </div>
 
@@ -861,72 +858,44 @@ function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
       <table class="report-grid" style="margin-bottom: 12px;">
         <thead>
           <tr style="background: #f0f9ff;">
-            <th style="text-align: center;">Total Milk Collected</th>
-            <th style="text-align: center;">Registered Mother Donors</th>
+            <th style="text-align: center;">Total Milk Collected (Bags)</th>
             <th style="text-align: center;">Total Bags Dispensed</th>
-            <th style="text-align: center;">Champion Mother Donor</th>
-            <th style="text-align: center;">Leading Recipient Barangay</th>
+            <th style="text-align: center;">In-Stock Cold Reserve</th>
+            <th style="text-align: center;">Top Recipient Barangay</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="text-align: center; font-weight: bold; font-size: 11px; color: #0284c7;">
-              ${data.totalDonatedMl > 0 ? data.totalDonatedMl.toLocaleString() + ' mL' : (data.totalDonationBags || 0) + ' Bags'}
+            <td style="text-align: center; font-weight: bold; font-size: 12px; color: #0284c7;">
+              ${totalCollectedBags.toLocaleString()} Bags
             </td>
-            <td style="text-align: center; font-weight: bold; font-size: 11px;">
-              ${data.totalDonorsCount || 0} Donors
+            <td style="text-align: center; font-weight: bold; font-size: 12px; color: #059669;">
+              ${totalDispensedBags.toLocaleString()} Bags
             </td>
-            <td style="text-align: center; font-weight: bold; font-size: 11px; color: #059669;">
-              ${(data.totalDispensedBags || 0).toLocaleString()} Bags
+            <td style="text-align: center; font-weight: bold; font-size: 12px; color: #0369a1;">
+              ${totalRemainingBags.toLocaleString()} Bags
             </td>
-            <td style="text-align: center; font-weight: bold; font-size: 11px; color: #b45309;">
-              ${topDonor ? escapeHtml(topDonor.name) : 'None'}
-            </td>
-            <td style="text-align: center; font-weight: bold; font-size: 11px; color: #0369a1;">
-              ${topBarangay ? escapeHtml(topBarangay.barangay) : 'None'}
+            <td style="text-align: center; font-weight: bold; font-size: 12px; color: #0f172a;">
+              ${sortedBrgy[0] ? escapeHtml(sortedBrgy[0].barangay) : 'None'}
             </td>
           </tr>
         </tbody>
       </table>
 
-      <!-- Section 1: Donor Mothers Honor Roll -->
+      <!-- Section: Barangay Distribution -->
       <div style="font-size: 10.5px; font-weight: bold; color: #0f172a; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.04em;">
-        I. Top Donor Mothers Honor Roll &amp; Award Citations
-      </div>
-      <table class="report-grid" style="margin-bottom: 12px;">
-        <thead>
-          <tr>
-            <th style="width: 35px; text-align: center;">Rank</th>
-            <th>Donor Mother Name</th>
-            <th style="width: 130px;">Barangay</th>
-            <th style="width: 95px; text-align: right;">Volume (mL)</th>
-            <th style="width: 55px; text-align: center;">Bags</th>
-            <th style="width: 55px; text-align: center;">Intakes</th>
-            <th style="width: 170px;">Award Citation / Recognition</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${donorRowsHtml || '<tr><td colspan="7" style="text-align:center;">No donor records found</td></tr>'}
-        </tbody>
-      </table>
-
-      <!-- Section 2: Barangay Distribution -->
-      <div style="font-size: 10.5px; font-weight: bold; color: #0f172a; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.04em;">
-        II. Barangay Beneficiary Distribution Summary (Infants Served)
+        I. Barangay Distribution Summary (Bags Delivered to Infants)
       </div>
       <table class="report-grid" style="margin-bottom: 8px;">
         <thead>
           <tr>
             <th style="width: 35px; text-align: center;">#</th>
             <th>Barangay</th>
-            <th style="width: 110px; text-align: right;">Bags Dispensed</th>
-            <th style="width: 80px; text-align: center;">Dispatches</th>
-            <th style="width: 85px; text-align: center;">Infants Served</th>
-            <th>Primary Clinical Indication</th>
+            <th style="width: 140px; text-align: right;">Bags Dispensed</th>
           </tr>
         </thead>
         <tbody>
-          ${brgyRowsHtml || '<tr><td colspan="6" style="text-align:center;">No dispatches recorded</td></tr>'}
+          ${brgyRowsHtml || '<tr><td colspan="3" style="text-align:center;">No dispatches recorded</td></tr>'}
         </tbody>
       </table>
 
@@ -936,7 +905,7 @@ function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
         'Noted & Approved by:',
         'Municipal Nutrition Action Officer (MNAO)'
       )}
-      <div class="form-code">MH.MNAO.HMB.AWARDS</div>
+      <div class="form-code">MH.MNAO.HMB.OPERATIONS</div>
     </body>
     </html>
   `;
