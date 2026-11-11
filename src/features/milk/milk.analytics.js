@@ -41,12 +41,6 @@ const MONTH_LABELS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
-const SHELVES_ORDER = [
-  'Shelf 1', 'Shelf 2', 'Shelf 3',
-  'Shelf 4', 'Shelf 5', 'Shelf 6',
-  'Bottom Bin'
-];
-
 /**
  * Filter helper by Year & Quarter/Period
  */
@@ -234,15 +228,6 @@ export function renderMilkAnalyticsSheet(analyticsData) {
                 </span>
               </button>
 
-              <!-- Channel 5: Freezer Shelf Status -->
-              <button class="btn milk-channel-btn ${(_currentChannel === 'freezer') ? 'milk-channel-btn--active' : ''}" data-channel="freezer" type="button">
-                <span class="icon" style="font-size: 22px;">kitchen</span>
-                <span style="text-align: left;">
-                  <strong style="display: block; font-size: 13px;">Freezer Shelves</strong>
-                  <span style="font-size: 11px; opacity: 0.85; font-weight: 400;">Remaining bags per shelf</span>
-                </span>
-              </button>
-
             </div>
           </div>
 
@@ -374,14 +359,18 @@ function _renderChannelChart() {
     _activeChartInstance = null;
   }
 
+  if (_currentChannel === 'freezer') {
+    _currentChannel = 'inflow';
+  }
+
   // Toggle tuner visibility
   const yearWrap = document.getElementById('milk-tuner-year-wrap');
   const periodWrap = document.getElementById('milk-tuner-period-wrap');
   const limitWrap = document.getElementById('milk-tuner-limit-wrap');
   const expiryNote = document.getElementById('milk-tuner-expiry-note');
 
-  if (yearWrap) yearWrap.style.display = (_currentChannel === 'expiry' || _currentChannel === 'freezer') ? 'none' : 'flex';
-  if (periodWrap) periodWrap.style.display = (_currentChannel === 'expiry' || _currentChannel === 'freezer') ? 'none' : 'flex';
+  if (yearWrap) yearWrap.style.display = (_currentChannel === 'expiry') ? 'none' : 'flex';
+  if (periodWrap) periodWrap.style.display = (_currentChannel === 'expiry') ? 'none' : 'flex';
   if (limitWrap) limitWrap.style.display = (_currentChannel === 'barangay' || _currentChannel === 'donors') ? 'flex' : 'none';
   if (expiryNote) expiryNote.style.display = (_currentChannel === 'expiry') ? 'flex' : 'none';
 
@@ -780,106 +769,6 @@ function _renderChannelChart() {
       legend: { show: false },
       tooltip: {
         y: { formatter: (val) => `${val} Bags in risk tier` },
-      },
-      grid: { borderColor: '#f1f5f9' },
-    };
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // CHANNEL 5: Inventory Status by Freezer Shelf (Remaining Bags)
-  // ══════════════════════════════════════════════════════════════════════════
-  else if (_currentChannel === 'freezer') {
-    _setConsoleHeader(
-      'Inventory Status by Freezer Shelf',
-      'Remaining pasteurized bags categorized by physical shelf location and batch lot'
-    );
-
-    const shelfMap = {};
-    SHELVES_ORDER.forEach(s => {
-      shelfMap[s] = {};
-    });
-
-    let totalInFreezer = 0;
-    const allBatchesSet = new Set();
-
-    activeBatches.forEach(b => {
-      const shelf = b.freezer_shelf || 'Shelf 1';
-      if (!shelfMap[shelf]) shelfMap[shelf] = {};
-      const rem = Number(b.remaining_bags || 0);
-      shelfMap[shelf][b.batch_number] = (shelfMap[shelf][b.batch_number] || 0) + rem;
-      totalInFreezer += rem;
-      allBatchesSet.add(b.batch_number);
-    });
-
-    const batchList = Array.from(allBatchesSet);
-
-    // Compute busiest shelf
-    let busiestShelf = 'Shelf 1';
-    let maxShelfBags = 0;
-    SHELVES_ORDER.forEach(s => {
-      const bagsOnShelf = Object.values(shelfMap[s] || {}).reduce((a, c) => a + c, 0);
-      if (bagsOnShelf > maxShelfBags) {
-        maxShelfBags = bagsOnShelf;
-        busiestShelf = s;
-      }
-    });
-
-    _updateTicker(
-      `${totalInFreezer} Total Bags in Cold Chain`,
-      `${busiestShelf} (${maxShelfBags} Bags)`
-    );
-
-    _updateTakeaway(
-      `<strong>${busiestShelf}</strong> holds the highest storage volume with <strong>${maxShelfBags} bags</strong>. Physical distribution is balanced across ${activeBatches.length} active pasteurized lots.`
-    );
-
-    const series = batchList.map(batchNum => ({
-      name: batchNum,
-      data: SHELVES_ORDER.map(s => shelfMap[s]?.[batchNum] || 0),
-    }));
-
-    chartOptions = {
-      series: series.length > 0 ? series : [{ name: 'No Active Stock', data: new Array(SHELVES_ORDER.length).fill(0) }],
-      chart: {
-        type: 'bar',
-        stacked: true,
-        height: 400,
-        fontFamily: "'Inter', sans-serif",
-        toolbar: { show: false },
-      },
-      colors: ['#0284c7', '#38bdf8', '#0ea5e9', '#0369a1', '#059669', '#f59e0b', '#7c3aed'],
-      plotOptions: {
-        bar: {
-          horizontal: true,
-          barHeight: '65%',
-          borderRadius: 4,
-          dataLabels: {
-            total: {
-              enabled: true,
-              offsetX: 10,
-              style: { fontSize: '12px', fontWeight: 700, color: '#0369a1' },
-              formatter: (val) => `${val} Bags`,
-            },
-          },
-        },
-      },
-      dataLabels: { enabled: false },
-      xaxis: {
-        categories: SHELVES_ORDER,
-        title: { text: 'Remaining Bags', style: { color: '#0369a1', fontWeight: 600 } },
-        labels: { style: { colors: '#64748b' } },
-      },
-      yaxis: {
-        labels: { style: { colors: '#334155', fontWeight: 700, fontSize: '13px' } },
-      },
-      tooltip: {
-        y: { formatter: (val) => `${val} Bags remaining` },
-      },
-      legend: {
-        position: 'top',
-        horizontalAlign: 'right',
-        fontSize: '12px',
-        fontWeight: 600,
       },
       grid: { borderColor: '#f1f5f9' },
     };
