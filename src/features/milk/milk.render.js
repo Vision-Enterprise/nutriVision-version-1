@@ -244,10 +244,6 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
           PDF
         </button>
-        <button class="btn btn-secondary btn-sm" id="btn-add-donor-log-row" type="button" title="Add Donor Entry Row">
-          <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Row
-        </button>
         <button class="btn btn-primary btn-sm btn--ice" id="btn-save-all-donor-log" type="button" title="Save all pending donor rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
@@ -275,10 +271,16 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
         </thead>
         <tbody>
           ${entries.length === 0 && draftRows.length === 0
-            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>Add Entry Row</strong> to record a mother's donation.</td></tr>`
+            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Row</strong> below to record a mother's donation.</td></tr>`
             : savedHtml + draftHtml}
         </tbody>
       </table>
+    </div>
+    <div class="milk-sheet-footer">
+      <button class="milk-add-row-pill" id="btn-add-donor-log-row" type="button" title="Add Donor Entry Row">
+        <span class="icon icon--sm" aria-hidden="true">add</span>
+        Add Row
+      </button>
     </div>
   `;
 }
@@ -416,10 +418,6 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
           PDF
         </button>
-        <button id="btn-add-donation-row" class="btn btn-secondary btn-sm" type="button" title="Add Milk Received Entry Row">
-          <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Row
-        </button>
         <button id="btn-save-all-donations" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
@@ -460,12 +458,18 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No intake records yet. Click <strong>Add Entry Row</strong> above to begin logging.
+                No intake records yet. Click <strong>+ Add Row</strong> below to begin logging.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
+    </div>
+    <div class="milk-sheet-footer">
+      <button id="btn-add-donation-row" class="milk-add-row-pill" type="button" title="Add Milk Received Entry Row">
+        <span class="icon icon--sm" aria-hidden="true">add</span>
+        Add Row
+      </button>
     </div>
   `;
 }
@@ -509,10 +513,6 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
           <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches (PDF)">
             <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
             PDF
-          </button>
-          <button id="btn-add-batch-row" class="btn btn-secondary btn-sm" type="button" title="Add Batch Row">
-            <span class="icon icon--sm" aria-hidden="true">add</span>
-            Add Row
           </button>
           <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending batch rows"
                   ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
@@ -714,12 +714,18 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
               <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No pasteurized batches recorded yet. Click <strong>Add Batch Row</strong> to log a BM batch.
+                No pasteurized batches recorded yet. Click <strong>+ Add Row</strong> below to log a BM batch.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
+    </div>
+    <div class="milk-sheet-footer">
+      <button id="btn-add-batch-row" class="milk-add-row-pill" type="button" title="Add Batch Row">
+        <span class="icon icon--sm" aria-hidden="true">add</span>
+        Add Row
+      </button>
     </div>
   `;
 }
@@ -1340,11 +1346,6 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
           PDF
         </button>
-        <button id="btn-add-dispatch-row" class="btn btn-secondary btn-sm" type="button"
-                ${availableBatches.length === 0 ? 'disabled title="No stock available"' : 'title="Record Dispense Row"'}>
-          <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Row
-        </button>
         <button id="btn-save-all-dispatches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending dispense rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
@@ -1375,12 +1376,19 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No milk dispatches logged yet. Click <strong>Record Dispense Row</strong> to issue milk.
+                No milk dispatches logged yet. Click <strong>+ Add Row</strong> below to issue milk.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
+    </div>
+    <div class="milk-sheet-footer">
+      <button id="btn-add-dispatch-row" class="milk-add-row-pill" type="button"
+              ${availableBatches.length === 0 ? 'disabled title="No stock available"' : 'title="Record Dispense Row"'}>
+        <span class="icon icon--sm" aria-hidden="true">add</span>
+        Add Row
+      </button>
     </div>
   `;
 }

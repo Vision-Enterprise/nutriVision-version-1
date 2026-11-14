@@ -658,6 +658,42 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   background: #f0f9ff;
 }
 
+.milk-sheet-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.milk-add-row-pill {
+  background: #f0f9ff;
+  border: 1.5px solid #bae6fd;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 7px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.milk-add-row-pill:hover:not(:disabled) {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0284c7;
+  transform: translateY(-1px);
+}
+
+.milk-add-row-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Batch Code & Donor Code badges */
 .milk-batch-code {
   font-family: monospace;
