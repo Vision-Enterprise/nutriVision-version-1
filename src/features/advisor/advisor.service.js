@@ -1,7 +1,7 @@
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
-import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
+import { hydrateCommodityShelfLife, computeBatchLsfoMetrics } from '../../shared/utils/shelf-life.utils.js';
 
 export async function fetchAdvisorData() {
   try {
@@ -121,6 +121,7 @@ export async function fetchAdvisorData() {
       activeBatches.forEach(b => {
         if (!b.expiration_date) return;
         const status = getExpirationStatus(b.expiration_date, { ...b, commodities: c });
+        const lsfo = computeBatchLsfoMetrics(b);
         
         if (status === EXPIRATION_STATUS.EXPIRED) {
           criticalExpiringCount++;
@@ -131,10 +132,20 @@ export async function fetchAdvisorData() {
             batchNumber: b.batch_number,
             quantity: b.quantity || 0,
             unit,
+            deliveryDate: b.delivery_date,
             expirationDate: b.expiration_date,
+            totalShelfLifeDays: lsfo.totalShelfLifeDays,
+            daysRemaining: lsfo.daysRemaining,
+            isShortLife: lsfo.isShortLife,
             status: status
           });
-          suggestedActions.push({ type: 'error', title: `Archive Expired Batch`, desc: `${c.name} (${b.batch_number})` });
+          suggestedActions.push({
+            type: 'error',
+            title: `Archive Expired Batch`,
+            desc: `${c.name} (${b.batch_number})`,
+            _daysRemaining: lsfo.daysRemaining ?? 0,
+            _totalShelfLifeDays: lsfo.totalShelfLifeDays ?? Number.POSITIVE_INFINITY,
+          });
         } else if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
           warningExpiringCount++;
           nearExpiryBatches.push({
@@ -144,10 +155,20 @@ export async function fetchAdvisorData() {
             batchNumber: b.batch_number,
             quantity: b.quantity || 0,
             unit,
+            deliveryDate: b.delivery_date,
             expirationDate: b.expiration_date,
+            totalShelfLifeDays: lsfo.totalShelfLifeDays,
+            daysRemaining: lsfo.daysRemaining,
+            isShortLife: lsfo.isShortLife,
             status: status
           });
-          suggestedActions.push({ type: 'warning', title: `Flag for Priority Release`, desc: `${c.name} (${b.batch_number})` });
+          suggestedActions.push({
+            type: 'warning',
+            title: `Flag for Priority Release`,
+            desc: `${c.name} (${b.batch_number})`,
+            _daysRemaining: lsfo.daysRemaining ?? Number.POSITIVE_INFINITY,
+            _totalShelfLifeDays: lsfo.totalShelfLifeDays ?? Number.POSITIVE_INFINITY,
+          });
         }
 
         if (status === EXPIRATION_STATUS.EXPIRED || status === EXPIRATION_STATUS.NEAR_EXPIRY) {
@@ -158,6 +179,10 @@ export async function fetchAdvisorData() {
             batch: b.batch_number,
             quantity: b.quantity || 0,
             date: b.expiration_date,
+            deliveryDate: b.delivery_date,
+            totalShelfLifeDays: lsfo.totalShelfLifeDays,
+            daysRemaining: lsfo.daysRemaining,
+            isShortLife: lsfo.isShortLife,
             status: status
           });
         }
@@ -174,13 +199,37 @@ export async function fetchAdvisorData() {
     }));
 
     (events || []).forEach(e => {
-      suggestedActions.push({ type: 'info', title: `Prepare stock for Event`, desc: `${e.title} (${e.start_date})` });
+      suggestedActions.push({
+        type: 'info',
+        title: `Prepare stock for Event`,
+        desc: `${e.title} (${e.start_date})`,
+        _daysRemaining: Number.POSITIVE_INFINITY,
+        _totalShelfLifeDays: Number.POSITIVE_INFINITY,
+      });
     });
 
-    // Sort expiring soon by earliest date
-    expiringSoon.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Hybrid FEFO + LSFO Sort: earliest expiry first (FEFO), shorter total shelf life breaks ties (LSFO)
+    const compareHybridFefoLsfo = (a, b) => {
+      const remA = a.daysRemaining ?? a._daysRemaining ?? Number.POSITIVE_INFINITY;
+      const remB = b.daysRemaining ?? b._daysRemaining ?? Number.POSITIVE_INFINITY;
+      if (remA !== remB) return remA - remB;
+      const spanA = a.totalShelfLifeDays ?? a._totalShelfLifeDays ?? Number.POSITIVE_INFINITY;
+      const spanB = b.totalShelfLifeDays ?? b._totalShelfLifeDays ?? Number.POSITIVE_INFINITY;
+      return spanA - spanB;
+    };
+
+    expiringSoon.sort(compareHybridFefoLsfo);
+    nearExpiryBatches.sort(compareHybridFefoLsfo);
+    expiredBatches.sort(compareHybridFefoLsfo);
+    suggestedActions.sort((a, b) => {
+      const rank = { error: 0, warning: 1, info: 2 };
+      const ra = rank[a.type] ?? 3;
+      const rb = rank[b.type] ?? 3;
+      if (ra !== rb) return ra - rb;
+      return compareHybridFefoLsfo(a, b);
+    });
     
-    // Deduplicate actions (simple slice to top 5)
+    // Deduplicate actions (slice to top 5 most urgent)
     suggestedActions = suggestedActions.slice(0, 5);
 
     return {
