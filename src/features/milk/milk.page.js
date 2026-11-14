@@ -61,11 +61,13 @@ import {
 } from './milk.render.js';
 
 import {
+  showDonorLogPrintPreview,
   showMilkIntakePrintPreview,
   showMilkBatchesPrintPreview,
   showMilkDispensingPrintPreview,
   showMilkAuditPrintPreview,
   showMilkAnalyticsPrintPreview,
+  exportDonorLogCSV,
   exportMilkIntakeCSV,
   exportMilkBatchesCSV,
   exportMilkDispensingCSV,
@@ -717,6 +719,13 @@ function _openConfidentialDonorLookupModal(targetInput, onPicked = null) {
 // ════════════════════════════════════════════════════════════════════════════
 function _bindDonorLogSheetEvents() {
   const today = getLocalDateString();
+
+  document.getElementById('btn-export-donor-log-csv')?.addEventListener('click', () => {
+    exportDonorLogCSV(_donorLogEntries);
+  });
+  document.getElementById('btn-export-donor-log-pdf')?.addEventListener('click', () => {
+    showDonorLogPrintPreview(_donorLogEntries);
+  });
 
   document.getElementById('btn-add-donor-log-row')?.addEventListener('click', () => {
     _draftDonorLog.push({
@@ -1921,6 +1930,14 @@ function _enforceNumericOnly(input) {
 // ════════════════════════════════════════════════════════════════════════════
 let _activeTargetCell = null;
 let _isSyncingCell = false;
+let _sheetZoom = 100;
+
+function _applySheetZoom(table) {
+  if (!table) return;
+  table.style.zoom = `${_sheetZoom}%`;
+  const label = document.getElementById('btn-milk-zoom-reset');
+  if (label) label.textContent = `${_sheetZoom}%`;
+}
 
 function _setupCellBarSync() {
   const barInput = document.getElementById('milk-cell-input');
@@ -1928,6 +1945,20 @@ function _setupCellBarSync() {
   const statusEl = document.getElementById('milk-cell-status');
   const table = document.querySelector('.milk-sheet-table');
   if (!barInput || !table) return;
+
+  _applySheetZoom(table);
+  document.getElementById('btn-milk-zoom-out')?.addEventListener('click', () => {
+    _sheetZoom = Math.max(70, _sheetZoom - 10);
+    _applySheetZoom(table);
+  });
+  document.getElementById('btn-milk-zoom-in')?.addEventListener('click', () => {
+    _sheetZoom = Math.min(130, _sheetZoom + 10);
+    _applySheetZoom(table);
+  });
+  document.getElementById('btn-milk-zoom-reset')?.addEventListener('click', () => {
+    _sheetZoom = 100;
+    _applySheetZoom(table);
+  });
 
   _activeTargetCell = null;
   _isSyncingCell = false;

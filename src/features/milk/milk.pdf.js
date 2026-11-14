@@ -108,6 +108,73 @@ function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 0. DONOR LOG (Form MH.MNAO.FM.004.00 — Confidential In-House Log)
+// ─────────────────────────────────────────────────────────────────────────────
+export function showDonorLogPrintPreview(entries = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const pdfTitle = `DONOR_LOG_FM_004_00_${dateStr}`;
+  const html = generateDonorLogReportHTML(entries);
+  showPrintPreviewOverlay('Print Preview — Form MH.MNAO.FM.004.00 (DONOR LOG)', pdfTitle, html);
+}
+
+function generateDonorLogReportHTML(entries = []) {
+  const totalRows = Math.max(20, entries.length);
+  const rowsHtml = [];
+
+  for (let i = 0; i < totalRows; i++) {
+    const e = entries[i] || null;
+    const donDateTime = e
+      ? `${formatDate(e.donation_date)}${e.donation_time ? ' · ' + e.donation_time : ''}`
+      : '';
+    rowsHtml.push(`
+      <tr>
+        <td style="text-align: center;">${i + 1}.</td>
+        <td style="font-weight: 600;">${e ? escapeHtml(`${e.donor_name || '—'}${e.donor_code ? ` (${e.donor_code})` : ''}`) : ''}</td>
+        <td style="text-align: center;">${escapeHtml(donDateTime)}</td>
+        <td style="text-align: center;">${e ? formatDate(e.expression_date) : ''}</td>
+        <td style="text-align: center;">${e ? escapeHtml(e.expression_time || '') : ''}</td>
+        <td style="text-align: center;">${e ? `${Number(e.volume_ml || 0).toLocaleString()} mL` : ''}</td>
+        <td>${e?.staff_name ? escapeHtml(e.staff_name) : ''}</td>
+      </tr>
+    `);
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>DONOR LOG (MH.MNAO.FM.004.00)</title>
+      <style>${getBasePrintStyles()}</style>
+    </head>
+    <body>
+      ${getHeaderHTML('DONOR LOG')}
+
+      <table class="report-grid">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th style="width: 195px;">Donor's Name</th>
+            <th style="width: 130px;">Date/Time of donation</th>
+            <th style="width: 95px;">Date of Milk Expressed</th>
+            <th style="width: 85px;">Time of Milk expressed</th>
+            <th style="width: 110px;">Volume Donated (Thawed Volume in ml)</th>
+            <th style="width: 125px;">Receiving milk hub staff</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml.join('')}
+        </tbody>
+      </table>
+
+      ${getSignaturesHTML('Endorsed by:', 'Municipal Nutrition Action Officer', 'Noted by:', 'Rural Health Physician')}
+      <div class="form-code">MH.MNAO.FM.004.00</div>
+    </body>
+    </html>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. LOG OF MILK RECEIVED (Form MH.MNAO.FM.002.00)
 // ─────────────────────────────────────────────────────────────────────────────
 export function showMilkIntakePrintPreview(donations = []) {
@@ -541,6 +608,37 @@ function _downloadCsvFile(filename, rows) {
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function exportDonorLogCSV(entries = []) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const rows = [
+    [
+      '#',
+      'Donor Code',
+      "Donor's Name",
+      'Barangay',
+      'Date of Donation',
+      'Time of Donation',
+      'Date of Milk Expressed',
+      'Time of Milk Expressed',
+      'Volume Donated (Thawed mL)',
+      'Receiving Milk Hub Staff'
+    ],
+    ...entries.map((e, idx) => [
+      idx + 1,
+      e.donor_code || '',
+      e.donor_name || '',
+      e.barangay || '',
+      e.donation_date || '',
+      e.donation_time || '',
+      e.expression_date || '',
+      e.expression_time || '',
+      e.volume_ml || 0,
+      e.staff_name || 'Staff'
+    ])
+  ];
+  _downloadCsvFile(`DONOR_LOG_FM_004_00_${dateStr}.csv`, rows);
 }
 
 export function exportMilkIntakeCSV(donations = []) {

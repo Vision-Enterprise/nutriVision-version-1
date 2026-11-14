@@ -43,10 +43,6 @@ export function renderMilkPageSkeleton() {
           <div class="stat-card__label">Loading...</div>
           <div class="stat-card__value">—</div>
         </div>
-        <div class="stat-card milk-stat-card--blue" style="opacity:0.1;">
-          <div class="stat-card__label">Loading...</div>
-          <div class="stat-card__value">—</div>
-        </div>
       </div>
 
       <!-- ── SECTION 2: Milk Bank Workspace (Spreadsheet & Logs) ── -->
@@ -111,15 +107,6 @@ export function renderMetrics(metrics) {
     </div>
 
     <div class="stat-card milk-stat-card--blue">
-      <div class="stat-card__label">Raw / Unpasteurized</div>
-      <div class="stat-card__value">
-        ${metrics.rawBags}
-        <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-medium);color:var(--color-text-muted);">Intakes</span>
-      </div>
-      <div class="stat-card__footer">Awaiting pasteurization</div>
-    </div>
-
-    <div class="stat-card milk-stat-card--blue">
       <div class="stat-card__label">Near Expiry (≤ 90 Days)</div>
       <div class="stat-card__value ${metrics.expiringSoonBags > 0 ? 'stat-card__value--warning' : ''}">
         ${metrics.expiringSoonBags}
@@ -161,6 +148,11 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
              autocomplete="off"
              spellcheck="false" />
       <div class="milk-cell-status" id="milk-cell-status" style="display:none;"></div>
+      <div class="milk-zoom-pill" aria-label="Sheet Zoom Controls">
+        <button type="button" class="milk-zoom-btn" id="btn-milk-zoom-out" title="Zoom out">−</button>
+        <button type="button" class="milk-zoom-label" id="btn-milk-zoom-reset" title="Reset zoom to 100%">100%</button>
+        <button type="button" class="milk-zoom-btn" id="btn-milk-zoom-in" title="Zoom in">+</button>
+      </div>
     </div>
   `;
 }
@@ -230,8 +222,8 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <td class="text-sm font-weight-bold">${Number(e.volume_ml || 0).toLocaleString()} mL</td>
       <td class="text-sm">${escapeHtml(e.staff_name || 'Staff')}</td>
       <td style="text-align:center; white-space:nowrap;">
-        <button type="button" class="btn-grid-discard js-delete-dl-row" data-dl-id="${escapeHtml(e.id)}" title="Delete entry">
-          <span class="icon" style="font-size:15px;">delete</span> Delete
+        <button type="button" class="btn-grid-discard js-delete-dl-row" data-dl-id="${escapeHtml(e.id)}" title="Delete entry" aria-label="Delete entry">
+          <span class="icon" style="font-size:17px;">delete</span>
         </button>
       </td>
     </tr>
@@ -242,17 +234,24 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">badge</span>
         DONOR LOG
-        <span class="milk-sheet-subtitle">Form MH.MNAO.FM.004.00 · Confidential (Internal Only)</span>
       </div>
       <div class="milk-sheet-actions">
-        <button class="btn btn-secondary btn-sm" id="btn-add-donor-log-row" type="button">
-          <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Entry Row
+        <button id="btn-export-donor-log-csv" class="btn btn-secondary btn-sm" type="button" title="Export Donor Log as Excel / CSV">
+          <span class="icon icon--sm" aria-hidden="true">table_view</span>
+          CSV
         </button>
-        <button class="btn btn-primary btn-sm btn--ice" id="btn-save-all-donor-log" type="button"
+        <button id="btn-export-donor-log-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Form MH.MNAO.FM.004.00 (PDF)">
+          <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
+          PDF
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btn-add-donor-log-row" type="button" title="Add Donor Entry Row">
+          <span class="icon icon--sm" aria-hidden="true">add</span>
+          Add Row
+        </button>
+        <button class="btn btn-primary btn-sm btn--ice" id="btn-save-all-donor-log" type="button" title="Save all pending donor rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
-          Save All Pending (${pendingCount})
+          Save (${pendingCount})
         </button>
       </div>
     </div>
@@ -407,25 +406,24 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">receipt_long</span>
         LOG OF MILK RECEIVED
-        <span class="milk-sheet-subtitle">Form MH.MNAO.FM.002.00</span>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
-          Export Excel (CSV)
+          CSV
         </button>
-        <button id="btn-export-intake-pdf" class="btn btn-secondary btn-sm" type="button">
+        <button id="btn-export-intake-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Form MH.MNAO.FM.002.00 (PDF)">
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
-          Export Form (PDF)
+          PDF
         </button>
-        <button id="btn-add-donation-row" class="btn btn-secondary btn-sm" type="button">
+        <button id="btn-add-donation-row" class="btn btn-secondary btn-sm" type="button" title="Add Milk Received Entry Row">
           <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Entry Row
+          Add Row
         </button>
-        <button id="btn-save-all-donations" class="btn btn-primary btn-sm btn--ice" type="button"
+        <button id="btn-save-all-donations" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
-          Save All Pending (${pendingCount})
+          Save (${pendingCount})
         </button>
       </div>
     </div>
@@ -483,7 +481,6 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">science</span>
         Pasteurized Batches
-        <span class="milk-sheet-subtitle">Freezer Inventory &amp; FEFO Dispatch</span>
       </div>
 
       <!-- Option B View Switcher (Fixed Position in both Table & Freezer views) -->
@@ -503,28 +500,24 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
 
     ${subView === 'table' ? `
       <div class="milk-sub-toolbar">
-        <div class="milk-sub-toolbar-title text-muted text-xs font-weight-medium">
-          <span class="badge badge--info" style="font-size:11.5px;padding:3px 8px;font-weight:600;">
-            Physical Ledger · Ascending Order
-          </span>
-        </div>
+        <div class="milk-sub-toolbar-title text-muted text-xs font-weight-medium"></div>
         <div class="milk-sheet-actions">
           <button id="btn-export-batches-csv" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches as Excel / CSV">
             <span class="icon icon--sm" aria-hidden="true">table_view</span>
-            Export Excel (CSV)
+            CSV
           </button>
-          <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button">
+          <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches (PDF)">
             <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
-            Export Batches (PDF)
+            PDF
           </button>
-          <button id="btn-add-batch-row" class="btn btn-secondary btn-sm" type="button">
+          <button id="btn-add-batch-row" class="btn btn-secondary btn-sm" type="button" title="Add Batch Row">
             <span class="icon icon--sm" aria-hidden="true">add</span>
-            Add Batch Row
+            Add Row
           </button>
-          <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button"
+          <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending batch rows"
                   ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
             <span class="icon icon--sm" aria-hidden="true">save</span>
-            Save All Pending (${pendingCount})
+            Save (${pendingCount})
           </button>
         </div>
       </div>
@@ -1337,26 +1330,25 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">volunteer_activism</span>
         Beneficiary Dispensing Ledger
-        <span class="milk-sheet-subtitle">Release of Pasteurized Milk to Infants</span>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
-          Export Excel (CSV)
+          CSV
         </button>
-        <button id="btn-export-dispenses-pdf" class="btn btn-secondary btn-sm" type="button">
+        <button id="btn-export-dispenses-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger (PDF)">
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
-          Export Ledger (PDF)
+          PDF
         </button>
         <button id="btn-add-dispatch-row" class="btn btn-secondary btn-sm" type="button"
-                ${availableBatches.length === 0 ? 'disabled title="No stock available"' : ''}>
+                ${availableBatches.length === 0 ? 'disabled title="No stock available"' : 'title="Record Dispense Row"'}>
           <span class="icon icon--sm" aria-hidden="true">add</span>
-          Record Dispense Row
+          Add Row
         </button>
-        <button id="btn-save-all-dispatches" class="btn btn-primary btn-sm btn--ice" type="button"
+        <button id="btn-save-all-dispatches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending dispense rows"
                 ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
           <span class="icon icon--sm" aria-hidden="true">save</span>
-          Save All Pending (${pendingCount})
+          Save (${pendingCount})
         </button>
       </div>
     </div>
@@ -1555,16 +1547,15 @@ export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQu
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">history</span>
         MILK BANK AUDIT TRAIL
-        <span class="milk-sheet-subtitle">Custody, Dispensing &amp; Cold-Chain Log (${filtered.length} entries)</span>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-milk-audit-csv" class="btn btn-secondary btn-sm" type="button" title="Export Milk Bank Audit Trail as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
-          Export Excel (CSV)
+          CSV
         </button>
         <button id="btn-export-milk-audit-pdf" class="btn btn-secondary btn-sm" type="button" title="Preview and Export Milk Bank Audit Trail as PDF">
           <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
-          Export PDF
+          PDF
         </button>
         <input type="text" id="milk-audit-search" class="form-input"
                placeholder="Search audit descriptions, batches, staff..."
