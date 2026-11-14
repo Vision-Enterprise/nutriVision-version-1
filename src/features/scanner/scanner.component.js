@@ -1,4 +1,5 @@
 import { parseTableData, parseHtmlTableData, parseSpatialCells } from './table-parser.js';
+import { parseMnaoReceipt } from './mnao-form-parser.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
 import { fetchCommodities } from '../commodities/commodities.service.js';
 import { supabase } from '../../core/supabase.js';
@@ -7,9 +8,10 @@ let cropper = null;
 let stream = null;
 
 export class ScannerComponent {
-  constructor({ container, onComplete }) {
+  constructor({ container, onComplete, onZoomChange }) {
     this.container = container;
     this.onComplete = onComplete;
+    this.onZoomChange = onZoomChange;
     this.commodities = [];
     this.scanMode = 'table';
     this.mobileSessionId = null;
@@ -21,6 +23,12 @@ export class ScannerComponent {
     this.mobileScanCount = 0;
     this.activeReceiptUrl = null;
     this.isReceiptZoomed = false;
+    this.previewZoom = 1;
+    this.panX = 0;
+    this.panY = 0;
+    this.highlightedRowIndex = null;
+    this.showOcrBoxes = false;
+    this.lastOcrOverlay = null;
     this.stream = null;
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     this.apiBase = (isLocalHost
@@ -36,18 +44,18 @@ export class ScannerComponent {
   init() {
     // Render UI immediately so tabs and dropzone appear with 0ms latency
     this.container.innerHTML = `
-      <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:24px;">
+      <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:10px 12px;">
         <!-- Tabs (MD3 Segmented Surface) -->
-        <div style="display:flex; background:var(--color-surface-alt, #e8f5ee); border:1px solid var(--color-border, #D8E6DA); border-radius:12px; padding:4px; margin-bottom:16px; gap:4px;">
-          <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary, #1B7A3E); color:white; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(27,122,62,0.25); transition:all 0.15s ease;">
+        <div style="display:flex; background:var(--color-surface-alt, #e8f5ee); border:1px solid var(--color-border, #D8E6DA); border-radius:999px; padding:3px; margin-bottom:10px; gap:4px;">
+          <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary, #1B7A3E); color:white; border-radius:999px; padding:7px 10px; cursor:pointer; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(27,122,62,0.25); transition:all 0.15s ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
             <span>File Import</span>
           </button>
-          <button class="scanner-tab-btn" data-tab="camera" id="tab-btn-camera" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
+          <button class="scanner-tab-btn" data-tab="camera" id="tab-btn-camera" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:999px; padding:7px 10px; cursor:pointer; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             <span>Live Camera</span>
           </button>
-          <button class="scanner-tab-btn" data-tab="mobile" id="tab-btn-mobile" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
+          <button class="scanner-tab-btn" data-tab="mobile" id="tab-btn-mobile" style="flex:1; border:none; background:transparent; color:var(--color-text-muted, #5A7060); border-radius:999px; padding:7px 10px; cursor:pointer; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
             <span>Mobile Scanner</span>
           </button>
@@ -70,19 +78,28 @@ export class ScannerComponent {
             <!-- VIEW B: Image preview after scan (like Mobile Scanner) -->
             <div id="upload-view-preview" style="display:none; flex-direction:column; flex:1; background:var(--color-surface,#fff); border:1px solid var(--color-border,#D8E6DA); border-radius:16px; overflow:hidden;">
               <!-- Header bar -->
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--color-surface-alt,#e8f5ee); border-bottom:1px solid var(--color-border,#D8E6DA);">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--color-surface-alt,#e8f5ee); border-bottom:1px solid var(--color-border,#D8E6DA); gap:8px; flex-wrap:wrap;">
                 <div style="display:flex; align-items:center; gap:8px;">
                   <span id="upload-preview-badge" style="background:var(--color-primary,#1B7A3E); color:#fff; font-size:11px; font-weight:700; padding:2px 10px; border-radius:999px;">Scanned File</span>
-                  <span style="font-size:12px; font-weight:600; color:var(--color-text,#1A2B1C);">Live Comparison View</span>
+                  <span id="upload-ocr-conf-badge" style="display:none; background:#E0F2FE; color:#0369A1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;"></span>
                 </div>
-                <button id="upload-scan-another-btn" style="border:1px solid var(--color-border,#D8E6DA); background:#fff; color:var(--color-text,#1A2B1C); padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                  Scan Another File
-                </button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button id="upload-toggle-boxes-btn" type="button" style="border:1px solid var(--color-border,#D8E6DA); background:#fff; color:var(--color-text,#1A2B1C); padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2"/></svg>
+                    <span>Show OCR Boxes</span>
+                  </button>
+                  <button id="upload-scan-another-btn" style="border:1px solid var(--color-border,#D8E6DA); background:#fff; color:var(--color-text,#1A2B1C); padding:5px 12px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Scan Another File
+                  </button>
+                </div>
               </div>
-              <!-- Scanned image (scrollable, click to zoom) -->
-              <div style="flex:1; overflow:auto; background:#111; display:flex; align-items:center; justify-content:center; min-height:0;">
-                <img id="upload-preview-img" src="" alt="Scanned receipt" style="max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in; transition:transform 0.2s ease;" />
+              <!-- Scanned image (drag to pan, scroll wheel to zoom) -->
+              <div id="upload-preview-viewport" style="flex:1; overflow:hidden; background:#111; display:flex; align-items:center; justify-content:center; min-height:0; padding:8px; cursor:grab; user-select:none; touch-action:none; position:relative;">
+                <div id="upload-preview-stage" style="position:relative; display:inline-flex; align-items:center; justify-content:center; max-width:100%; max-height:100%; will-change:transform;">
+                  <img id="upload-preview-img" src="" alt="Scanned receipt" draggable="false" style="max-width:100%; max-height:100%; object-fit:contain; display:block; pointer-events:none; user-select:none;" />
+                  <svg id="upload-ocr-overlay" style="position:absolute; pointer-events:none; display:none; overflow:visible;"></svg>
+                </div>
               </div>
               <!-- Status bar -->
               <div id="upload-preview-status" style="display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--color-primary-bg,#E8F5E9); border-top:1px solid var(--color-border,#D8E6DA); font-size:12px; font-weight:600; color:var(--color-primary-dark,#0E5C2C);">
@@ -198,20 +215,29 @@ export class ScannerComponent {
             <!-- VIEW B: Live Scanned Receipt Preview & Comparison -->
             <div id="mobile-view-preview" style="height:100%; width:100%; display:none; flex-direction:column; overflow:hidden;">
               <!-- Header -->
-              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--color-border, #D8E6DA);">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--color-border, #D8E6DA); gap:8px; flex-wrap:wrap;">
                 <div style="display:flex; align-items:center; gap:8px;">
                   <span id="mobile-preview-badge" style="background:var(--color-primary, #1B7A3E); color:#ffffff; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700; letter-spacing:0.3px;">Receipt #1</span>
-                  <span style="font-size:12px; font-weight:600; color:var(--color-text, #1A2B1C);">Live Comparison View</span>
+                  <span id="mobile-ocr-conf-badge" style="display:none; background:#E0F2FE; color:#0369A1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;"></span>
                 </div>
-                <button id="btn-toggle-qr-view" title="Show QR code for connection" style="border:1px solid var(--color-border, #D8E6DA); background:#ffffff; color:var(--color-text-muted, #5A7060); padding:5px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s ease;">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                  <span>Show QR Code</span>
-                </button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button id="mobile-toggle-boxes-btn" type="button" style="border:1px solid var(--color-border, #D8E6DA); background:#ffffff; color:var(--color-text, #1A2B1C); padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2"/></svg>
+                    <span>Show OCR Boxes</span>
+                  </button>
+                  <button id="btn-toggle-qr-view" title="Show QR code for connection" style="border:1px solid var(--color-border, #D8E6DA); background:#ffffff; color:var(--color-text-muted, #5A7060); padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s ease;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Show QR Code</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- High-Resolution Scrollable & Zoomable Image Box -->
-              <div id="mobile-preview-container" style="flex:1; width:100%; min-height:0; display:flex; justify-content:center; align-items:center; background:#0F1811; border-radius:12px; overflow:auto; position:relative; padding:8px; margin:8px 0; border:1px solid rgba(27,122,62,0.2);">
-                <img id="mobile-receipt-preview-img" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; box-shadow:0 4px 20px rgba(0,0,0,0.5); cursor:zoom-in; transition:transform 0.2s cubic-bezier(0.2, 0, 0, 1);" alt="Active Scanned Physical Receipt" />
+              <!-- High-Resolution Pan & Wheel-Zoom Image Box -->
+              <div id="mobile-preview-container" style="flex:1; width:100%; min-height:0; display:flex; justify-content:center; align-items:center; background:#0F1811; border-radius:12px; overflow:hidden; position:relative; padding:8px; margin:8px 0; border:1px solid rgba(27,122,62,0.2); cursor:grab; user-select:none; touch-action:none;">
+                <div id="mobile-preview-stage" style="position:relative; display:inline-flex; align-items:center; justify-content:center; max-width:100%; max-height:100%; will-change:transform;">
+                  <img id="mobile-receipt-preview-img" draggable="false" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; box-shadow:0 4px 20px rgba(0,0,0,0.5); display:block; pointer-events:none; user-select:none;" alt="Active Scanned Physical Receipt" />
+                  <svg id="mobile-ocr-overlay" style="position:absolute; pointer-events:none; display:none; overflow:visible;"></svg>
+                </div>
               </div>
 
               <!-- Status Footer -->
@@ -381,20 +407,19 @@ export class ScannerComponent {
       });
     }
 
-    // Toggle zoom on receipt preview image for reading details
-    const receiptImg = this.container.querySelector('#mobile-receipt-preview-img');
-    if (receiptImg) {
-      receiptImg.addEventListener('click', () => {
-        this.isReceiptZoomed = !this.isReceiptZoomed;
-        if (this.isReceiptZoomed) {
-          receiptImg.style.transform = 'scale(1.8)';
-          receiptImg.style.cursor = 'zoom-out';
-        } else {
-          receiptImg.style.transform = 'scale(1)';
-          receiptImg.style.cursor = 'zoom-in';
-        }
-      });
-    }
+    // True drag-to-pan + mouse-wheel zoom on Upload & Mobile preview viewports
+    this.initPanZoomViewport(this.container.querySelector('#upload-preview-viewport'));
+    this.initPanZoomViewport(this.container.querySelector('#mobile-preview-container'));
+
+    // OCR Bounding Box Toggle Buttons (Upload & Mobile previews)
+    const toggleBoxes = () => {
+      this.showOcrBoxes = !this.showOcrBoxes;
+      this.renderOcrOverlay();
+    };
+    this.container.querySelector('#upload-toggle-boxes-btn')?.addEventListener('click', toggleBoxes);
+    this.container.querySelector('#mobile-toggle-boxes-btn')?.addEventListener('click', toggleBoxes);
+    this.container.querySelector('#upload-preview-img')?.addEventListener('load', () => this.renderOcrOverlay());
+    this.container.querySelector('#mobile-receipt-preview-img')?.addEventListener('load', () => this.renderOcrOverlay());
 
     // Camera device selector
     const cameraSelect = this.container.querySelector('#scanner-camera-select');
@@ -1104,34 +1129,49 @@ export class ScannerComponent {
       }))
     };
     let parsedTable;
-    if (data.html_structure) {
-        console.log('Using RapidTable HTML Structure parsing');
+    let mnaoResult = null;
+    if (data.raw_cells && data.raw_cells.length > 0) {
+        mnaoResult = parseMnaoReceipt(data.raw_cells);
+        if (mnaoResult?.rows?.length > 0) {
+            console.log(`Using Form-Aware MNAO Parser (${mnaoResult.formType}):`, mnaoResult.rows.length, 'rows');
+            parsedTable = mnaoResult;
+        }
+    }
+
+    if (!parsedTable && data.html_structure) {
+        console.log('Fallback to RapidTable HTML Structure parsing');
         parsedTable = parseHtmlTableData(data.html_structure);
     }
-    
-    if (data.raw_cells && data.raw_cells.length > 0) {
-        const spatialTable = parseSpatialCells(data.raw_cells);
-        const htmlRows = parsedTable?.rows?.length || 0;
-        const spatialRows = spatialTable?.rows?.length || 0;
-        if (!htmlRows || (parsedTable?.hasMergedCells && spatialRows > htmlRows) || (spatialRows >= htmlRows + 2)) {
-            console.log('Using spatial bbox parsing on raw cells:', spatialRows, 'rows vs HTML:', htmlRows);
-            parsedTable = spatialTable;
-        }
+
+    if ((!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) && data.raw_cells && data.raw_cells.length > 0) {
+        console.log('Fallback to spatial bbox parsing');
+        parsedTable = parseSpatialCells(data.raw_cells);
     }
 
     if (!parsedTable || !parsedTable.rows || parsedTable.rows.length === 0) {
         console.log('Fallback to legacy bbox parsing');
         parsedTable = parseTableData(legacyFormat);
     }
-    
+
+    this.lastOcrOverlay = {
+        cells: mnaoResult?.annotatedCells || data.raw_cells || [],
+        width: data.image_width || 0,
+        height: data.image_height || 0,
+        formType: mnaoResult?.formType || 'GENERIC',
+        avgConfidence: mnaoResult?.avgConfidence ?? 0,
+    };
+
     console.log('PARSED TABLE RESULTS:', parsedTable);
-    const parsedRows = (parsedTable?.rows || []).map(r => {
+    const parsedRows = (parsedTable?.rows || []).map((r, idx) => {
        const match = this.fuzzyMatchCommodity(r.productName);
        return {
           ...r,
           commodityId: match ? match.id : null,
           productName: match ? match.name : r.productName,
-          unit: match ? (match.unit || r.unit) : r.unit
+          unit: match ? (match.unit || r.unit) : r.unit,
+          batchCode: r.batchCode || '',
+          ocrRowIndex: mnaoResult ? idx : null,
+          hasExpDateColumn: r.hasExpDateColumn !== false,
        };
     });
 
@@ -1147,6 +1187,7 @@ export class ScannerComponent {
       if (previewStatusText) {
         previewStatusText.innerHTML = `<span style="width:7px; height:7px; background:var(--color-primary, #1B7A3E); border-radius:50%; display:inline-block;"></span><span>${successMsg}</span>`;
       }
+      this.renderOcrOverlay();
     } else {
       // Upload / Camera tab — show image preview view instead of reverting to blank dropzone
       const returnTab = this.sourceTab || 'upload';
@@ -1166,6 +1207,7 @@ export class ScannerComponent {
 
         if (dropzone) dropzone.style.display = 'none';
         if (preview)  preview.style.display  = 'flex';
+        this.renderOcrOverlay();
         if (status) {
           status.innerHTML = `<span style="width:7px; height:7px; background:var(--color-primary,#1B7A3E); border-radius:50%; display:inline-block;"></span><span>${parsedRows.length} item(s) extracted! Verify against the image above.</span>`;
         }
@@ -1192,7 +1234,7 @@ export class ScannerComponent {
       let canvas = null;
       if (cropper) {
         try {
-          canvas = cropper.getCroppedCanvas({ width: 1400, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+          canvas = cropper.getCroppedCanvas({ maxWidth: 2200, maxHeight: 2200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
         } catch (canvasErr) {
           console.warn("Could not get cropped canvas from cropper:", canvasErr);
         }
@@ -1230,6 +1272,195 @@ export class ScannerComponent {
         btn.innerHTML = 'Extract Table (OCR)';
         btn.disabled = false;
       }
+    }
+  }
+
+  initPanZoomViewport(viewport) {
+    if (!viewport) return;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let originPanX = 0;
+    let originPanY = 0;
+
+    viewport.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      originPanX = this.panX;
+      originPanY = this.panY;
+      viewport.style.cursor = 'grabbing';
+      viewport.setPointerCapture?.(e.pointerId);
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      this.panX = originPanX + (e.clientX - startX);
+      this.panY = originPanY + (e.clientY - startY);
+      this.applyPreviewZoom();
+    });
+
+    const endDrag = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      viewport.style.cursor = 'grab';
+      try { viewport.releasePointerCapture?.(e.pointerId); } catch {}
+    };
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const cx = e.clientX - (rect.left + rect.width / 2);
+      const cy = e.clientY - (rect.top + rect.height / 2);
+
+      const oldZoom = this.previewZoom;
+      const factor = e.deltaY < 0 ? 1.12 : 0.89;
+      const newZoom = Math.min(3.5, Math.max(0.6, Math.round(oldZoom * factor * 100) / 100));
+      if (newZoom === oldZoom) return;
+
+      const ratio = newZoom / oldZoom;
+      this.panX = cx - ratio * (cx - this.panX);
+      this.panY = cy - ratio * (cy - this.panY);
+      this.previewZoom = newZoom;
+      this.isReceiptZoomed = newZoom > 1.05;
+      this.applyPreviewZoom();
+      this.onZoomChange?.(this.previewZoom);
+    }, { passive: false });
+
+    viewport.addEventListener('dblclick', () => {
+      this.resetZoom();
+      this.onZoomChange?.(this.previewZoom);
+    });
+  }
+
+  adjustZoom(delta) {
+    this.previewZoom = Math.min(3.5, Math.max(0.6, Math.round((this.previewZoom + delta) * 100) / 100));
+    this.isReceiptZoomed = this.previewZoom > 1.05;
+    this.applyPreviewZoom();
+    this.onZoomChange?.(this.previewZoom);
+    return this.previewZoom;
+  }
+
+  resetZoom() {
+    this.previewZoom = 1;
+    this.panX = 0;
+    this.panY = 0;
+    this.isReceiptZoomed = false;
+    this.applyPreviewZoom();
+    this.onZoomChange?.(this.previewZoom);
+    return this.previewZoom;
+  }
+
+  applyPreviewZoom() {
+    ['#upload-preview-stage', '#mobile-preview-stage'].forEach(sel => {
+      const stage = this.container.querySelector(sel);
+      if (!stage) return;
+      stage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.previewZoom})`;
+      stage.style.transformOrigin = 'center center';
+    });
+  }
+
+  highlightRow(rowIdx) {
+    const next = (rowIdx === null || rowIdx === undefined) ? null : Number(rowIdx);
+    if (this.highlightedRowIndex === next) return;
+    this.highlightedRowIndex = next;
+    this.renderOcrOverlay();
+  }
+
+  renderOcrOverlay() {
+    const overlay = this.lastOcrOverlay;
+    const roleColors = {
+      product: { stroke: '#22c55e', fill: 'rgba(34,197,94,0.14)', label: 'Item' },
+      qty:     { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.14)', label: 'Qty/Unit' },
+      date:    { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.14)', label: 'Date' },
+      batch:   { stroke: '#a855f7', fill: 'rgba(168,85,247,0.14)', label: 'Batch' },
+      meta:    { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.14)', label: 'Meta' },
+      header:  { stroke: '#64748b', fill: 'rgba(100,116,139,0.10)', label: 'Header' },
+      ignored: { stroke: '#94a3b8', fill: 'rgba(148,163,184,0.06)', label: 'Skip' },
+    };
+
+    const confText = overlay && overlay.cells.length
+      ? `${overlay.formType} • ${(overlay.avgConfidence * 100).toFixed(1)}% OCR Conf.`
+      : '';
+
+    ['#upload-ocr-conf-badge', '#mobile-ocr-conf-badge'].forEach(sel => {
+      const el = this.container.querySelector(sel);
+      if (!el) return;
+      if (confText) {
+        el.textContent = confText;
+        el.style.display = 'inline-block';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+
+    ['#upload-toggle-boxes-btn', '#mobile-toggle-boxes-btn'].forEach(sel => {
+      const btn = this.container.querySelector(sel);
+      if (!btn) return;
+      btn.style.background = this.showOcrBoxes ? 'var(--color-primary, #1B7A3E)' : '#fff';
+      btn.style.color = this.showOcrBoxes ? '#fff' : 'var(--color-text, #1A2B1C)';
+      btn.style.borderColor = this.showOcrBoxes ? 'var(--color-primary, #1B7A3E)' : 'var(--color-border, #D8E6DA)';
+      const span = btn.querySelector('span');
+      if (span) span.textContent = this.showOcrBoxes ? 'Hide OCR Boxes' : 'Show OCR Boxes';
+    });
+
+    const pairs = [
+      { imgSel: '#upload-preview-img', svgSel: '#upload-ocr-overlay' },
+      { imgSel: '#mobile-receipt-preview-img', svgSel: '#mobile-ocr-overlay' },
+    ];
+
+    for (const { imgSel, svgSel } of pairs) {
+      const imgEl = this.container.querySelector(imgSel);
+      const svgEl = this.container.querySelector(svgSel);
+      if (!imgEl || !svgEl) continue;
+
+      const hasRowHighlight = this.highlightedRowIndex !== null && this.highlightedRowIndex !== undefined;
+      if ((!this.showOcrBoxes && !hasRowHighlight) || !overlay || !overlay.cells.length || !overlay.width || !overlay.height) {
+        svgEl.style.display = 'none';
+        svgEl.innerHTML = '';
+        continue;
+      }
+
+      svgEl.style.display = 'block';
+      svgEl.style.left = `${imgEl.offsetLeft}px`;
+      svgEl.style.top = `${imgEl.offsetTop}px`;
+      svgEl.style.width = `${imgEl.clientWidth}px`;
+      svgEl.style.height = `${imgEl.clientHeight}px`;
+      svgEl.setAttribute('viewBox', `0 0 ${overlay.width} ${overlay.height}`);
+
+      const strokeW = Math.max(1.2, overlay.width / 700);
+      const fontSize = Math.max(7.5, Math.round(overlay.width / 120));
+
+      svgEl.innerHTML = overlay.cells.map(c => {
+        const isRowMatch = hasRowHighlight && c.rowIndex === this.highlightedRowIndex;
+        if (!this.showOcrBoxes && !isRowMatch) return '';
+
+        const [x1, y1, x2, y2] = c.bbox || [0, 0, 0, 0];
+        const w = Math.max(2, x2 - x1);
+        const h = Math.max(2, y2 - y1);
+        const style = roleColors[c.role] || roleColors.ignored;
+        const pct = Math.round((c.confidence ?? 0) * 100);
+        const isIgnored = c.role === 'ignored' || c.role === 'header';
+        const dash = isIgnored ? `stroke-dasharray="${strokeW * 3} ${strokeW * 2}"` : '';
+        const dimOpacity = hasRowHighlight && !isRowMatch ? 'opacity="0.28"' : 'opacity="1"';
+        const activeStroke = isRowMatch ? strokeW * 2.2 : strokeW;
+        const activeFill = isRowMatch ? 'rgba(34,197,94,0.22)' : style.fill;
+        const safeText = String(c.text || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const labelStr = `${pct}%`;
+        const pillW = Math.max(22, (labelStr.length + 1) * fontSize * 0.62);
+        const tag = (!isIgnored || isRowMatch)
+          ? `<rect x="${x1}" y="${Math.max(0, y1 - fontSize - 2)}" width="${pillW}" height="${fontSize + 2}" rx="2" fill="${style.stroke}" fill-opacity="0.9" />
+             <text x="${x1 + 2}" y="${Math.max(fontSize - 1, y1 - 2)}" fill="#ffffff" font-size="${fontSize}" font-family="monospace" font-weight="700">${labelStr}</text>`
+          : '';
+        return `<g style="pointer-events:auto;" ${dimOpacity}>
+          <title>[${style.label}] ${safeText} (${pct}% conf)</title>
+          <rect x="${x1}" y="${y1}" width="${w}" height="${h}" fill="${activeFill}" stroke="${style.stroke}" stroke-width="${activeStroke}" ${dash} rx="2" />
+          ${tag}
+        </g>`;
+      }).join('');
     }
   }
 

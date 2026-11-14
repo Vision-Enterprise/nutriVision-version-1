@@ -50,6 +50,12 @@ class InventoryExtractor:
             'Calclum': 'Calcium',
             'Sodlum': 'Sodium',
             'Mlcro': 'Micro',
+            'nutrimilkk': 'nutrimilk',
+            'Nultrimilk': 'Nutrimilk',
+            'STOCKTRANSFER': 'STOCK TRANSFER',
+            'Nothing Folicws': 'Nothing Follows',
+            'Expintion': 'Expiration',
+            'Denaticn': 'Donation',
         }
         for old, new in replacements.items():
             text = text.replace(old, new)
@@ -67,10 +73,11 @@ class InventoryExtractor:
             
             h, w = img.shape[:2]
             max_dim = max(h, w)
-            if max_dim > 1200:
-                scale = 1200.0 / max_dim
+            if max_dim > 2000:
+                scale = 2000.0 / max_dim
                 img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
+            proc_h, proc_w = img.shape[:2]
             print(f"DEBUG Image Shape: {img.shape}")
 
             # 1. OCR text detection using modern unified rapidocr (skip 180-deg cls for upright receipts)
@@ -106,7 +113,9 @@ class InventoryExtractor:
 
             return {
                 "html_structure": self._normalize_text(table_html),
-                "raw_cells": rows
+                "raw_cells": rows,
+                "image_width": int(proc_w),
+                "image_height": int(proc_h),
             }
         except Exception as e:
             traceback.print_exc()

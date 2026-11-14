@@ -240,10 +240,9 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
             Bulk Batch Registration
          </h2>
-         <span class="workspace-header-subtitle">NutriVision MNAO Intake (FEFO Strict)</span>
       </div>
       <div class="workspace-actions">
-         <button id="workspace-cancel-btn" style="background:transparent; border:none; font-weight:600; color:var(--text-muted); cursor:pointer; padding:10px 16px;">Cancel / Exit</button>
+         <button id="workspace-cancel-btn" style="background:#f1f5f9; border:1px solid var(--color-border); border-radius:999px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; padding:7px 16px;">Cancel / Exit</button>
          <button id="workspace-save-btn" class="btn-elevated" disabled title="Fill in all mandatory fields (Commodity, Category, Unit, Qty, Delivery Date, and Expiration Date) to enable.">Register All Batches</button>
       </div>
     </div>
@@ -251,29 +250,43 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     <div class="workspace-body">
       <!-- Left Panel: Scanner (Collapsible) -->
       <div class="workspace-panel-left" id="workspace-panel-left">
-         <div class="scanner-pane-header">
+         <div class="scanner-pane-header" style="padding:7px 12px;">
            <span style="font-size:13px; font-weight:600; color:var(--text-main);">Scanner Module</span>
-           <button class="scanner-hamburger-btn" id="scanner-collapse-btn" title="Collapse scanner pane" aria-label="Toggle scanner pane">
-             <span></span><span></span><span></span>
-           </button>
+           <div style="display:flex; align-items:center; gap:8px;">
+             <div class="zoom-pill-group" title="Zoom receipt preview">
+               <button type="button" class="zoom-pill-btn" id="scanner-zoom-out" aria-label="Zoom out receipt">−</button>
+               <span class="zoom-pill-label" id="scanner-zoom-label" title="Reset receipt zoom">100%</span>
+               <button type="button" class="zoom-pill-btn" id="scanner-zoom-in" aria-label="Zoom in receipt">+</button>
+             </div>
+             <button class="scanner-hamburger-btn" id="scanner-collapse-btn" title="Collapse scanner pane" aria-label="Toggle scanner pane">
+               <span></span><span></span><span></span>
+             </button>
+           </div>
          </div>
          <div id="bulk-scanner-container" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
          <button id="scanner-pane-toggle-tab" title="Expand scanner pane" aria-label="Expand scanner pane">
            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-           SCANNER
          </button>
       </div>
 
       <!-- Right Panel: Data Grid -->
       <div class="workspace-panel-right">
-         <div class="fx-bar-wrapper">
-           <span class="fx-bar-label" id="fx-cell-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> fx</span>
-           <input class="fx-bar-input" id="fx-bar-input" name="fx_bar_input" aria-label="Formula bar cell editor" placeholder="Click any cell or start typing here..." />
+         <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 12px; background:#f1f5f9; border:1px solid var(--color-border); border-bottom:none; border-radius:8px 8px 0 0; flex-shrink:0;">
+           <span style="font-size:13px; font-weight:600; color:var(--text-main);">Extracted Data</span>
+           <div class="zoom-pill-group" title="Zoom Extracted Data table">
+             <button type="button" class="zoom-pill-btn" id="grid-zoom-out" aria-label="Zoom out table">−</button>
+             <span class="zoom-pill-label" id="grid-zoom-label" title="Reset table zoom">82%</span>
+             <button type="button" class="zoom-pill-btn" id="grid-zoom-in" aria-label="Zoom in table">+</button>
+           </div>
+         </div>
+         <div class="fx-bar-wrapper" style="border-radius:0;">
+           <span class="fx-bar-label" id="fx-cell-badge" style="display:inline-flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+           <input class="fx-bar-input" id="fx-bar-input" name="fx_bar_input" aria-label="Cell editor" placeholder="Click any cell or start typing here..." />
          </div>
 
          <div class="headless-grid-container" style="border-radius:0 0 8px 8px;">
-           <div class="headless-grid-scroll" style="overflow-x:auto; flex:1;">
-           <table class="headless-grid">
+           <div class="headless-grid-scroll" style="overflow:auto; flex:1;">
+           <table class="headless-grid" id="bulk-headless-grid" style="zoom:0.82;">
               <thead>
                  <tr>
                     <th style="min-width:240px;">Commodity <span style="color:#ef4444;">*</span></th>
@@ -293,9 +306,9 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
               </tbody>
            </table>
            </div>
-           <div style="padding:16px; display:flex; justify-content:space-between; align-items:center;">
-              <button id="bulk-add-row-btn" style="background:none; border:none; color:var(--color-primary); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
-                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+           <div style="padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border);">
+              <button id="bulk-add-row-btn" style="background:var(--color-primary-bg, #E8F5E9); border:1px solid var(--color-border); border-radius:999px; padding:6px 14px; font-size:12px; color:var(--color-primary); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                  Add New Row Manually
               </button>
               <div id="validation-status-pill" style="font-size:12px; font-weight:600; color:var(--text-muted);">
@@ -323,6 +336,10 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   // Mount ScannerComponent
   const scannerInstance = new ScannerComponent({
     container: document.getElementById('bulk-scanner-container'),
+    onZoomChange: (z) => {
+      const lbl = document.getElementById('scanner-zoom-label');
+      if (lbl) lbl.textContent = `${Math.round(z * 100)}%`;
+    },
     onComplete: (parsedRows) => {
       const today = getToday();
       parsedRows.forEach(r => {
@@ -372,6 +389,8 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
           deliveryDate: finalDeliveryDate,
           expDate: finalExpDate,
           expAutoComputed,
+          expHint: r.hasExpDateColumn === false ? 'From physical box' : '',
+          ocrRowIndex: r.ocrRowIndex ?? null,
           supplier: r.supplier || '',
           notes: ''
         });
@@ -390,6 +409,65 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
   });
   document.getElementById('scanner-pane-toggle-tab')?.addEventListener('click', () => {
     leftPanel.classList.remove('is-collapsed');
+  });
+
+  // Scanner preview +/- zoom controls
+  const scannerZoomLabel = document.getElementById('scanner-zoom-label');
+  const updateScannerZoomLabel = (z) => {
+    if (scannerZoomLabel) scannerZoomLabel.textContent = `${Math.round(z * 100)}%`;
+  };
+  document.getElementById('scanner-zoom-in')?.addEventListener('click', () => {
+    updateScannerZoomLabel(scannerInstance.adjustZoom(0.2));
+  });
+  document.getElementById('scanner-zoom-out')?.addEventListener('click', () => {
+    updateScannerZoomLabel(scannerInstance.adjustZoom(-0.2));
+  });
+  scannerZoomLabel?.addEventListener('click', () => {
+    updateScannerZoomLabel(scannerInstance.resetZoom());
+  });
+
+  // Extracted Data (Excel) +/- zoom controls
+  let gridZoom = 0.82;
+  const gridEl = document.getElementById('bulk-headless-grid');
+  const gridZoomLabel = document.getElementById('grid-zoom-label');
+  const applyGridZoom = (z) => {
+    gridZoom = Math.min(1.4, Math.max(0.6, Math.round(z * 100) / 100));
+    if (gridEl) gridEl.style.zoom = String(gridZoom);
+    if (gridZoomLabel) gridZoomLabel.textContent = `${Math.round(gridZoom * 100)}%`;
+  };
+  document.getElementById('grid-zoom-in')?.addEventListener('click', () => applyGridZoom(gridZoom + 0.08));
+  document.getElementById('grid-zoom-out')?.addEventListener('click', () => applyGridZoom(gridZoom - 0.08));
+  gridZoomLabel?.addEventListener('click', () => applyGridZoom(0.82));
+
+  // Row <-> Receipt OCR Box Highlight + Excel Keyboard Navigation
+  const tbodyEl = document.getElementById('bulk-table-body');
+  const activateRow = (tr) => {
+    if (!tr) return;
+    tbodyEl?.querySelectorAll('tr.is-active-row').forEach(r => r.classList.remove('is-active-row'));
+    tr.classList.add('is-active-row');
+    const idx = Number(tr.dataset.index);
+    const rowData = bulkRows[idx];
+    scannerInstance.highlightRow(rowData ? rowData.ocrRowIndex : null);
+  };
+  tbodyEl?.addEventListener('focusin', (e) => activateRow(e.target.closest('tr.bulk-row')));
+  tbodyEl?.addEventListener('click', (e) => activateRow(e.target.closest('tr.bulk-row')));
+  tbodyEl?.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'Enter') return;
+    const input = e.target;
+    if (!input || !input.closest) return;
+    if (e.key === 'Enter' && input.tagName === 'SELECT') return;
+    const td = input.closest('td');
+    const tr = input.closest('tr.bulk-row');
+    if (!td || !tr) return;
+    const colIdx = Array.from(tr.children).indexOf(td);
+    const targetTr = e.key === 'ArrowUp' ? tr.previousElementSibling : tr.nextElementSibling;
+    if (!targetTr) return;
+    const targetInput = targetTr.children[colIdx]?.querySelector('input, select');
+    if (targetInput) {
+      e.preventDefault();
+      targetInput.focus();
+      targetInput.select?.();
+    }
   });
 
   // FX Bar editing & Excel-like Two-Way Sync
@@ -442,7 +520,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
     const colName = fxTarget.getAttribute('aria-label') || fxTarget.placeholder || 'Cell';
 
     if (fxBadge) {
-      fxBadge.textContent = rowIndex ? `R${rowIndex}:${colName}` : 'fx';
+      fxBadge.textContent = rowIndex ? `R${rowIndex}:${colName}` : 'Cell';
       fxBadge.title = `Row ${rowIndex}, ${colName}`;
     }
 
@@ -694,7 +772,9 @@ function renderBulkTable() {
     });
     const expHintHtml = rowPolicy.defaultShelfLifeDays
       ? `<div class="ws-exp-policy-hint" style="display:block; font-size:10px; font-weight:600; color:#b45309; margin-top:2px; line-height:1.2;">+${rowPolicy.defaultShelfLifeDays}d (${escapeHtml(rowPolicy.shortLabel)})</div>`
-      : `<div class="ws-exp-policy-hint" style="display:none; font-size:10px; font-weight:600; color:#b45309; margin-top:2px; line-height:1.2;"></div>`;
+      : (row.expHint && !row.expDate)
+        ? `<div class="ws-exp-policy-hint" style="display:block; font-size:10px; font-weight:600; color:#0369a1; margin-top:2px; line-height:1.2;">${escapeHtml(row.expHint)}</div>`
+        : `<div class="ws-exp-policy-hint" style="display:none; font-size:10px; font-weight:600; color:#b45309; margin-top:2px; line-height:1.2;"></div>`;
 
     // Determine display code and row state
     const isNewComm = Boolean(codeResult.isNewCommodity);
