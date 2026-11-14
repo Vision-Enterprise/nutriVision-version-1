@@ -7,7 +7,7 @@
 
 import { getExpirationStatus, getDaysRemaining } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
-import { resolveShelfLifePolicy, formatPolicyRanges } from '../../shared/utils/shelf-life.utils.js';
+import { resolveShelfLifePolicy, formatPolicyRanges, computeBatchLsfoMetrics } from '../../shared/utils/shelf-life.utils.js';
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -91,7 +91,7 @@ function expiryReminderClass(status) {
   return map[status] ?? 'expiry-reminder--good';
 }
 
-export function renderBatchesLayout({ batches, commodities, filtered, filterComm, filterStatus }) {
+export function renderBatchesLayout({ batches, commodities, filtered, filterComm, filterStatus, sortMode = 'hybrid' }) {
   return `
     <!-- Header row -->
     <div style="display:flex; align-items:flex-start; justify-content:space-between;
@@ -116,15 +116,18 @@ export function renderBatchesLayout({ batches, commodities, filtered, filterComm
     </div>
 
     <!-- Expiry Legend -->
-    <div style="display:flex; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4); font-size: var(--font-size-sm); color: var(--color-text-muted); background: var(--color-surface); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--color-border); align-items: center;">
-      <strong style="color: var(--color-text); margin-right: var(--space-2);">Expiration Guide:</strong>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-good" style="margin:0;">Good</span> &gt; 6 Months</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-moderate" style="margin:0;">Moderate</span> 3–6 Months</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-near-expiry" style="margin:0;">Near Expiry</span> 1–90 Days</div>
-      <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-expired" style="margin:0;">Expired</span> &le; 0 Days</div>
-      <span style="font-size: 11.5px; color: var(--color-text-muted); margin-left: auto;">
-        Perishables (e.g. 7-Day Nutribun) use their Commodity Shelf-Life Policy
-      </span>
+    <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:var(--space-4); font-size: var(--font-size-sm); color: var(--color-text-muted); background: var(--color-surface); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+      <div style="display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center;">
+        <strong style="color: var(--color-text); margin-right: var(--space-1);">Expiration Guide:</strong>
+        <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-good" style="margin:0;">Good</span> &gt; 6 Months</div>
+        <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-moderate" style="margin:0;">Moderate</span> 3–6 Months</div>
+        <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-near-expiry" style="margin:0;">Near Expiry</span> 1–90 Days</div>
+        <div style="display: flex; align-items: center; gap: var(--space-1);"><span class="badge badge-expired" style="margin:0;">Expired</span> &le; 0 Days</div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding-top:6px; border-top:1px solid var(--color-border); font-size:11.5px;">
+        <span><strong style="color:var(--color-text);">FEFO</strong> (First-Expired, First-Out): Give out items expiring soonest first.</span>
+        <span><strong style="color:var(--color-text);">LSFO</strong> (Least-Shelf-Life, First-Out): If two items expire on the same day, give out the faster-spoiling item first.</span>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -146,6 +149,13 @@ export function renderBatchesLayout({ batches, commodities, filtered, filterComm
         <option value="${EXPIRATION_STATUS.MODERATE}"   ${filterStatus === EXPIRATION_STATUS.MODERATE   ? 'selected' : ''}>Moderate</option>
         <option value="${EXPIRATION_STATUS.NEAR_EXPIRY}"${filterStatus === EXPIRATION_STATUS.NEAR_EXPIRY? 'selected' : ''}>Near Expiry</option>
         <option value="${EXPIRATION_STATUS.EXPIRED}"    ${filterStatus === EXPIRATION_STATUS.EXPIRED    ? 'selected' : ''}>Expired</option>
+      </select>
+
+      <select id="filter-dispatch-sort" class="form-input" style="width:auto; min-width:215px; max-width:none;"
+              aria-label="Dispatch sort mode">
+        <option value="hybrid" ${sortMode === 'hybrid' ? 'selected' : ''}>Hybrid (FEFO + LSFO)</option>
+        <option value="fefo"   ${sortMode === 'fefo'   ? 'selected' : ''}>FEFO (Expiry Date)</option>
+        <option value="lsfo"   ${sortMode === 'lsfo'   ? 'selected' : ''}>LSFO (Shortest Span)</option>
       </select>
 
       <div style="position:relative; flex:1; min-width:200px; max-width:340px;">
@@ -193,15 +203,19 @@ export function renderTable(batches) {
           ${batches.map(b => {
             const policy  = resolveShelfLifePolicy(b);
             const ranges  = formatPolicyRanges(policy);
+            const lsfo    = computeBatchLsfoMetrics(b);
             const status  = getExpirationStatus(b.expiration_date, b);
             const days    = getDaysRemaining(b.expiration_date);
             const daysStr = days <= 0
               ? `${Math.abs(days)}d ago`
               : `in ${days}d`;
             const policyTooltip = `${policy.shortLabel} — Good: ${ranges.goodRange} | Moderate: ${ranges.moderateRange} | Near: ${ranges.nearRange}`;
-            const policyTag = policy.badgeLabel
-              ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; font-size:10px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="${escapeHtml(policyTooltip)}">${escapeHtml(policy.badgeLabel)}</span>`
-              : '';
+            const lsfoTag = lsfo.isShortLife
+              ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; font-size:10px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="Short-life batch (${lsfo.totalShelfLifeDays}d total shelf life from delivery to expiry) — prioritized under Hybrid FEFO+LSFO">${lsfo.totalShelfLifeDays}d span · LSFO</span>`
+              : (policy.badgeLabel
+                ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; font-size:10px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="${escapeHtml(policyTooltip)}">${escapeHtml(policy.badgeLabel)}</span>`
+                : '');
+            const policyTag = lsfoTag;
 
             return `
               <tr class="batch-row" data-batch-id="${b.id}" data-batch-number="${escapeHtml(b.batch_number)}" style="cursor: pointer;" title="Click to view supplier & notes">

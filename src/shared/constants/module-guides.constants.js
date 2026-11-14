@@ -187,11 +187,11 @@ export const MODULE_GUIDES = {
     navigation: [
       {
         label: 'Expiration Guide Bar',
-        detail: 'Displays standard Traffic-Light thresholds: Good (> 6 months), Moderate (3–6 months), Near Expiry (1–90 days), and Expired (≤ 0 days).',
+        detail: 'Shows Traffic-Light expiration thresholds and FEFO / LSFO dispatch rules at a glance.',
       },
       {
-        label: 'Commodity, Status & Search Filters',
-        detail: 'Narrow down batches by specific commodity, Traffic-Light status, or partial batch code / commodity keyword.',
+        label: 'Commodity, Status & Sort Filters',
+        detail: 'Filter by commodity, status, or keyword, and switch sorting between Hybrid (FEFO + LSFO), FEFO (Expiry Date), or LSFO (Shortest Span).',
       },
       {
         label: '+ Add Batch Button',
@@ -216,9 +216,17 @@ export const MODULE_GUIDES = {
         detail: 'Use Edit to fix clerical dates/suppliers, or Void to move expired stock or data-entry mistakes into the Archive with a documented reason.',
       },
     ],
+    visualBadges: [
+      { label: 'Good', badgeClass: 'badge-good', meaning: '> 6 months (> 180 days) remaining — safe stock.' },
+      { label: 'Moderate', badgeClass: 'badge-moderate', meaning: '3–6 months (91–180 days) remaining — monitor.' },
+      { label: 'Near Expiry', badgeClass: 'badge-near-expiry', meaning: '1–90 days remaining — prioritize for release.' },
+      { label: 'Expired', badgeClass: 'badge-expired', meaning: '≤ 0 days — blocked from release; void/archive.' },
+      { label: '7d span · LSFO', inlineStyle: 'padding:2px 7px; border-radius:999px; font-size:10.5px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28);', meaning: 'Short shelf-life item (spoils within 90 days of delivery) — prioritized if dates match.' },
+    ],
     rulesAndBadges: [
-      'Delivery Date and Expiration Date are mandatory on all batches to ensure accurate FEFO sorting and audit traceability.',
-      'Expired batches cannot be released; void them under Expired Stock or log damaged stock in Defect Log.',
+      'FEFO (First-Expired, First-Out): Give out items expiring soonest first.',
+      'LSFO (Least-Shelf-Life, First-Out): If two items expire on the same day, give out the faster-spoiling item first.',
+      'Delivery & Expiration Dates are mandatory; expired batches cannot be released.',
     ],
     relatedRoutes: [
       { route: 'releases', label: 'Releases Ledger' },

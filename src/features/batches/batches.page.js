@@ -10,6 +10,7 @@
 
 import { fetchBatches, fetchActiveCommodities } from './batches.service.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
+import { sortBatchesByDispatchRule } from '../../shared/utils/shelf-life.utils.js';
 import { renderBatchesLayout, renderTable, renderEmpty, renderErrorAlert } from './batches.render.js';
 import { openEditBatchModal, openVoidBatchModal, openReleaseBatchModal } from './batches.modals.js';
 import { openFullScreenWorkspace } from './batches.workspace.js';
@@ -21,6 +22,7 @@ let _profile      = null;
 let _filterComm   = 'all';
 let _filterStatus = 'all';
 let _filterSearch = '';
+let _sortMode     = 'hybrid';
 
 // ── Entry Point ─────────────────────────────────────────────────────────────
 export async function renderBatchesPage(profile) {
@@ -34,6 +36,7 @@ export async function renderBatchesPage(profile) {
   _filterComm   = targetComm || 'all';
   _filterStatus = 'all';
   _filterSearch = '';
+  _sortMode     = 'hybrid';
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -93,7 +96,8 @@ function _renderMainView(content) {
     commodities: _commodities,
     filtered,
     filterComm: _filterComm,
-    filterStatus: _filterStatus
+    filterStatus: _filterStatus,
+    sortMode: _sortMode,
   });
 
   _attachPageListeners();
@@ -101,7 +105,7 @@ function _renderMainView(content) {
 
 function _applyFilters() {
   const q = _filterSearch.trim().toLowerCase();
-  return _batches.filter(b => {
+  const filtered = _batches.filter(b => {
     const matchComm   = _filterComm === 'all' || b.commodity_id === _filterComm;
     const matchStatus = _filterStatus === 'all'
       || getExpirationStatus(b.expiration_date, b) === _filterStatus;
@@ -110,6 +114,7 @@ function _applyFilters() {
       || (b.commodities?.name ?? '').toLowerCase().includes(q);
     return matchComm && matchStatus && matchSearch;
   });
+  return sortBatchesByDispatchRule(filtered, _sortMode);
 }
 
 function _refreshTable() {
@@ -165,6 +170,11 @@ function _attachPageListeners() {
 
   document.getElementById('filter-status')?.addEventListener('change', e => {
     _filterStatus = e.target.value;
+    _refreshTable();
+  });
+
+  document.getElementById('filter-dispatch-sort')?.addEventListener('change', e => {
+    _sortMode = e.target.value;
     _refreshTable();
   });
 

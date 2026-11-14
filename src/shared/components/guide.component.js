@@ -336,20 +336,32 @@ function _renderDrawerContent(guideKey) {
     </section>
 
     <!-- Section 4: Rules & Policies -->
-    ${guide.rulesAndBadges && guide.rulesAndBadges.length > 0 ? `
+    ${(guide.visualBadges && guide.visualBadges.length > 0) || (guide.rulesAndBadges && guide.rulesAndBadges.length > 0) ? `
       <section class="nv-guide-section nv-guide-section--rules">
         <div class="nv-guide-section__heading">
           <span class="icon">verified_user</span>
           Important Rules &amp; Indicators
         </div>
-        <ul class="nv-guide-rules-list">
-          ${guide.rulesAndBadges.map(rule => `
-            <li>
-              <span class="icon nv-guide-rules-list__icon" aria-hidden="true">check_circle</span>
-              <span>${_esc(rule)}</span>
-            </li>
-          `).join('')}
-        </ul>
+        ${guide.visualBadges && guide.visualBadges.length > 0 ? `
+          <div style="display:flex; flex-direction:column; gap:7px; margin-bottom:10px; padding:10px; background:var(--color-surface, #fff); border:1px solid var(--color-border, #e2e8f0); border-radius:10px;">
+            ${guide.visualBadges.map(b => `
+              <div style="display:flex; align-items:center; gap:8px; font-size:12px; line-height:1.35;">
+                <span class="badge ${b.badgeClass ? _esc(b.badgeClass) : ''}" style="${b.inlineStyle ? _esc(b.inlineStyle) : ''} margin:0; flex-shrink:0;">${_esc(b.label)}</span>
+                <span style="color:var(--color-text-muted, #475569);">${_esc(b.meaning)}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${guide.rulesAndBadges && guide.rulesAndBadges.length > 0 ? `
+          <ul class="nv-guide-rules-list">
+            ${guide.rulesAndBadges.map(rule => `
+              <li>
+                <span class="icon nv-guide-rules-list__icon" aria-hidden="true">check_circle</span>
+                <span>${_esc(rule)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        ` : ''}
       </section>
     ` : ''}
 

@@ -1414,16 +1414,12 @@ async function handleWorkspaceSave({ profile, overlay, onSaveComplete }) {
       // Auto-register new commodity if typed without prior registry ID
       if (!row.commodityId && row.commodityName) {
         const sku = generateCommoditySKU(row.commodityName, row.unit);
-        const autoShelfConfig = isNutribunName(row.commodityName)
-          ? SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.WEEKLY_PERISHABLE]
-          : null;
         const newCommRes = await createCommodity({
           commodity_code: sku,
           name: row.commodityName,
           category: (row.category || '').trim() || 'General',
           unit: row.unit || 'Piece',
           description: 'Auto-registered from bulk intake',
-          ...(autoShelfConfig ? { shelf_life_config: autoShelfConfig } : {}),
         }, profile);
 
         if (newCommRes.error) {

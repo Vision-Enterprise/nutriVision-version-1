@@ -312,45 +312,87 @@ export function resolveShelfLifePolicy(context = null) {
     }
   }
 
-  const name = commodity?.name || context.commodityName || context.name || '';
-  const category = commodity?.category || context.category || '';
-
-  // 2. Automatic DOST-FNRI Nutribun Detection (7-Day Weekly Dispatch)
-  if (isNutribunName(name)) {
-    return {
-      ...SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.WEEKLY_PERISHABLE],
-      isInferred: true,
-    };
-  }
-
-  // 3. Hybrid Literature Proportional RSL% Fallback (WFP 50% / 25% RSL; Hertog et al., 2014)
-  // Applied when a short-life perishable batch has both delivery and expiration dates.
-  const delDate = context.delivery_date || context.deliveryDate || null;
-  const expDate = context.expiration_date || context.expirationDate || null;
-  const totalDays = _daysBetween(delDate, expDate);
-
-  if (
-    totalDays !== null &&
-    totalDays >= 1 &&
-    totalDays < EXPIRATION_THRESHOLDS.GOOD_DAYS &&
-    (totalDays <= 21 || isPerishableItem(name, category))
-  ) {
-    const nearExpiryDays = Math.max(1, Math.round(totalDays * 0.25));
-    const goodDays = Math.max(nearExpiryDays + 1, Math.round(totalDays * 0.5));
-    return {
-      mode: totalDays <= 8 ? SHELF_LIFE_MODES.WEEKLY_PERISHABLE : SHELF_LIFE_MODES.CHILLED_SHORT,
-      label: `Proportional Perishable RSL (${totalDays}-Day Window)`,
-      shortLabel: `${totalDays}-Day Perishable`,
-      badgeLabel: `${totalDays}-Day Perishable`,
-      goodDays,
-      nearExpiryDays,
-      defaultShelfLifeDays: totalDays,
-      isInferred: true,
-    };
-  }
-
-  // 4. Default Standard Shelf-Stable Policy (USAID DELIVER 90d / 180d)
+  // 2. Universal Standard Policy (Good >180d, Moderate 91–180d, Near Expiry 1–90d, Expired <=0d).
+  // Short-life commodities automatically fall into Near Expiry upon intake and are prioritized via LSFO.
   return { ...SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD], isInferred: false };
+}
+
+/**
+ * Compute universal LSFO (Least-Shelf-Life, First-Out) metrics from a batch's
+ * Delivery Date and Expiration Date without hardcoding specific commodity names.
+ *
+ * @param {Object} batch
+ * @returns {{ totalShelfLifeDays: number|null, daysRemaining: number|null, rslPercent: number|null, isShortLife: boolean }}
+ */
+export function computeBatchLsfoMetrics(batch) {
+  if (!batch || typeof batch !== 'object') {
+    return { totalShelfLifeDays: null, daysRemaining: null, rslPercent: null, isShortLife: false };
+  }
+  const delDate = batch.delivery_date || batch.deliveryDate || null;
+  const expDate = batch.expiration_date || batch.expirationDate || null;
+  const totalShelfLifeDays = _daysBetween(delDate, expDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysRemaining = _daysBetween(today, expDate);
+
+  const rslPercent = (totalShelfLifeDays && totalShelfLifeDays > 0 && daysRemaining !== null)
+    ? Math.max(0, Math.min(100, Math.round((daysRemaining / totalShelfLifeDays) * 100)))
+    : null;
+
+  const isShortLife = Boolean(
+    totalShelfLifeDays !== null &&
+    totalShelfLifeDays >= 1 &&
+    totalShelfLifeDays <= EXPIRATION_THRESHOLDS.NEAR_EXPIRY_DAYS
+  );
+
+  return { totalShelfLifeDays, daysRemaining, rslPercent, isShortLife };
+}
+
+/**
+ * Sort batches using FEFO, LSFO, or seamless Hybrid (FEFO primary + LSFO tie-breaker).
+ *
+ * - 'hybrid' (default): Earliest expiry first (FEFO), breaking ties by shortest total shelf life (LSFO).
+ * - 'fefo': Strictly earliest expiration date first.
+ * - 'lsfo': Shortest total shelf-life span (Exp - Del) first, then earliest expiry.
+ *
+ * @param {Array<Object>} batches
+ * @param {'hybrid'|'fefo'|'lsfo'} [mode='hybrid']
+ * @returns {Array<Object>}
+ */
+export function sortBatchesByDispatchRule(batches, mode = 'hybrid') {
+  if (!Array.isArray(batches)) return [];
+  const copy = [...batches];
+
+  const metricsMap = new Map();
+  for (const b of copy) {
+    metricsMap.set(b, computeBatchLsfoMetrics(b));
+  }
+
+  copy.sort((a, b) => {
+    const ma = metricsMap.get(a);
+    const mb = metricsMap.get(b);
+    const remA = ma.daysRemaining ?? Number.POSITIVE_INFINITY;
+    const remB = mb.daysRemaining ?? Number.POSITIVE_INFINITY;
+    const spanA = ma.totalShelfLifeDays ?? Number.POSITIVE_INFINITY;
+    const spanB = mb.totalShelfLifeDays ?? Number.POSITIVE_INFINITY;
+
+    if (mode === 'lsfo') {
+      if (spanA !== spanB) return spanA - spanB;
+      return remA - remB;
+    }
+
+    if (mode === 'fefo') {
+      return remA - remB;
+    }
+
+    // Default: Hybrid FEFO + LSFO
+    // Primary: FEFO (soonest expiration date first)
+    if (remA !== remB) return remA - remB;
+    // Tie-breaker: LSFO (shortest total shelf life first)
+    return spanA - spanB;
+  });
+
+  return copy;
 }
 
 /**
