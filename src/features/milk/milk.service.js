@@ -61,6 +61,59 @@ export function getMilkBatchTrafficLight(batch) {
 
 const DONOR_REGISTRY_KEY = 'nv_milk_confidential_donors_v1';
 const DONATION_RANGES_KEY = 'nv_milk_date_ranges_v1';
+const DONOR_LOG_KEY = 'nv_milk_donor_log_v1';
+
+export function getDonorLogEntries() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(DONOR_LOG_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDonorLogEntry(entry) {
+  const list = getDonorLogEntries();
+  const saved = {
+    id: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    donor_code: String(entry.donor_code || '').trim() || getNextDonorCode(),
+    donor_name: String(entry.donor_name || '').trim(),
+    barangay: String(entry.barangay || '').trim(),
+    donation_date: entry.donation_date || getLocalDateString(),
+    donation_time: entry.donation_time || '09:00',
+    expression_date: entry.expression_date || getLocalDateString(),
+    expression_time: entry.expression_time || '08:00',
+    volume_ml: entry.volume_ml ? parseInt(entry.volume_ml, 10) : 0,
+    staff_name: String(entry.staff_name || 'Staff').trim(),
+    created_at: new Date().toISOString(),
+  };
+  if (saved.donor_name) {
+    saveConfidentialDonor({
+      full_name: saved.donor_name,
+      barangay: saved.barangay,
+      donor_code: saved.donor_code,
+    });
+  }
+  list.unshift(saved);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DONOR_LOG_KEY, JSON.stringify(list));
+    }
+  } catch {}
+  return saved;
+}
+
+export function deleteDonorLogEntry(id) {
+  const list = getDonorLogEntries().filter(item => item.id !== id);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DONOR_LOG_KEY, JSON.stringify(list));
+    }
+  } catch {}
+  return list;
+}
 
 /**
  * Retrieve confidential donor registry (maps unique Donor Code -> Name, Barangay, Contact).

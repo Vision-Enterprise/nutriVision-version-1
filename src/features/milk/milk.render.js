@@ -53,6 +53,11 @@ export function renderMilkPageSkeleton() {
       <div class="milk-workspace">
         <div class="milk-workspace-header">
           <div class="milk-tabs" role="tablist">
+            <button class="milk-tab" data-tab="donor-log" role="tab" aria-selected="false">
+              <span class="icon icon--sm" aria-hidden="true">badge</span>
+              Donor Log
+              <span class="milk-tab__count" id="count-donor-log">0</span>
+            </button>
             <button class="milk-tab milk-tab--active" data-tab="intake" role="tab" aria-selected="true">
               <span class="icon icon--sm" aria-hidden="true">receipt_long</span>
               Log of Milk Received
@@ -156,6 +161,117 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
              autocomplete="off"
              spellcheck="false" />
       <div class="milk-cell-status" id="milk-cell-status" style="display:none;"></div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SHEET 0: Donor Log (Form MH.MNAO.FM.004.00 — Confidential In-House Log)
+// ════════════════════════════════════════════════════════════════════════════
+export function renderDonorLogSheet(entries = [], draftRows = []) {
+  const today = getLocalDateString();
+
+  const draftHtml = draftRows.map((draft, idx) => `
+    <tr class="grid-row--draft" data-dl-draft-idx="${idx}">
+      <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="text" class="grid-cell-input js-dl-code" value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Donor Code">
+          <button type="button" class="btn btn-secondary btn-sm js-dl-lookup" title="Lookup or Register Donor" style="padding:3px 7px; font-size:11px; flex-shrink:0;">ID</button>
+        </div>
+      </td>
+      <td>
+        <input type="text" class="grid-cell-input js-dl-name" value="${escapeHtml(draft.donor_name || '')}" placeholder="Donor's Full Name *" aria-label="Donor Name">
+      </td>
+      <td>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <input type="date" class="grid-cell-input js-dl-don-date" value="${draft.donation_date || today}" aria-label="Date of Donation">
+          <input type="time" class="grid-cell-input js-dl-don-time" value="${draft.donation_time || '09:00'}" aria-label="Time of Donation">
+        </div>
+      </td>
+      <td>
+        <input type="date" class="grid-cell-input js-dl-exp-date" value="${draft.expression_date || today}" aria-label="Date of Milk Expressed">
+      </td>
+      <td>
+        <input type="time" class="grid-cell-input js-dl-exp-time" value="${draft.expression_time || '08:00'}" aria-label="Time of Milk Expressed">
+      </td>
+      <td>
+        <input type="number" min="1" step="1" class="grid-cell-input js-dl-vol" value="${draft.volume_ml || ''}" placeholder="mL" aria-label="Volume Donated (mL)">
+      </td>
+      <td>
+        <span class="text-muted text-xs">Self (on save)</span>
+      </td>
+      <td class="grid-actions-cell" style="text-align:center;">
+        <button class="btn-grid-save js-save-dl-row" data-dl-draft-idx="${idx}" title="Save entry">
+          <span class="icon" style="font-size:16px;">check</span> Save
+        </button>
+        <button class="btn-grid-discard js-discard-dl-row" data-dl-draft-idx="${idx}" title="Discard">
+          <span class="icon" style="font-size:16px;">close</span>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  const savedHtml = entries.map((e, index) => `
+    <tr>
+      <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
+      <td><span class="milk-donor-code">${escapeHtml(e.donor_code)}</span></td>
+      <td class="text-sm font-weight-medium">
+        ${escapeHtml(e.donor_name || '—')}
+        ${e.barangay ? `<div class="text-xs text-muted">${escapeHtml(e.barangay)}</div>` : ''}
+      </td>
+      <td class="text-sm">
+        ${formatDate(e.donation_date)}
+        <div class="text-xs text-muted">${formatTime(e.donation_time)}</div>
+      </td>
+      <td class="text-sm">${formatDate(e.expression_date)}</td>
+      <td class="text-muted text-xs">${formatTime(e.expression_time)}</td>
+      <td class="text-sm font-weight-bold">${Number(e.volume_ml || 0).toLocaleString()} mL</td>
+      <td class="text-sm">${escapeHtml(e.staff_name || 'Staff')}</td>
+      <td style="text-align:center;">
+        <button type="button" class="btn-grid-discard js-delete-dl-row" data-dl-id="${escapeHtml(e.id)}" title="Delete entry">
+          <span class="icon" style="font-size:15px;">delete</span>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="milk-sheet-toolbar">
+      <div class="milk-sheet-title">
+        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">badge</span>
+        DONOR LOG
+        <span class="milk-sheet-subtitle">Form MH.MNAO.FM.004.00 · Confidential (Internal Only)</span>
+      </div>
+      <div class="milk-sheet-actions">
+        <button class="btn-milk-add-row" id="btn-add-donor-log-row">
+          <span class="icon icon--sm" aria-hidden="true">add</span>
+          Add Donor Entry
+        </button>
+      </div>
+    </div>
+
+    <div class="milk-sheet-container">
+      <table class="milk-sheet-table">
+        <thead>
+          <tr>
+            <th class="col-center" style="width:45px;">#</th>
+            <th style="width:155px;">Donor Code</th>
+            <th style="min-width:170px;">Donor's Name (Confidential)</th>
+            <th style="width:140px;">Date/Time of Donation</th>
+            <th style="width:130px;">Date of Milk Expressed</th>
+            <th style="width:110px;">Time of Milk Expressed</th>
+            <th style="width:140px;">Volume Donated (Thawed mL)</th>
+            <th style="width:140px;">Receiving Milk Hub Staff</th>
+            <th class="col-center" style="width:110px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entries.length === 0 && draftRows.length === 0
+            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Donor Entry</strong> to record a mother's donation.</td></tr>`
+            : savedHtml + draftHtml}
+        </tbody>
+      </table>
     </div>
   `;
 }

@@ -14,6 +14,9 @@ import {
   getConfidentialDonors,
   saveConfidentialDonor,
   getNextDonorCode,
+  getDonorLogEntries,
+  addDonorLogEntry,
+  deleteDonorLogEntry,
   createMilkBatch,
   createMilkBatchesBulk,
   dispenseMilk,
@@ -50,6 +53,7 @@ import {
 import {
   renderMilkPageSkeleton,
   renderMetrics,
+  renderDonorLogSheet,
   renderDonationsSheet,
   renderBatchesSheet,
   renderDispatchesSheet,
@@ -92,6 +96,7 @@ let _batchesSubView = 'table';    // 'table' | 'freezer' (Option B)
 
 let _batches = [];
 let _donations = [];
+let _donorLogEntries = [];
 let _dispatches = [];
 let _auditLogs = [];
 let _auditFilter = '';
@@ -105,6 +110,7 @@ let _selectedShelf = null;
 
 // In-memory draft rows waiting to be saved
 let _draftDonations = [];
+let _draftDonorLog = [];
 let _draftBatches = [];
 let _draftDispatches = [];
 
@@ -157,6 +163,7 @@ async function _loadData() {
 
   _batches = batchesRes.data || [];
   _donations = donationsRes.data || [];
+  _donorLogEntries = getDonorLogEntries();
   _dispatches = dispatchesRes.data || [];
   _metrics = metrics;
   _auditLogs = auditRes.data || [];
@@ -174,11 +181,13 @@ function _updateMetricsView() {
 }
 
 function _updateTabCounts() {
+  const donorLogCountEl = document.getElementById('count-donor-log');
   const batchCountEl = document.getElementById('count-batches');
   const donCountEl = document.getElementById('count-donations');
   const dispCountEl = document.getElementById('count-dispatches');
   const auditCountEl = document.getElementById('count-milk-audit');
 
+  if (donorLogCountEl) donorLogCountEl.textContent = _donorLogEntries.length;
   if (batchCountEl) batchCountEl.textContent = _batches.length;
   if (donCountEl) donCountEl.textContent = _donations.length;
   if (dispCountEl) dispCountEl.textContent = _dispatches.length;
@@ -200,7 +209,10 @@ function _renderActiveSheet() {
 
   const fefoBatch = getFefoPriorityBatch(_batches);
 
-  if (_activeTab === 'intake') {
+  if (_activeTab === 'donor-log') {
+    contentArea.innerHTML = renderDonorLogSheet(_donorLogEntries, _draftDonorLog);
+    _bindDonorLogSheetEvents();
+  } else if (_activeTab === 'intake') {
     contentArea.innerHTML = renderDonationsSheet(_donations, _draftDonations);
     _bindDonationsSheetEvents();
     _setupCellBarSync();
@@ -556,7 +568,7 @@ async function _validateDonationData(data, row) {
   return true;
 }
 
-function _openConfidentialDonorLookupModal(targetInput) {
+function _openConfidentialDonorLookupModal(targetInput, onPicked = null) {
   document.getElementById('milk-donor-lookup-overlay')?.remove();
 
   const overlay = document.createElement('div');
@@ -640,8 +652,13 @@ function _openConfidentialDonorLookupModal(targetInput) {
 
     listEl.querySelectorAll('.js-pick-donor').forEach(btn => {
       btn.addEventListener('click', () => {
-        targetInput.value = btn.dataset.code || '';
+        const pickedCode = btn.dataset.code || '';
+        targetInput.value = pickedCode;
         targetInput.classList.remove('cell-invalid');
+        if (onPicked) {
+          const donorObj = getConfidentialDonors().find(d => d.donor_code === pickedCode);
+          onPicked(donorObj || { donor_code: pickedCode });
+        }
         close();
       });
     });
@@ -679,7 +696,105 @@ function _openConfidentialDonorLookupModal(targetInput) {
     });
     targetInput.value = saved.donor_code;
     targetInput.classList.remove('cell-invalid');
+    if (onPicked) onPicked(saved);
     close();
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SHEET 0: Donor Log (Form MH.MNAO.FM.004.00)
+// ════════════════════════════════════════════════════════════════════════════
+function _bindDonorLogSheetEvents() {
+  const today = getLocalDateString();
+
+  document.getElementById('btn-add-donor-log-row')?.addEventListener('click', () => {
+    _draftDonorLog.push({
+      donor_code: getNextDonorCode(),
+      donor_name: '',
+      barangay: '',
+      donation_date: today,
+      donation_time: '09:00',
+      expression_date: today,
+      expression_time: '08:00',
+      volume_ml: '',
+    });
+    _renderActiveSheet();
+    _scrollToBottomDraft();
+  });
+
+  document.querySelectorAll('.js-dl-lookup').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('tr');
+      const codeIn = row?.querySelector('.js-dl-code');
+      const nameIn = row?.querySelector('.js-dl-name');
+      if (codeIn) {
+        _openConfidentialDonorLookupModal(codeIn, (donor) => {
+          if (nameIn && donor?.full_name) {
+            nameIn.value = donor.full_name;
+            nameIn.dataset.barangay = donor.barangay || '';
+          }
+        });
+      }
+    });
+  });
+
+  document.querySelectorAll('.js-save-dl-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.dlDraftIdx, 10);
+      const row = btn.closest('tr');
+      const donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
+      const donor_name = row.querySelector('.js-dl-name')?.value?.trim() || '';
+      const barangay = row.querySelector('.js-dl-name')?.dataset?.barangay || '';
+      const donation_date = row.querySelector('.js-dl-don-date')?.value || today;
+      const donation_time = row.querySelector('.js-dl-don-time')?.value || '09:00';
+      const expression_date = row.querySelector('.js-dl-exp-date')?.value || today;
+      const expression_time = row.querySelector('.js-dl-exp-time')?.value || '08:00';
+      const volume_ml = row.querySelector('.js-dl-vol')?.value || '';
+
+      if (!donor_name) {
+        row.querySelector('.js-dl-name')?.classList.add('cell-invalid');
+        await MilkModal.alert('Please enter the Donor\'s Name or pick a donor via ID.', 'Validation Required');
+        return;
+      }
+      if (!volume_ml || parseInt(volume_ml, 10) <= 0) {
+        row.querySelector('.js-dl-vol')?.classList.add('cell-invalid');
+        await MilkModal.alert('Please enter the Volume Donated (mL).', 'Validation Required');
+        return;
+      }
+
+      addDonorLogEntry({
+        donor_code,
+        donor_name,
+        barangay,
+        donation_date,
+        donation_time,
+        expression_date,
+        expression_time,
+        volume_ml,
+        staff_name: _profile?.full_name || 'Nutrition Staff',
+      });
+      _draftDonorLog.splice(idx, 1);
+      _donorLogEntries = getDonorLogEntries();
+      _updateTabCounts();
+      _renderActiveSheet();
+    });
+  });
+
+  document.querySelectorAll('.js-discard-dl-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.dlDraftIdx, 10);
+      _draftDonorLog.splice(idx, 1);
+      _renderActiveSheet();
+    });
+  });
+
+  document.querySelectorAll('.js-delete-dl-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      deleteDonorLogEntry(btn.dataset.dlId);
+      _donorLogEntries = getDonorLogEntries();
+      _updateTabCounts();
+      _renderActiveSheet();
+    });
   });
 }
 
