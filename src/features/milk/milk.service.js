@@ -81,6 +81,7 @@ export function addDonorLogEntry(entry) {
     donor_code: String(entry.donor_code || '').trim() || getNextDonorCode(),
     donor_name: String(entry.donor_name || '').trim(),
     barangay: String(entry.barangay || '').trim(),
+    contact: String(entry.contact || '').trim(),
     donation_date: entry.donation_date || getLocalDateString(),
     donation_time: entry.donation_time || '09:00',
     expression_date: entry.expression_date || getLocalDateString(),
@@ -93,6 +94,7 @@ export function addDonorLogEntry(entry) {
     saveConfidentialDonor({
       full_name: saved.donor_name,
       barangay: saved.barangay,
+      contact: saved.contact,
       donor_code: saved.donor_code,
     });
   }

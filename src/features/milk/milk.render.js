@@ -133,9 +133,17 @@ export function renderMetrics(metrics) {
 // ════════════════════════════════════════════════════════════════════════════
 // Upper Cell Content & Editor Bar (Excel-Style Row & Cell Viewer, No FX)
 // ════════════════════════════════════════════════════════════════════════════
-export function renderCellBar(placeholder = 'Click any table cell to inspect or edit full content...') {
+export function renderCellBar(placeholder = 'Click any table cell to inspect or edit full content...', addBtn = null) {
   return `
     <div class="milk-cell-bar" id="milk-cell-bar">
+      ${addBtn ? `
+        <button type="button" class="milk-cell-add-btn" id="${addBtn.id}"
+                title="${escapeHtml(addBtn.title || 'Add Row')}"
+                ${addBtn.disabled ? 'disabled' : ''}>
+          <span class="icon icon--sm" aria-hidden="true">add</span>
+          ${escapeHtml(addBtn.label || 'Add Row')}
+        </button>
+      ` : ''}
       <div class="milk-cell-badge" id="milk-cell-badge" title="Active Cell / Row Position">
         <span class="icon icon--sm" style="font-size:15px;" aria-hidden="true">edit_note</span>
         <span id="milk-cell-badge-text">Select Cell</span>
@@ -163,24 +171,28 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
 export function renderDonorLogSheet(entries = [], draftRows = []) {
   const pendingCount = draftRows.length;
   const today = getLocalDateString();
+  const brgyDatalist = `<datalist id="milk-dl-barangays">${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">`).join('')}</datalist>`;
 
   const draftHtml = draftRows.map((draft, idx) => `
     <tr class="grid-row--draft" data-dl-draft-idx="${idx}">
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
-        <div style="display:flex; align-items:center; gap:4px;">
-          <input type="text" class="grid-cell-input js-dl-code" value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Donor Code" style="min-width:105px;">
-          <button type="button" class="btn btn-secondary btn-sm js-dl-lookup" title="Lookup or Register Donor" style="padding:3px 8px; font-size:11px; flex-shrink:0;">ID</button>
-        </div>
+        <input type="text" class="grid-cell-input js-dl-code" value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Donor Code" style="font-family:monospace;font-weight:600;color:#0284c7;">
       </td>
       <td>
         <input type="text" class="grid-cell-input js-dl-name" value="${escapeHtml(draft.donor_name || '')}" placeholder="Donor's Full Name *" aria-label="Donor Name">
       </td>
       <td>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <input type="date" class="grid-cell-input js-dl-don-date" value="${draft.donation_date || today}" aria-label="Date of Donation">
-          <input type="time" class="grid-cell-input js-dl-don-time" value="${draft.donation_time || '09:00'}" aria-label="Time of Donation">
-        </div>
+        <input type="text" list="milk-dl-barangays" class="grid-cell-input js-dl-brgy" value="${escapeHtml(draft.barangay || '')}" placeholder="Barangay *" aria-label="Barangay">
+      </td>
+      <td>
+        <input type="tel" class="grid-cell-input js-dl-contact" value="${escapeHtml(draft.contact || '')}" placeholder="09XX... (optional)" aria-label="Contact Number">
+      </td>
+      <td>
+        <input type="date" class="grid-cell-input js-dl-don-date" value="${draft.donation_date || today}" aria-label="Date of Donation">
+      </td>
+      <td>
+        <input type="time" class="grid-cell-input js-dl-don-time" value="${draft.donation_time || '09:00'}" aria-label="Time of Donation">
       </td>
       <td>
         <input type="date" class="grid-cell-input js-dl-exp-date" value="${draft.expression_date || today}" aria-label="Date of Milk Expressed">
@@ -199,7 +211,7 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
           <span class="icon" style="font-size:15px;">check</span> Save
         </button>
         <button type="button" class="btn-grid-discard js-discard-dl-row" data-dl-draft-idx="${idx}" title="Discard draft row">
-          <span class="icon" style="font-size:15px;">delete</span>
+          <span class="icon" style="font-size:16px;">delete</span>
         </button>
       </td>
     </tr>
@@ -209,14 +221,11 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
     <tr>
       <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td><span class="milk-donor-code">${escapeHtml(e.donor_code)}</span></td>
-      <td class="text-sm font-weight-medium">
-        ${escapeHtml(e.donor_name || '—')}
-        ${e.barangay ? `<div class="text-xs text-muted">${escapeHtml(e.barangay)}</div>` : ''}
-      </td>
-      <td class="text-sm">
-        ${formatDate(e.donation_date)}
-        <div class="text-xs text-muted">${formatTime(e.donation_time)}</div>
-      </td>
+      <td class="text-sm font-weight-medium">${escapeHtml(e.donor_name || '—')}</td>
+      <td class="text-sm">${escapeHtml(e.barangay || '—')}</td>
+      <td class="text-muted text-xs">${escapeHtml(e.contact || '—')}</td>
+      <td class="text-sm">${formatDate(e.donation_date)}</td>
+      <td class="text-muted text-xs">${formatTime(e.donation_time)}</td>
       <td class="text-sm">${formatDate(e.expression_date)}</td>
       <td class="text-muted text-xs">${formatTime(e.expression_time)}</td>
       <td class="text-sm font-weight-bold">${Number(e.volume_ml || 0).toLocaleString()} mL</td>
@@ -230,11 +239,13 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
   `).join('');
 
   return `
+    ${brgyDatalist}
     <div class="milk-sheet-toolbar">
       <div class="milk-sheet-title">
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">badge</span>
         DONOR LOG
       </div>
+      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor, barangay, code..." aria-label="Search Donor Log" />
       <div class="milk-sheet-actions">
         <button id="btn-export-donor-log-csv" class="btn btn-secondary btn-sm" type="button" title="Export Donor Log as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
@@ -252,35 +263,32 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       </div>
     </div>
 
-    ${renderCellBar('Click any cell in Donor Log to inspect or edit full content...')}
+    ${renderCellBar('Click any cell in Donor Log to inspect or edit full content...', { id: 'btn-add-donor-log-row', title: 'Add Donor Entry Row' })}
 
     <div class="table-responsive">
       <table class="milk-sheet-table">
         <thead>
           <tr>
             <th style="width:45px;text-align:center;">#</th>
-            <th style="min-width:175px;">Donor Code</th>
-            <th style="min-width:190px;">Donor's Name (Confidential)</th>
-            <th style="min-width:155px;">Date/Time of Donation</th>
-            <th style="min-width:135px;">Date of Milk Expressed</th>
-            <th style="min-width:115px;">Time of Milk Expressed</th>
-            <th style="min-width:130px;">Volume Donated (Thawed mL)</th>
-            <th style="min-width:140px;">Receiving Milk Hub Staff</th>
-            <th style="min-width:130px;text-align:center;">Actions</th>
+            <th style="min-width:125px;">Donor Code</th>
+            <th style="min-width:175px;">Donor's Name *</th>
+            <th style="min-width:135px;">Barangay *</th>
+            <th style="min-width:125px;">Contact #</th>
+            <th style="min-width:125px;">Date of Donation</th>
+            <th style="min-width:105px;">Time of Donation</th>
+            <th style="min-width:125px;">Date Expressed</th>
+            <th style="min-width:105px;">Time Expressed</th>
+            <th style="min-width:115px;">Volume (mL) *</th>
+            <th style="min-width:125px;">Receiving Staff</th>
+            <th style="min-width:95px;text-align:center;">Actions</th>
           </tr>
         </thead>
         <tbody>
           ${entries.length === 0 && draftRows.length === 0
-            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Row</strong> below to record a mother's donation.</td></tr>`
+            ? `<tr><td colspan="12" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Row</strong> to record a mother's donation.</td></tr>`
             : savedHtml + draftHtml}
         </tbody>
       </table>
-    </div>
-    <div class="milk-sheet-footer">
-      <button class="milk-add-row-pill" id="btn-add-donor-log-row" type="button" title="Add Donor Entry Row">
-        <span class="icon icon--sm" aria-hidden="true">add</span>
-        Add Row
-      </button>
     </div>
   `;
 }
@@ -409,6 +417,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">receipt_long</span>
         LOG OF MILK RECEIVED
       </div>
+      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor code, date, staff..." aria-label="Search Log of Milk Received" />
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
@@ -426,7 +435,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       </div>
     </div>
 
-    ${renderCellBar('Click any cell in Log of Milk Received to inspect or edit full content...')}
+    ${renderCellBar('Click any cell in Log of Milk Received to inspect or edit full content...', { id: 'btn-add-donation-row', title: 'Add Milk Received Entry Row' })}
 
     <div class="table-responsive">
       <table class="milk-sheet-table">
@@ -458,18 +467,12 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No intake records yet. Click <strong>+ Add Row</strong> below to begin logging.
+                No intake records yet. Click <strong>+ Add Row</strong> to begin logging.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
-    </div>
-    <div class="milk-sheet-footer">
-      <button id="btn-add-donation-row" class="milk-add-row-pill" type="button" title="Add Milk Received Entry Row">
-        <span class="icon icon--sm" aria-hidden="true">add</span>
-        Add Row
-      </button>
     </div>
   `;
 }
@@ -487,41 +490,44 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
         Pasteurized Batches
       </div>
 
-      <!-- Option B View Switcher (Fixed Position in both Table & Freezer views) -->
-      <div class="milk-view-switcher" role="tablist" aria-label="Pasteurized Batches View">
-        <button class="milk-view-btn ${subView === 'table' ? 'milk-view-btn--active' : ''}"
-                id="btn-subview-table" type="button" role="tab" aria-selected="${subView === 'table'}">
-          <span class="icon icon--sm">table_rows</span>
-          Table View
-        </button>
-        <button class="milk-view-btn ${subView === 'freezer' ? 'milk-view-btn--active' : ''}"
-                id="btn-subview-freezer" type="button" role="tab" aria-selected="${subView === 'freezer'}">
-          <span class="icon icon--sm">kitchen</span>
-          Virtual Freezer
-        </button>
-      </div>
-    </div>
+      ${subView === 'table' ? `
+        <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search batch code, donor, freezer..." aria-label="Search Pasteurized Batches" />
+      ` : ''}
 
-    ${subView === 'table' ? `
-      <div class="milk-sub-toolbar">
-        <div class="milk-sub-toolbar-title text-muted text-xs font-weight-medium"></div>
-        <div class="milk-sheet-actions">
-          <button id="btn-export-batches-csv" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches as Excel / CSV">
-            <span class="icon icon--sm" aria-hidden="true">table_view</span>
-            CSV
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;">
+        <!-- Compact View Switcher -->
+        <div class="milk-view-switcher" role="tablist" aria-label="Pasteurized Batches View">
+          <button class="milk-view-btn ${subView === 'table' ? 'milk-view-btn--active' : ''}"
+                  id="btn-subview-table" type="button" role="tab" aria-selected="${subView === 'table'}" title="Table View">
+            <span class="icon icon--sm">table_rows</span>
+            Table
           </button>
-          <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches (PDF)">
-            <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
-            PDF
-          </button>
-          <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending batch rows"
-                  ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
-            <span class="icon icon--sm" aria-hidden="true">save</span>
-            Save (${pendingCount})
+          <button class="milk-view-btn ${subView === 'freezer' ? 'milk-view-btn--active' : ''}"
+                  id="btn-subview-freezer" type="button" role="tab" aria-selected="${subView === 'freezer'}" title="Virtual Freezer">
+            <span class="icon icon--sm">kitchen</span>
+            Freezer
           </button>
         </div>
+
+        ${subView === 'table' ? `
+          <div class="milk-sheet-actions">
+            <button id="btn-export-batches-csv" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches as Excel / CSV">
+              <span class="icon icon--sm" aria-hidden="true">table_view</span>
+              CSV
+            </button>
+            <button id="btn-export-batches-pdf" class="btn btn-secondary btn-sm" type="button" title="Export Pasteurized Batches (PDF)">
+              <span class="icon icon--sm" aria-hidden="true">picture_as_pdf</span>
+              PDF
+            </button>
+            <button id="btn-save-all-batches" class="btn btn-primary btn-sm btn--ice" type="button" title="Save all pending batch rows"
+                    ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
+              <span class="icon icon--sm" aria-hidden="true">save</span>
+              Save (${pendingCount})
+            </button>
+          </div>
+        ` : ''}
       </div>
-    ` : ''}
+    </div>
 
     ${subView === 'freezer'
       ? renderFreezerMapView({
@@ -691,7 +697,7 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
   }).join('');
 
   return `
-    ${renderCellBar('Click any cell in Pasteurized Batches to inspect or edit full content...')}
+    ${renderCellBar('Click any cell in Pasteurized Batches to inspect or edit full content...', { id: 'btn-add-batch-row', title: 'Add Batch Row' })}
     <div class="table-responsive">
       <table class="milk-sheet-table">
         <thead>
@@ -714,18 +720,12 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
               <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No pasteurized batches recorded yet. Click <strong>+ Add Row</strong> below to log a BM batch.
+                No pasteurized batches recorded yet. Click <strong>+ Add Row</strong> to log a BM batch.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
-    </div>
-    <div class="milk-sheet-footer">
-      <button id="btn-add-batch-row" class="milk-add-row-pill" type="button" title="Add Batch Row">
-        <span class="icon icon--sm" aria-hidden="true">add</span>
-        Add Row
-      </button>
     </div>
   `;
 }
@@ -1337,6 +1337,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
         <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">volunteer_activism</span>
         Beneficiary Dispensing Ledger
       </div>
+      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search recipient, barangay, batch..." aria-label="Search Dispensing Ledger" />
       <div class="milk-sheet-actions">
         <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
@@ -1354,7 +1355,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
       </div>
     </div>
 
-    ${renderCellBar('Click any cell in Dispensing Ledger to inspect or edit full content...')}
+    ${renderCellBar('Click any cell in Dispensing Ledger to inspect or edit full content...', { id: 'btn-add-dispatch-row', title: availableBatches.length === 0 ? 'No stock available' : 'Record Dispense Row', disabled: availableBatches.length === 0 })}
 
     <div class="table-responsive">
       <table class="milk-sheet-table">
@@ -1376,19 +1377,12 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
-                No milk dispatches logged yet. Click <strong>+ Add Row</strong> below to issue milk.
+                No milk dispatches logged yet. Click <strong>+ Add Row</strong> to issue milk.
               </td>
             </tr>
           ` : ''}
         </tbody>
       </table>
-    </div>
-    <div class="milk-sheet-footer">
-      <button id="btn-add-dispatch-row" class="milk-add-row-pill" type="button"
-              ${availableBatches.length === 0 ? 'disabled title="No stock available"' : 'title="Record Dispense Row"'}>
-        <span class="icon icon--sm" aria-hidden="true">add</span>
-        Add Row
-      </button>
     </div>
   `;
 }

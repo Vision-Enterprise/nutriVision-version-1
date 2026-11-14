@@ -717,6 +717,28 @@ function _openConfidentialDonorLookupModal(targetInput, onPicked = null) {
 // ════════════════════════════════════════════════════════════════════════════
 // SHEET 0: Donor Log (Form MH.MNAO.FM.004.00)
 // ════════════════════════════════════════════════════════════════════════════
+async function _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay }) {
+  const donors = getConfidentialDonors();
+  const normName = donor_name.trim().toLowerCase();
+  const normBrgy = barangay.trim().toLowerCase();
+
+  const sameNameMatches = donors.filter(d => (d.full_name || '').trim().toLowerCase() === normName);
+  if (sameNameMatches.length === 0) return donor_code;
+
+  const exactMatch = sameNameMatches.find(d => (d.barangay || '').trim().toLowerCase() === normBrgy);
+  if (exactMatch) {
+    return exactMatch.donor_code;
+  }
+
+  const first = sameNameMatches[0];
+  const summary = sameNameMatches.map(d => `${d.donor_code} (${d.barangay || 'No Brgy'})`).join(', ');
+  const reuse = await MilkModal.confirm(
+    `A donor named "${donor_name}" already exists in the registry (${summary}).\n\nIs this the SAME mother returning? Click OK to reuse ${first.donor_code}, or Cancel to issue a separate Donor Code (${donor_code}).`,
+    'Possible Duplicate Donor'
+  );
+  return reuse ? first.donor_code : donor_code;
+}
+
 function _bindDonorLogSheetEvents() {
   const today = getLocalDateString();
 
@@ -732,6 +754,7 @@ function _bindDonorLogSheetEvents() {
       donor_code: getNextDonorCode(),
       donor_name: '',
       barangay: '',
+      contact: '',
       donation_date: today,
       donation_time: '09:00',
       expression_date: today,
@@ -742,29 +765,36 @@ function _bindDonorLogSheetEvents() {
     _scrollToBottomDraft();
   });
 
-  document.querySelectorAll('.js-dl-lookup').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const row = btn.closest('tr');
-      const codeIn = row?.querySelector('.js-dl-code');
-      const nameIn = row?.querySelector('.js-dl-name');
-      if (codeIn) {
-        _openConfidentialDonorLookupModal(codeIn, (donor) => {
-          if (nameIn && donor?.full_name) {
-            nameIn.value = donor.full_name;
-            nameIn.dataset.barangay = donor.barangay || '';
-          }
-        });
+  // Auto-fill existing donor_code when Name + Barangay match an existing confidential donor
+  document.querySelectorAll('tr[data-dl-draft-idx]').forEach(row => {
+    const nameIn = row.querySelector('.js-dl-name');
+    const brgyIn = row.querySelector('.js-dl-brgy');
+    const codeIn = row.querySelector('.js-dl-code');
+    const contactIn = row.querySelector('.js-dl-contact');
+    const tryAutoFill = () => {
+      const n = nameIn?.value?.trim().toLowerCase();
+      const b = brgyIn?.value?.trim().toLowerCase();
+      if (!n || !b || !codeIn) return;
+      const match = getConfidentialDonors().find(
+        d => (d.full_name || '').trim().toLowerCase() === n && (d.barangay || '').trim().toLowerCase() === b
+      );
+      if (match) {
+        codeIn.value = match.donor_code;
+        if (contactIn && !contactIn.value && match.contact) contactIn.value = match.contact;
       }
-    });
+    };
+    nameIn?.addEventListener('blur', tryAutoFill);
+    brgyIn?.addEventListener('change', tryAutoFill);
   });
 
   document.querySelectorAll('.js-save-dl-row').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.dlDraftIdx, 10);
       const row = btn.closest('tr');
-      const donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
+      let donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
       const donor_name = row.querySelector('.js-dl-name')?.value?.trim() || '';
-      const barangay = row.querySelector('.js-dl-name')?.dataset?.barangay || '';
+      const barangay = row.querySelector('.js-dl-brgy')?.value?.trim() || '';
+      const contact = row.querySelector('.js-dl-contact')?.value?.trim() || '';
       const donation_date = row.querySelector('.js-dl-don-date')?.value || today;
       const donation_time = row.querySelector('.js-dl-don-time')?.value || '09:00';
       const expression_date = row.querySelector('.js-dl-exp-date')?.value || today;
@@ -773,7 +803,12 @@ function _bindDonorLogSheetEvents() {
 
       if (!donor_name) {
         row.querySelector('.js-dl-name')?.classList.add('cell-invalid');
-        await MilkModal.alert('Please enter the Donor\'s Name or pick a donor via ID.', 'Validation Required');
+        await MilkModal.alert("Please enter the Donor's Name.", 'Validation Required');
+        return;
+      }
+      if (!barangay) {
+        row.querySelector('.js-dl-brgy')?.classList.add('cell-invalid');
+        await MilkModal.alert('Please enter the Barangay (prevents name mix-ups).', 'Validation Required');
         return;
       }
       if (!volume_ml || parseInt(volume_ml, 10) <= 0) {
@@ -782,10 +817,13 @@ function _bindDonorLogSheetEvents() {
         return;
       }
 
+      donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
+
       addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
+        contact,
         donation_date,
         donation_time,
         expression_date,
@@ -808,26 +846,31 @@ function _bindDonorLogSheetEvents() {
 
     for (const row of rows) {
       const idx = parseInt(row.dataset.dlDraftIdx, 10);
-      const donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
+      let donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
       const donor_name = row.querySelector('.js-dl-name')?.value?.trim() || '';
-      const barangay = row.querySelector('.js-dl-name')?.dataset?.barangay || '';
+      const barangay = row.querySelector('.js-dl-brgy')?.value?.trim() || '';
+      const contact = row.querySelector('.js-dl-contact')?.value?.trim() || '';
       const donation_date = row.querySelector('.js-dl-don-date')?.value || today;
       const donation_time = row.querySelector('.js-dl-don-time')?.value || '09:00';
       const expression_date = row.querySelector('.js-dl-exp-date')?.value || today;
       const expression_time = row.querySelector('.js-dl-exp-time')?.value || '08:00';
       const volume_ml = row.querySelector('.js-dl-vol')?.value || '';
 
-      if (!donor_name || !volume_ml || parseInt(volume_ml, 10) <= 0) {
+      if (!donor_name || !barangay || !volume_ml || parseInt(volume_ml, 10) <= 0) {
         if (!donor_name) row.querySelector('.js-dl-name')?.classList.add('cell-invalid');
+        if (!barangay) row.querySelector('.js-dl-brgy')?.classList.add('cell-invalid');
         if (!volume_ml || parseInt(volume_ml, 10) <= 0) row.querySelector('.js-dl-vol')?.classList.add('cell-invalid');
         failedIndices.add(idx);
         continue;
       }
 
+      donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
+
       addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
+        contact,
         donation_date,
         donation_time,
         expression_date,
@@ -845,7 +888,7 @@ function _bindDonorLogSheetEvents() {
 
     if (failedIndices.size > 0) {
       await MilkModal.alert(
-        `Saved ${savedCount} entry row(s). ${failedIndices.size} row(s) highlighted in red still need Donor's Name and Volume (mL).`,
+        `Saved ${savedCount} entry row(s). ${failedIndices.size} row(s) highlighted in red still need Donor's Name, Barangay, and Volume (mL).`,
         'Partial Save'
       );
     }
@@ -1958,6 +2001,17 @@ function _setupCellBarSync() {
   document.getElementById('btn-milk-zoom-reset')?.addEventListener('click', () => {
     _sheetZoom = 100;
     _applySheetZoom(table);
+  });
+
+  // Live toolbar search across all sheet tables
+  document.getElementById('milk-sheet-search')?.addEventListener('input', (e) => {
+    const q = (e.target.value || '').trim().toLowerCase();
+    table.querySelectorAll('tbody tr:not(.grid-row--draft)').forEach(tr => {
+      if (tr.querySelector('.milk-sheet-empty')) return;
+      const text = (tr.textContent || '').toLowerCase();
+      const inputs = Array.from(tr.querySelectorAll('input, select')).map(el => el.value || '').join(' ').toLowerCase();
+      tr.style.display = (!q || text.includes(q) || inputs.includes(q)) ? '' : 'none';
+    });
   });
 
   _activeTargetCell = null;
