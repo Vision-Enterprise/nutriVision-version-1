@@ -59,6 +59,86 @@ export function getMilkBatchTrafficLight(batch) {
   return { key: 'good', label, cssClass: 'badge-good', daysRemaining };
 }
 
+const DONOR_REGISTRY_KEY = 'nv_milk_confidential_donors_v1';
+const DONATION_RANGES_KEY = 'nv_milk_date_ranges_v1';
+
+/**
+ * Retrieve confidential donor registry (maps unique Donor Code -> Name, Barangay, Contact).
+ * Stored locally so real donor names never appear on public/transport logs.
+ */
+export function getConfidentialDonors() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(DONOR_REGISTRY_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getNextDonorCode() {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const donors = getConfidentialDonors();
+  let maxSeq = 0;
+  const re = new RegExp(`^DNR-${yy}-(\\d+)$`, 'i');
+  for (const d of donors) {
+    const m = String(d.donor_code || '').match(re);
+    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  }
+  return `DNR-${yy}-${String(maxSeq + 1).padStart(3, '0')}`;
+}
+
+export function saveConfidentialDonor({ full_name, barangay = '', contact = '', donor_code = '' }) {
+  const donors = getConfidentialDonors();
+  const code = (donor_code || '').trim() || getNextDonorCode();
+  const entry = {
+    donor_code: code,
+    full_name: String(full_name || '').trim(),
+    barangay: String(barangay || '').trim(),
+    contact: String(contact || '').trim(),
+    created_at: new Date().toISOString(),
+  };
+  const existingIdx = donors.findIndex(d => d.donor_code.toLowerCase() === code.toLowerCase());
+  if (existingIdx >= 0) {
+    donors[existingIdx] = { ...donors[existingIdx], ...entry };
+  } else {
+    donors.unshift(entry);
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DONOR_REGISTRY_KEY, JSON.stringify(donors));
+    }
+  } catch {}
+  return entry;
+}
+
+export function getDonationDateRange(donationId) {
+  if (!donationId) return { transport_date_end: '', arrival_date_end: '' };
+  try {
+    if (typeof localStorage === 'undefined') return { transport_date_end: '', arrival_date_end: '' };
+    const raw = localStorage.getItem(DONATION_RANGES_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    return map[donationId] || { transport_date_end: '', arrival_date_end: '' };
+  } catch {
+    return { transport_date_end: '', arrival_date_end: '' };
+  }
+}
+
+export function saveDonationDateRange(donationId, { transport_date_end = '', arrival_date_end = '' } = {}) {
+  if (!donationId) return;
+  const tEnd = String(transport_date_end || '').trim();
+  const aEnd = String(arrival_date_end || '').trim();
+  if (!tEnd && !aEnd) return;
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(DONATION_RANGES_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[donationId] = { transport_date_end: tEnd, arrival_date_end: aEnd };
+    localStorage.setItem(DONATION_RANGES_KEY, JSON.stringify(map));
+  } catch {}
+}
+
 export const SHELF_LOCATIONS = [
   'Shelf 1',
   'Shelf 2',
@@ -364,9 +444,11 @@ export async function createMilkDonation({
   expression_date_notes,
   expression_time,
   transport_date,
+  transport_date_end,
   transport_time,
   condition_at_collection,
   arrival_date,
+  arrival_date_end,
   arrival_time,
   condition_at_arrival,
   transport_condition,
@@ -397,6 +479,8 @@ export async function createMilkDonation({
       .single();
 
     if (error) throw error;
+
+    saveDonationDateRange(data?.id, { transport_date_end, arrival_date_end });
 
     // Record audit trail
     if (profileId) {
@@ -1024,6 +1108,18 @@ export async function createMilkDonationsBulk(donationList, profileId, profileNa
       .select();
 
     if (error) throw error;
+
+    if (Array.isArray(data)) {
+      data.forEach((savedRow, idx) => {
+        const src = donationList[idx];
+        if (src) {
+          saveDonationDateRange(savedRow?.id, {
+            transport_date_end: src.transport_date_end,
+            arrival_date_end: src.arrival_date_end,
+          });
+        }
+      });
+    }
 
     // Record audit trail
     if (profileId) {

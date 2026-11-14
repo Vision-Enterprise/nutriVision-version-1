@@ -11,7 +11,8 @@ import {
   getFreezerShelfAllocations,
   getBatchActualShelfInfo,
   getMilkBatchTrafficLight,
-  isMilkBatchExpired
+  isMilkBatchExpired,
+  getDonationDateRange
 } from './milk.service.js';
 import { getLocalDateString, getDaysRemaining } from '../../shared/utils/date.utils.js';
 
@@ -171,8 +172,11 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
     <tr class="grid-row--draft" data-draft-idx="${idx}">
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
-        <input type="text" class="grid-cell-input js-donor-code"
-               value="${escapeHtml(draft.donor_code || '')}" placeholder="e.g. Maria Santos" aria-label="Donor Name" autofocus>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="text" class="grid-cell-input js-donor-code"
+                 value="${escapeHtml(draft.donor_code || '')}" placeholder="Donor Code (e.g. DNR-26-001)" aria-label="Confidential Donor Code" autofocus>
+          <button type="button" class="btn btn-secondary btn-sm js-open-donor-lookup" title="Lookup or Register Confidential Donor" style="padding:3px 7px; font-size:11px; flex-shrink:0;">ID</button>
+        </div>
       </td>
       <td>
         <input type="date" class="grid-cell-input js-donor-exp-date"
@@ -183,8 +187,12 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
                value="${draft.expression_time || '08:00'}" aria-label="Milk Expression Time">
       </td>
       <td>
-        <input type="date" class="grid-cell-input js-donor-trans-date"
-               value="${draft.transport_date || today}" aria-label="Transport Date">
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <input type="date" class="grid-cell-input js-donor-trans-date"
+                 value="${draft.transport_date || today}" aria-label="Transport Start Date" title="Collection / Transport Start Date">
+          <input type="date" class="grid-cell-input js-donor-trans-date-end"
+                 value="${draft.transport_date_end || ''}" aria-label="Transport End Date (optional)" title="Optional End Date (for multi-day collection)">
+        </div>
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-trans-time"
@@ -197,8 +205,12 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </select>
       </td>
       <td>
-        <input type="date" class="grid-cell-input js-donor-arrival-date"
-               value="${draft.arrival_date || today}" aria-label="Arrival Date">
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <input type="date" class="grid-cell-input js-donor-arrival-date"
+                 value="${draft.arrival_date || today}" aria-label="Arrival Start Date" title="Arrival Start Date">
+          <input type="date" class="grid-cell-input js-donor-arrival-date-end"
+                 value="${draft.arrival_date_end || ''}" aria-label="Arrival End Date (optional)" title="Optional End Date">
+        </div>
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-arrival-time"
@@ -228,7 +240,16 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
     </tr>
   `).join('');
 
-  const savedHtml = donations.map((d, index) => `
+  const savedHtml = donations.map((d, index) => {
+    const range = getDonationDateRange(d.id);
+    const transDateText = range.transport_date_end
+      ? `${formatDate(d.transport_date)} – ${formatDate(range.transport_date_end)}`
+      : formatDate(d.transport_date);
+    const arrDateText = range.arrival_date_end
+      ? `${formatDate(d.arrival_date)} – ${formatDate(range.arrival_date_end)}`
+      : formatDate(d.arrival_date);
+
+    return `
     <tr>
       <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td>
@@ -236,12 +257,12 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       </td>
       <td class="text-sm">${formatDate(d.expression_date_notes)}</td>
       <td class="text-muted text-xs">${formatTime(d.expression_time)}</td>
-      <td class="text-sm">${formatDate(d.transport_date)}</td>
+      <td class="text-sm">${transDateText}</td>
       <td class="text-muted text-xs">${formatTime(d.transport_time)}</td>
       <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_collection || 'ok')}</span>
       </td>
-      <td class="text-sm">${formatDate(d.arrival_date)}</td>
+      <td class="text-sm">${arrDateText}</td>
       <td class="text-muted text-xs">${formatTime(d.arrival_time)}</td>
       <td style="text-align:center;">
         <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_arrival || 'ok')}</span>
@@ -254,7 +275,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </span>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <div class="milk-sheet-toolbar">

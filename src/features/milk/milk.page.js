@@ -11,6 +11,9 @@ import {
   fetchMilkMetrics,
   createMilkDonation,
   createMilkDonationsBulk,
+  getConfidentialDonors,
+  saveConfidentialDonor,
+  getNextDonorCode,
   createMilkBatch,
   createMilkBatchesBulk,
   dispenseMilk,
@@ -388,15 +391,26 @@ function _bindDonationsSheetEvents() {
       expression_date_notes: today,
       expression_time: '08:00',
       transport_date: today,
+      transport_date_end: '',
       transport_time: '12:00',
       condition_at_collection: 'ok',
       arrival_date: today,
+      arrival_date_end: '',
       arrival_time: '12:30',
       condition_at_arrival: 'ok',
       transport_condition: ''
     });
     _renderActiveSheet();
     _scrollToBottomDraft();
+  });
+
+  // Confidential Donor ID lookup / registration
+  document.querySelectorAll('.js-open-donor-lookup').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('tr');
+      const codeInput = row?.querySelector('.js-donor-code');
+      if (codeInput) _openConfidentialDonorLookupModal(codeInput);
+    });
   });
 
   // Clear invalid outline on input
@@ -491,9 +505,11 @@ function _collectDonationRowData(row) {
     expression_date_notes:   row.querySelector('.js-donor-exp-date')?.value || today,
     expression_time:         row.querySelector('.js-donor-exp-time')?.value || '08:00',
     transport_date:          row.querySelector('.js-donor-trans-date')?.value || today,
+    transport_date_end:      row.querySelector('.js-donor-trans-date-end')?.value || '',
     transport_time:          row.querySelector('.js-donor-trans-time')?.value || '12:00',
     condition_at_collection: row.querySelector('.js-donor-cond-col')?.value || 'ok',
     arrival_date:            row.querySelector('.js-donor-arrival-date')?.value || today,
+    arrival_date_end:        row.querySelector('.js-donor-arrival-date-end')?.value || '',
     arrival_time:            row.querySelector('.js-donor-arrival-time')?.value || '12:30',
     condition_at_arrival:    row.querySelector('.js-donor-cond-arr')?.value || 'ok',
     transport_condition:     row.querySelector('.js-donor-trans-cond')?.value?.trim() || ''
@@ -507,7 +523,23 @@ async function _validateDonationData(data, row) {
     const input = row.querySelector('.js-donor-code');
     input?.classList.add('cell-invalid');
     input?.focus();
-    await MilkModal.alert('Please enter the Donor Name (e.g. Maria Santos).', 'Validation Required');
+    await MilkModal.alert('Please enter a confidential Donor Code (e.g. DNR-26-001) or click ID to look up/register.', 'Validation Required');
+    return false;
+  }
+
+  if (data.transport_date_end && data.transport_date && data.transport_date_end < data.transport_date) {
+    const input = row.querySelector('.js-donor-trans-date-end');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    await MilkModal.alert(`Transport end date (${data.transport_date_end}) cannot be earlier than start date (${data.transport_date}).`, 'Invalid Date Range');
+    return false;
+  }
+
+  if (data.arrival_date_end && data.arrival_date && data.arrival_date_end < data.arrival_date) {
+    const input = row.querySelector('.js-donor-arrival-date-end');
+    input?.classList.add('cell-invalid');
+    input?.focus();
+    await MilkModal.alert(`Arrival end date (${data.arrival_date_end}) cannot be earlier than start date (${data.arrival_date}).`, 'Invalid Date Range');
     return false;
   }
 
@@ -522,6 +554,133 @@ async function _validateDonationData(data, row) {
   }
 
   return true;
+}
+
+function _openConfidentialDonorLookupModal(targetInput) {
+  document.getElementById('milk-donor-lookup-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'milk-donor-lookup-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '1200';
+
+  const nextCode = getNextDonorCode();
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-width: 520px; width: 95%;" role="dialog" aria-modal="true" aria-labelledby="donor-lookup-title">
+      <div class="modal__header">
+        <div>
+          <h3 class="modal__title" id="donor-lookup-title">Confidential Donor Registry</h3>
+          <p style="font-size:12px; color:var(--color-text-muted); margin:2px 0 0;">
+            Names stay confidential here; only the Donor Code is logged in Milk Received.
+          </p>
+        </div>
+        <button type="button" class="modal__close" id="donor-lookup-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal__body" style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <input type="search" id="donor-lookup-search" class="form-input" placeholder="Search existing donor by name, barangay, or code..." />
+        </div>
+        <div id="donor-lookup-list" style="max-height:170px; overflow-y:auto; border:1px solid var(--color-border); border-radius:8px; padding:6px; display:flex; flex-direction:column; gap:4px;"></div>
+
+        <div style="border-top:1px dashed var(--color-border); padding-top:10px;">
+          <div style="font-size:12px; font-weight:700; margin-bottom:8px; color:var(--color-text);">+ Register New Confidential Donor</div>
+          <div id="donor-dup-warning" style="display:none; margin-bottom:8px; padding:7px 10px; border-radius:6px; background:rgba(217,119,6,0.12); color:#b45309; font-size:11.5px; border:1px solid rgba(217,119,6,0.3);"></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="text" id="new-donor-name" class="form-input" placeholder="Mother's Full Name *" />
+            <input type="text" id="new-donor-brgy" class="form-input" placeholder="Barangay (prevents name mix-up) *" />
+            <input type="text" id="new-donor-contact" class="form-input" placeholder="Contact # (optional)" />
+            <input type="text" id="new-donor-code" class="form-input" value="${esc(nextCode)}" placeholder="Donor Code" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+            <button type="button" id="btn-register-donor-save" class="btn btn-primary btn-sm">Issue Code &amp; Select</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('#donor-lookup-close')?.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  const listEl = overlay.querySelector('#donor-lookup-list');
+  const searchEl = overlay.querySelector('#donor-lookup-search');
+  const nameEl = overlay.querySelector('#new-donor-name');
+  const brgyEl = overlay.querySelector('#new-donor-brgy');
+  const contactEl = overlay.querySelector('#new-donor-contact');
+  const codeEl = overlay.querySelector('#new-donor-code');
+  const dupWarn = overlay.querySelector('#donor-dup-warning');
+
+  function renderList(q = '') {
+    const donors = getConfidentialDonors();
+    const term = q.trim().toLowerCase();
+    const matches = donors.filter(d =>
+      !term ||
+      d.donor_code.toLowerCase().includes(term) ||
+      d.full_name.toLowerCase().includes(term) ||
+      (d.barangay || '').toLowerCase().includes(term)
+    );
+    if (!matches.length) {
+      listEl.innerHTML = `<div style="font-size:12px; color:var(--color-text-muted); padding:10px; text-align:center;">No matching donor profiles yet. Register below.</div>`;
+      return;
+    }
+    listEl.innerHTML = matches.map(d => `
+      <button type="button" class="js-pick-donor" data-code="${esc(d.donor_code)}"
+              style="display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; padding:7px 10px; border:1px solid var(--color-border); border-radius:6px; background:var(--color-surface); cursor:pointer;">
+        <div>
+          <strong style="font-size:12.5px; color:var(--color-text);">${esc(d.full_name)}</strong>
+          <span style="font-size:11.5px; color:var(--color-text-muted); margin-left:6px;">${esc(d.barangay || 'No Brgy')}</span>
+        </div>
+        <code style="font-size:11.5px; font-weight:700; color:#0284c7;">${esc(d.donor_code)}</code>
+      </button>
+    `).join('');
+
+    listEl.querySelectorAll('.js-pick-donor').forEach(btn => {
+      btn.addEventListener('click', () => {
+        targetInput.value = btn.dataset.code || '';
+        targetInput.classList.remove('cell-invalid');
+        close();
+      });
+    });
+  }
+
+  renderList();
+  searchEl?.addEventListener('input', () => renderList(searchEl.value));
+
+  nameEl?.addEventListener('input', () => {
+    const val = nameEl.value.trim().toLowerCase();
+    if (!val) { dupWarn.style.display = 'none'; return; }
+    const sameNames = getConfidentialDonors().filter(d => d.full_name.toLowerCase() === val);
+    if (sameNames.length > 0) {
+      const summary = sameNames.map(d => `${d.donor_code} (${d.barangay || 'No Brgy'})`).join(', ');
+      dupWarn.textContent = `Notice: "${nameEl.value.trim()}" already exists (${summary}). Select above if same mother, or enter Barangay to issue a separate unique Donor Code.`;
+      dupWarn.style.display = 'block';
+    } else {
+      dupWarn.style.display = 'none';
+    }
+  });
+
+  overlay.querySelector('#btn-register-donor-save')?.addEventListener('click', () => {
+    const fullName = nameEl?.value?.trim();
+    const barangay = brgyEl?.value?.trim();
+    if (!fullName || !barangay) {
+      dupWarn.textContent = 'Please enter both Mother\'s Full Name and Barangay.';
+      dupWarn.style.display = 'block';
+      return;
+    }
+    const saved = saveConfidentialDonor({
+      full_name: fullName,
+      barangay,
+      contact: contactEl?.value?.trim() || '',
+      donor_code: codeEl?.value?.trim() || '',
+    });
+    targetInput.value = saved.donor_code;
+    targetInput.classList.remove('cell-invalid');
+    close();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
