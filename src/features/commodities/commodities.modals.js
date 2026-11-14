@@ -262,46 +262,21 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
             </div>
           </div>
 
-          <!-- Shelf-Life & Expiration Status Policy (#98) -->
+          <!-- Expiration & Dispatch Basis (Unified Standard + Hybrid FEFO/LSFO) -->
           <div class="form-group" style="background: var(--color-surface-alt); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: var(--space-3);">
-            <label for="field-shelf-policy" class="form-label" style="margin-bottom: var(--space-1); display:flex; align-items:center; justify-content:space-between;">
-              <span>Shelf-Life &amp; Status Policy</span>
-              <span style="font-size: 11px; font-weight: 500; color: var(--color-text-muted);">FEFO Traffic-Light Basis</span>
-            </label>
-            <select id="field-shelf-policy" name="shelf_policy_mode" class="form-input" style="cursor: pointer;">
-              <option value="${SHELF_LIFE_MODES.STANDARD}" ${initialPolicy.mode === SHELF_LIFE_MODES.STANDARD ? 'selected' : ''}>
-                Standard Shelf-Stable (Good &gt;180d, Mod 91–180d, Near ≤90d)
-              </option>
-              <option value="${SHELF_LIFE_MODES.WEEKLY_PERISHABLE}" ${initialPolicy.mode === SHELF_LIFE_MODES.WEEKLY_PERISHABLE ? 'selected' : ''}>
-                Weekly Perishable / Nutribun (7-Day Dispatch)
-              </option>
-              <option value="${SHELF_LIFE_MODES.CHILLED_SHORT}" ${initialPolicy.mode === SHELF_LIFE_MODES.CHILLED_SHORT ? 'selected' : ''}>
-                Chilled / Short-Term Perishable (14-Day RSL%)
-              </option>
-              <option value="${SHELF_LIFE_MODES.CUSTOM}" ${initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? 'selected' : ''}>
-                Custom Thresholds (Configure Days)
-              </option>
-            </select>
-
-            <!-- Custom Threshold Inputs -->
-            <div id="shelf-custom-fields" style="display: ${initialPolicy.mode === SHELF_LIFE_MODES.CUSTOM ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2); margin-top: var(--space-3);">
-              <div>
-                <label for="field-custom-good" class="form-label form-label--required" style="font-size: 11px; margin-bottom: 3px;">Good Above (d)</label>
-                <input type="number" id="field-custom-good" class="form-input" min="2" max="3650" step="1" value="${initialCustomGood}" placeholder="e.g. 30" />
-              </div>
-              <div>
-                <label for="field-custom-near" class="form-label form-label--required" style="font-size: 11px; margin-bottom: 3px;">Near Expiry ≤ (d)</label>
-                <input type="number" id="field-custom-near" class="form-input" min="1" max="3649" step="1" value="${initialCustomNear}" placeholder="e.g. 10" />
-              </div>
-              <div>
-                <label for="field-custom-shelf" class="form-label" style="font-size: 11px; margin-bottom: 3px;">Auto-Exp (+d)</label>
-                <input type="number" id="field-custom-shelf" class="form-input" min="1" max="3650" step="1" value="${initialCustomShelf}" placeholder="Manual" title="Optional: auto-fills Expiration Date = Delivery Date + N days during intake" />
-              </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 6px;">
+              <span class="form-label" style="margin:0;">Expiration &amp; Dispatch Basis</span>
+              <span style="font-size: 11px; font-weight: 500; color: var(--color-text-muted);">Hybrid FEFO + LSFO</span>
             </div>
-            <span class="form-error" id="error-shelf-custom" role="alert"></span>
-
-            <!-- Live 4-Tier Traffic-Light Preview -->
-            <div id="shelf-policy-preview" style="margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px dashed var(--color-border); font-size: 11.5px; color: var(--color-text-muted); line-height: 1.5;"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:6px; font-size:11.5px; color:var(--color-text-muted);">
+              <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-good" style="font-size:10px; padding:1px 6px; margin:0;">Good</span> &gt; 6 Mos</span>
+              <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-moderate" style="font-size:10px; padding:1px 6px; margin:0;">Moderate</span> 3–6 Mos</span>
+              <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-near-expiry" style="font-size:10px; padding:1px 6px; margin:0;">Near Expiry</span> 1–90 Days</span>
+              <span style="display:inline-flex; align-items:center; gap:4px;"><span class="badge badge-expired" style="font-size:10px; padding:1px 6px; margin:0;">Expired</span> &le; 0 Days</span>
+            </div>
+            <div style="font-size:11px; color:var(--color-text-muted); line-height:1.45; padding-top:6px; border-top:1px dashed var(--color-border);">
+              Give out items expiring soonest first (FEFO); if two items expire on the same day, faster-spoiling items go first (LSFO).
+            </div>
           </div>
 
           <!-- Description -->
@@ -536,17 +511,6 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
       }
     }
 
-    // 2b. Auto-select 7-Day Weekly Perishable policy when typing Nutribun in Add mode
-    if (!isManualPolicyOverride && policySelect) {
-      if (isNutribunName(rawName)) {
-        policySelect.value = SHELF_LIFE_MODES.WEEKLY_PERISHABLE;
-        updatePolicyPreview();
-      } else if (policySelect.value === SHELF_LIFE_MODES.WEEKLY_PERISHABLE) {
-        policySelect.value = SHELF_LIFE_MODES.STANDARD;
-        updatePolicyPreview();
-      }
-    }
-
     // 3. Immediately generate Code once Product Name is placed
     if (!isManualCodeOverride || force) {
       const sku = deriveSKU(rawName, unitInput?.value);
@@ -647,39 +611,13 @@ export function openCommodityModal({ mode = 'add', commodity = null, commodities
       valid = false;
     }
 
-    const selPolicyMode = policySelect?.value || SHELF_LIFE_MODES.STANDARD;
-    if (selPolicyMode === SHELF_LIFE_MODES.CUSTOM) {
-      const goodVal = parseInt(customGoodIn?.value, 10);
-      const nearVal = parseInt(customNearIn?.value, 10);
-      const shelfRaw = customShelfIn?.value?.trim() || '';
-      const shelfVal = shelfRaw ? parseInt(shelfRaw, 10) : null;
-
-      if (isNaN(nearVal) || nearVal < 1) {
-        setFieldError('field-custom-near', 'error-shelf-custom', 'Near Expiry threshold must be at least 1 day.');
-        valid = false;
-      } else if (isNaN(goodVal) || goodVal <= nearVal) {
-        setFieldError('field-custom-good', 'error-shelf-custom', 'Good threshold must be greater than Near Expiry days.');
-        valid = false;
-      } else if (shelfRaw && (isNaN(shelfVal) || shelfVal < 1)) {
-        setFieldError('field-custom-shelf', 'error-shelf-custom', 'Auto-Expiry days must be a positive number or left blank.');
-        valid = false;
-      } else {
-        formData.shelf_life_config = {
-          mode: SHELF_LIFE_MODES.CUSTOM,
-          goodDays: goodVal,
-          nearExpiryDays: nearVal,
-          defaultShelfLifeDays: shelfVal,
-        };
-      }
-    } else {
-      const preset = SHELF_LIFE_PROFILES[selPolicyMode] || SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD];
-      formData.shelf_life_config = {
-        mode: preset.mode,
-        goodDays: preset.goodDays,
-        nearExpiryDays: preset.nearExpiryDays,
-        defaultShelfLifeDays: preset.defaultShelfLifeDays,
-      };
-    }
+    const preset = SHELF_LIFE_PROFILES[SHELF_LIFE_MODES.STANDARD];
+    formData.shelf_life_config = {
+      mode: preset.mode,
+      goodDays: preset.goodDays,
+      nearExpiryDays: preset.nearExpiryDays,
+      defaultShelfLifeDays: preset.defaultShelfLifeDays,
+    };
 
     if (!valid) return;
 

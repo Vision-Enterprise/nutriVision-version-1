@@ -158,8 +158,8 @@ export const MODULE_GUIDES = {
         detail: 'Drag-and-drop or browse a product image in the modal. If left blank, NutriVision assigns a clean category artwork illustration.',
       },
       {
-        stepTitle: 'Configure Perishable Shelf-Life Policy',
-        detail: 'For short-lived goods like E-Nutribun (7-day weekly dispatch), set custom Shelf-Life & Traffic-Light thresholds in the commodity form.',
+        stepTitle: 'Unified Expiration & Hybrid FEFO+LSFO',
+        detail: 'All commodities share the standard Traffic-Light rule (>180d Good, 91–180d Moderate, 1–90d Near Expiry, ≤0d Expired) with automatic FEFO + LSFO dispatch sorting.',
       },
       {
         stepTitle: 'Edit or Archive Safely',
