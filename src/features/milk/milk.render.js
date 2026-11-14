@@ -169,6 +169,7 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
 // SHEET 0: Donor Log (Form MH.MNAO.FM.004.00 — Confidential In-House Log)
 // ════════════════════════════════════════════════════════════════════════════
 export function renderDonorLogSheet(entries = [], draftRows = []) {
+  const pendingCount = draftRows.length;
   const today = getLocalDateString();
 
   const draftHtml = draftRows.map((draft, idx) => `
@@ -176,8 +177,8 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
         <div style="display:flex; align-items:center; gap:4px;">
-          <input type="text" class="grid-cell-input js-dl-code" value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Donor Code">
-          <button type="button" class="btn btn-secondary btn-sm js-dl-lookup" title="Lookup or Register Donor" style="padding:3px 7px; font-size:11px; flex-shrink:0;">ID</button>
+          <input type="text" class="grid-cell-input js-dl-code" value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Donor Code" style="min-width:105px;">
+          <button type="button" class="btn btn-secondary btn-sm js-dl-lookup" title="Lookup or Register Donor" style="padding:3px 8px; font-size:11px; flex-shrink:0;">ID</button>
         </div>
       </td>
       <td>
@@ -201,12 +202,12 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <td>
         <span class="text-muted text-xs">Self (on save)</span>
       </td>
-      <td class="grid-actions-cell" style="text-align:center;">
-        <button class="btn-grid-save js-save-dl-row" data-dl-draft-idx="${idx}" title="Save entry">
-          <span class="icon" style="font-size:16px;">check</span> Save
+      <td class="grid-actions-cell" style="text-align:center; white-space:nowrap;">
+        <button type="button" class="btn-grid-save js-save-dl-row" data-dl-draft-idx="${idx}" title="Save entry">
+          <span class="icon" style="font-size:15px;">check</span> Save
         </button>
-        <button class="btn-grid-discard js-discard-dl-row" data-dl-draft-idx="${idx}" title="Discard">
-          <span class="icon" style="font-size:16px;">close</span>
+        <button type="button" class="btn-grid-discard js-discard-dl-row" data-dl-draft-idx="${idx}" title="Discard draft row">
+          <span class="icon" style="font-size:15px;">delete</span>
         </button>
       </td>
     </tr>
@@ -228,9 +229,9 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <td class="text-muted text-xs">${formatTime(e.expression_time)}</td>
       <td class="text-sm font-weight-bold">${Number(e.volume_ml || 0).toLocaleString()} mL</td>
       <td class="text-sm">${escapeHtml(e.staff_name || 'Staff')}</td>
-      <td style="text-align:center;">
+      <td style="text-align:center; white-space:nowrap;">
         <button type="button" class="btn-grid-discard js-delete-dl-row" data-dl-id="${escapeHtml(e.id)}" title="Delete entry">
-          <span class="icon" style="font-size:15px;">delete</span>
+          <span class="icon" style="font-size:15px;">delete</span> Delete
         </button>
       </td>
     </tr>
@@ -244,31 +245,38 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
         <span class="milk-sheet-subtitle">Form MH.MNAO.FM.004.00 · Confidential (Internal Only)</span>
       </div>
       <div class="milk-sheet-actions">
-        <button class="btn-milk-add-row" id="btn-add-donor-log-row">
+        <button class="btn btn-secondary btn-sm" id="btn-add-donor-log-row" type="button">
           <span class="icon icon--sm" aria-hidden="true">add</span>
-          Add Donor Entry
+          Add Entry Row
+        </button>
+        <button class="btn btn-primary btn-sm btn--ice" id="btn-save-all-donor-log" type="button"
+                ${pendingCount === 0 ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>
+          <span class="icon icon--sm" aria-hidden="true">save</span>
+          Save All Pending (${pendingCount})
         </button>
       </div>
     </div>
 
-    <div class="milk-sheet-container">
+    ${renderCellBar('Click any cell in Donor Log to inspect or edit full content...')}
+
+    <div class="table-responsive">
       <table class="milk-sheet-table">
         <thead>
           <tr>
-            <th class="col-center" style="width:45px;">#</th>
-            <th style="width:155px;">Donor Code</th>
-            <th style="min-width:170px;">Donor's Name (Confidential)</th>
-            <th style="width:140px;">Date/Time of Donation</th>
-            <th style="width:130px;">Date of Milk Expressed</th>
-            <th style="width:110px;">Time of Milk Expressed</th>
-            <th style="width:140px;">Volume Donated (Thawed mL)</th>
-            <th style="width:140px;">Receiving Milk Hub Staff</th>
-            <th class="col-center" style="width:110px;">Actions</th>
+            <th style="width:45px;text-align:center;">#</th>
+            <th style="min-width:175px;">Donor Code</th>
+            <th style="min-width:190px;">Donor's Name (Confidential)</th>
+            <th style="min-width:155px;">Date/Time of Donation</th>
+            <th style="min-width:135px;">Date of Milk Expressed</th>
+            <th style="min-width:115px;">Time of Milk Expressed</th>
+            <th style="min-width:130px;">Volume Donated (Thawed mL)</th>
+            <th style="min-width:140px;">Receiving Milk Hub Staff</th>
+            <th style="min-width:130px;text-align:center;">Actions</th>
           </tr>
         </thead>
         <tbody>
           ${entries.length === 0 && draftRows.length === 0
-            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Donor Entry</strong> to record a mother's donation.</td></tr>`
+            ? `<tr><td colspan="9" class="milk-sheet-empty">No donor log entries yet. Click <strong>Add Entry Row</strong> to record a mother's donation.</td></tr>`
             : savedHtml + draftHtml}
         </tbody>
       </table>

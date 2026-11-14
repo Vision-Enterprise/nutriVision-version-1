@@ -212,6 +212,7 @@ function _renderActiveSheet() {
   if (_activeTab === 'donor-log') {
     contentArea.innerHTML = renderDonorLogSheet(_donorLogEntries, _draftDonorLog);
     _bindDonorLogSheetEvents();
+    _setupCellBarSync();
   } else if (_activeTab === 'intake') {
     contentArea.innerHTML = renderDonationsSheet(_donations, _draftDonations);
     _bindDonationsSheetEvents();
@@ -573,40 +574,49 @@ function _openConfidentialDonorLookupModal(targetInput, onPicked = null) {
 
   const overlay = document.createElement('div');
   overlay.id = 'milk-donor-lookup-overlay';
-  overlay.className = 'modal-overlay';
-  overlay.style.zIndex = '1200';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,0.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
 
   const nextCode = getNextDonorCode();
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   overlay.innerHTML = `
-    <div class="modal" style="max-width: 520px; width: 95%;" role="dialog" aria-modal="true" aria-labelledby="donor-lookup-title">
-      <div class="modal__header">
-        <div>
-          <h3 class="modal__title" id="donor-lookup-title">Confidential Donor Registry</h3>
-          <p style="font-size:12px; color:var(--color-text-muted); margin:2px 0 0;">
-            Names stay confidential here; only the Donor Code is logged in Milk Received.
-          </p>
+    <div role="dialog" aria-modal="true" aria-labelledby="donor-lookup-title"
+         style="background:var(--color-surface,#ffffff);border-radius:var(--radius-xl,16px);box-shadow:0 24px 60px rgba(0,0,0,0.22);width:100%;max-width:540px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--color-border,#e2e8f0);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 24px;border-bottom:1px solid var(--color-border,#e2e8f0);background:#f8fafc;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="icon" aria-hidden="true">badge</span>
+          </div>
+          <div>
+            <h3 id="donor-lookup-title" style="margin:0;font-size:17px;font-weight:700;color:var(--color-text,#0f172a);">Confidential Donor Registry</h3>
+            <p style="font-size:12px;color:var(--color-text-muted,#64748b);margin:3px 0 0;">
+              Names stay confidential here; only the Donor Code is logged in Milk Received.
+            </p>
+          </div>
         </div>
-        <button type="button" class="modal__close" id="donor-lookup-close" aria-label="Close">&times;</button>
+        <button type="button" id="donor-lookup-close" aria-label="Close"
+                style="background:none;border:none;cursor:pointer;color:var(--color-text-muted,#64748b);padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div class="modal__body" style="display:flex; flex-direction:column; gap:12px;">
+      <div style="padding:20px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
         <div>
-          <input type="search" id="donor-lookup-search" class="form-input" placeholder="Search existing donor by name, barangay, or code..." />
+          <input type="search" id="donor-lookup-search" class="form-input" placeholder="Search existing donor by name, barangay, or code..." style="width:100%;" />
         </div>
-        <div id="donor-lookup-list" style="max-height:170px; overflow-y:auto; border:1px solid var(--color-border); border-radius:8px; padding:6px; display:flex; flex-direction:column; gap:4px;"></div>
+        <div id="donor-lookup-list" style="max-height:175px;overflow-y:auto;border:1px solid var(--color-border,#e2e8f0);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;background:#f8fafc;"></div>
 
-        <div style="border-top:1px dashed var(--color-border); padding-top:10px;">
-          <div style="font-size:12px; font-weight:700; margin-bottom:8px; color:var(--color-text);">+ Register New Confidential Donor</div>
-          <div id="donor-dup-warning" style="display:none; margin-bottom:8px; padding:7px 10px; border-radius:6px; background:rgba(217,119,6,0.12); color:#b45309; font-size:11.5px; border:1px solid rgba(217,119,6,0.3);"></div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="border-top:1px dashed var(--color-border,#e2e8f0);padding-top:14px;">
+          <div style="font-size:12.5px;font-weight:700;margin-bottom:10px;color:var(--color-text,#0f172a);">+ Register New Confidential Donor</div>
+          <div id="donor-dup-warning" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(217,119,6,0.12);color:#b45309;font-size:12px;border:1px solid rgba(217,119,6,0.3);"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <input type="text" id="new-donor-name" class="form-input" placeholder="Mother's Full Name *" />
             <input type="text" id="new-donor-brgy" class="form-input" placeholder="Barangay (prevents name mix-up) *" />
             <input type="text" id="new-donor-contact" class="form-input" placeholder="Contact # (optional)" />
-            <input type="text" id="new-donor-code" class="form-input" value="${esc(nextCode)}" placeholder="Donor Code" />
+            <input type="text" id="new-donor-code" class="form-input" value="${esc(nextCode)}" placeholder="Donor Code" style="font-family:monospace;font-weight:600;color:#0284c7;" />
           </div>
-          <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-            <button type="button" id="btn-register-donor-save" class="btn btn-primary btn-sm">Issue Code &amp; Select</button>
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;">
+            <button type="button" id="btn-register-donor-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+            <button type="button" id="btn-register-donor-save" class="btn btn-sm" style="background:#0284c7;border-color:#0284c7;color:#ffffff;font-weight:600;">Issue Code &amp; Select</button>
           </div>
         </div>
       </div>
@@ -616,6 +626,7 @@ function _openConfidentialDonorLookupModal(targetInput, onPicked = null) {
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
   overlay.querySelector('#donor-lookup-close')?.addEventListener('click', close);
+  overlay.querySelector('#btn-register-donor-cancel')?.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
   const listEl = overlay.querySelector('#donor-lookup-list');
@@ -780,6 +791,57 @@ function _bindDonorLogSheetEvents() {
     });
   });
 
+  document.getElementById('btn-save-all-donor-log')?.addEventListener('click', async () => {
+    const rows = Array.from(document.querySelectorAll('tr[data-dl-draft-idx]'));
+    if (!rows.length) return;
+    let savedCount = 0;
+    const failedIndices = new Set();
+
+    for (const row of rows) {
+      const idx = parseInt(row.dataset.dlDraftIdx, 10);
+      const donor_code = row.querySelector('.js-dl-code')?.value?.trim() || '';
+      const donor_name = row.querySelector('.js-dl-name')?.value?.trim() || '';
+      const barangay = row.querySelector('.js-dl-name')?.dataset?.barangay || '';
+      const donation_date = row.querySelector('.js-dl-don-date')?.value || today;
+      const donation_time = row.querySelector('.js-dl-don-time')?.value || '09:00';
+      const expression_date = row.querySelector('.js-dl-exp-date')?.value || today;
+      const expression_time = row.querySelector('.js-dl-exp-time')?.value || '08:00';
+      const volume_ml = row.querySelector('.js-dl-vol')?.value || '';
+
+      if (!donor_name || !volume_ml || parseInt(volume_ml, 10) <= 0) {
+        if (!donor_name) row.querySelector('.js-dl-name')?.classList.add('cell-invalid');
+        if (!volume_ml || parseInt(volume_ml, 10) <= 0) row.querySelector('.js-dl-vol')?.classList.add('cell-invalid');
+        failedIndices.add(idx);
+        continue;
+      }
+
+      addDonorLogEntry({
+        donor_code,
+        donor_name,
+        barangay,
+        donation_date,
+        donation_time,
+        expression_date,
+        expression_time,
+        volume_ml,
+        staff_name: _profile?.full_name || 'Nutrition Staff',
+      });
+      savedCount++;
+    }
+
+    _draftDonorLog = _draftDonorLog.filter((_, i) => failedIndices.has(i));
+    _donorLogEntries = getDonorLogEntries();
+    _updateTabCounts();
+    _renderActiveSheet();
+
+    if (failedIndices.size > 0) {
+      await MilkModal.alert(
+        `Saved ${savedCount} entry row(s). ${failedIndices.size} row(s) highlighted in red still need Donor's Name and Volume (mL).`,
+        'Partial Save'
+      );
+    }
+  });
+
   document.querySelectorAll('.js-discard-dl-row').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.dlDraftIdx, 10);
@@ -789,7 +851,9 @@ function _bindDonorLogSheetEvents() {
   });
 
   document.querySelectorAll('.js-delete-dl-row').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+      const ok = await MilkModal.confirm('Delete this donor log entry?', 'Delete Entry');
+      if (!ok) return;
       deleteDonorLogEntry(btn.dataset.dlId);
       _donorLogEntries = getDonorLogEntries();
       _updateTabCounts();
