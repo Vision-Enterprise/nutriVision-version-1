@@ -171,7 +171,6 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
 export function renderDonorLogSheet(entries = [], draftRows = []) {
   const pendingCount = draftRows.length;
   const today = getLocalDateString();
-  const brgyDatalist = `<datalist id="milk-dl-barangays">${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">`).join('')}</datalist>`;
 
   const draftHtml = draftRows.map((draft, idx) => `
     <tr class="grid-row--draft" data-dl-draft-idx="${idx}">
@@ -183,7 +182,10 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
         <input type="text" class="grid-cell-input js-dl-name" value="${escapeHtml(draft.donor_name || '')}" placeholder="Donor's Full Name *" aria-label="Donor Name">
       </td>
       <td>
-        <input type="text" list="milk-dl-barangays" class="grid-cell-input js-dl-brgy" value="${escapeHtml(draft.barangay || '')}" placeholder="Barangay *" aria-label="Barangay">
+        <select class="grid-cell-select js-dl-brgy" aria-label="Barangay">
+          <option value="">Barangay *</option>
+          ${BARANGAYS.map(b => `<option value="${escapeHtml(b)}" ${draft.barangay === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+        </select>
       </td>
       <td>
         <input type="tel" class="grid-cell-input js-dl-contact" value="${escapeHtml(draft.contact || '')}" placeholder="09XX... (optional)" aria-label="Contact Number">
@@ -239,13 +241,17 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
   `).join('');
 
   return `
-    ${brgyDatalist}
     <div class="milk-sheet-toolbar">
-      <div class="milk-sheet-title">
-        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">badge</span>
-        DONOR LOG
+      <div class="milk-sheet-left">
+        <div class="milk-sheet-title">
+          <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">badge</span>
+          DONOR LOG
+        </div>
+        <div class="milk-toolbar-search-wrap">
+          <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
+          <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor, barangay, code..." aria-label="Search Donor Log" />
+        </div>
       </div>
-      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor, barangay, code..." aria-label="Search Donor Log" />
       <div class="milk-sheet-actions">
         <button id="btn-export-donor-log-csv" class="btn btn-secondary btn-sm" type="button" title="Export Donor Log as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
@@ -413,11 +419,16 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
 
   return `
     <div class="milk-sheet-toolbar">
-      <div class="milk-sheet-title">
-        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">receipt_long</span>
-        LOG OF MILK RECEIVED
+      <div class="milk-sheet-left">
+        <div class="milk-sheet-title">
+          <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">receipt_long</span>
+          LOG OF MILK RECEIVED
+        </div>
+        <div class="milk-toolbar-search-wrap">
+          <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
+          <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor code, date, staff..." aria-label="Search Log of Milk Received" />
+        </div>
       </div>
-      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor code, date, staff..." aria-label="Search Log of Milk Received" />
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>
@@ -485,14 +496,18 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
 
   return `
     <div class="milk-sheet-toolbar milk-sheet-toolbar--batches">
-      <div class="milk-sheet-title">
-        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">science</span>
-        Pasteurized Batches
+      <div class="milk-sheet-left">
+        <div class="milk-sheet-title">
+          <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">science</span>
+          Pasteurized Batches
+        </div>
+        ${subView === 'table' ? `
+          <div class="milk-toolbar-search-wrap">
+            <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
+            <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search batch code, donor, freezer..." aria-label="Search Pasteurized Batches" />
+          </div>
+        ` : ''}
       </div>
-
-      ${subView === 'table' ? `
-        <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search batch code, donor, freezer..." aria-label="Search Pasteurized Batches" />
-      ` : ''}
 
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;">
         <!-- Compact View Switcher -->
@@ -1333,11 +1348,16 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
 
   return `
     <div class="milk-sheet-toolbar">
-      <div class="milk-sheet-title">
-        <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">volunteer_activism</span>
-        Beneficiary Dispensing Ledger
+      <div class="milk-sheet-left">
+        <div class="milk-sheet-title">
+          <span class="icon icon--sm" aria-hidden="true" style="color:var(--color-milk-primary);">volunteer_activism</span>
+          Beneficiary Dispensing Ledger
+        </div>
+        <div class="milk-toolbar-search-wrap">
+          <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
+          <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search recipient, barangay, batch..." aria-label="Search Dispensing Ledger" />
+        </div>
       </div>
-      <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search recipient, barangay, batch..." aria-label="Search Dispensing Ledger" />
       <div class="milk-sheet-actions">
         <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">
           <span class="icon icon--sm" aria-hidden="true">table_view</span>

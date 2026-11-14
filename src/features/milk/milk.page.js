@@ -739,6 +739,23 @@ async function _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, bar
   return reuse ? first.donor_code : donor_code;
 }
 
+function _queueIntakeDraftFromDonorLog(entry) {
+  _draftDonations.push({
+    donor_code: entry.donor_code || '',
+    expression_date_notes: entry.expression_date || '',
+    expression_time: entry.expression_time || '08:00',
+    transport_date: entry.donation_date || '',
+    transport_date_end: '',
+    transport_time: entry.donation_time || '09:00',
+    condition_at_collection: 'ok',
+    arrival_date: entry.donation_date || '',
+    arrival_date_end: '',
+    arrival_time: entry.donation_time || '09:00',
+    condition_at_arrival: 'ok',
+    transport_condition: '',
+  });
+}
+
 function _bindDonorLogSheetEvents() {
   const today = getLocalDateString();
 
@@ -819,7 +836,7 @@ function _bindDonorLogSheetEvents() {
 
       donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
 
-      addDonorLogEntry({
+      const savedEntry = addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
@@ -831,6 +848,7 @@ function _bindDonorLogSheetEvents() {
         volume_ml,
         staff_name: _profile?.full_name || 'Nutrition Staff',
       });
+      _queueIntakeDraftFromDonorLog(savedEntry);
       _draftDonorLog.splice(idx, 1);
       _donorLogEntries = getDonorLogEntries();
       _updateTabCounts();
@@ -866,7 +884,7 @@ function _bindDonorLogSheetEvents() {
 
       donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
 
-      addDonorLogEntry({
+      const savedEntry = addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
@@ -878,6 +896,7 @@ function _bindDonorLogSheetEvents() {
         volume_ml,
         staff_name: _profile?.full_name || 'Nutrition Staff',
       });
+      _queueIntakeDraftFromDonorLog(savedEntry);
       savedCount++;
     }
 

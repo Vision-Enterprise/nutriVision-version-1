@@ -662,14 +662,34 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   display: none;
 }
 
+.milk-sheet-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.milk-toolbar-search-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.milk-toolbar-search-icon {
+  position: absolute;
+  left: 11px;
+  color: #0284c7;
+  pointer-events: none;
+  font-size: 17px !important;
+}
+
 .milk-toolbar-search {
-  flex: 1 1 200px;
-  max-width: 320px;
-  min-width: 170px;
+  width: 240px;
+  max-width: 100%;
   background: #ffffff;
   border: 1.5px solid #bae6fd;
   border-radius: 9999px;
-  padding: 6px 14px;
+  padding: 6px 14px 6px 34px;
   font-size: 13px;
   color: #0f172a;
   outline: none;
