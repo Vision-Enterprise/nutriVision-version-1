@@ -173,30 +173,45 @@ export const MODULE_GUIDES = {
     },
     steps: [
       {
-        title: { en: 'Add a new item type', bis: 'Pagdugang og bag-ong item', tl: 'Magdagdag ng bagong item' },
+        title: { en: 'Search, filter & switch view', bis: 'Pangita, i-filter, ug ilisi ang view', tl: 'Maghanap, mag-filter, at palitan ang view' },
         detail: {
-          en: 'Click + Add Commodity to register a new product name, unit (boxes, packs, bottles), and category.',
-          bis: 'I-click ang + Add Commodity para magrehistro og bag-ong ngalan sa produkto ug unit.',
-          tl: 'I-click ang + Add Commodity para magdagdag ng bagong pangalan ng produkto at unit.',
+          en: 'Use Search by name or code or All Categories dropdown to find items. Switch between Cards (pictures) or Table (list).',
+          bis: 'Gamita ang Search box o All Categories dropdown para mangita. Pilia ang Cards o Table view.',
+          tl: 'Gamitin ang Search box o All Categories dropdown para maghanap. Pumili ng Cards o Table view.',
         },
-        chips: [{ label: 'Add Commodity', icon: 'add', tone: 'green' }],
+        chips: [
+          { label: 'Cards', icon: 'grid_view', tone: 'neutral' },
+          { label: 'Table', icon: 'table_rows', tone: 'neutral' },
+        ],
       },
       {
-        title: { en: 'Find items fast', bis: 'Pangitaa dayon ang item', tl: 'Hanapin agad ang item' },
+        title: { en: 'Use card buttons (Stock, Graph, ⋮)', bis: 'Gamita ang buttons sa card (Stock, Graph, ⋮)', tl: 'Gamitin ang buttons sa card (Stock, Graph, ⋮)' },
         detail: {
-          en: 'Type in the Search box or pick a category from the dropdown.',
-          bis: 'Pag-type sa Search box o pili-a ang category sa dropdown.',
-          tl: 'Mag-type sa Search box o pumili ng category sa dropdown.',
+          en: 'Click the stock box (e.g. 450 Box • 2 batches) to view its batches, Graph to see its chart, or ⋮ (3 dots) to edit or delete.',
+          bis: 'I-click ang stock box para makita ang batches, Graph para sa chart, o ⋮ para mag-edit o delete.',
+          tl: 'I-click ang stock box para makita ang batches, Graph para sa chart, o ⋮ para mag-edit o mag-delete.',
         },
+        chips: [
+          { label: 'Graph', icon: 'hub', tone: 'neutral' },
+          { label: '1 urgent', icon: 'warning', tone: 'amber' },
+        ],
       },
       {
-        title: { en: 'Set shelf-life if perishable', bis: 'I-set ang shelf-life kung dali madaot', tl: 'I-set ang shelf-life kung madaling masira' },
+        title: { en: 'Add Commodity: fill required (*) fields', bis: 'Add Commodity: sulati ang may (*) nga fields', tl: 'Add Commodity: punan ang may (*) na fields' },
         detail: {
-          en: 'For items like 7-day Nutribuns, set custom days so expiry warnings stay accurate.',
-          bis: 'Para sa mga pagkaon sama sa 7-day Nutribuns, i-set ang adlaw para sakto ang expiry alert.',
-          tl: 'Para sa mga pagkain tulad ng 7-day Nutribuns, i-set ang araw para tama ang expiry alert.',
+          en: 'Click Add Commodity. Upload Photo (optional), click Auto for Code *, then enter Name *, Category * (e.g. Bakery / Perishables for 7-day items), Unit *, and optional Description.',
+          bis: 'I-click ang Add Commodity. Pwede mag-Upload Photo, i-click ang Auto sa Code *, unya isulod ang Name *, Category *, Unit *, ug Description.',
+          tl: 'I-click ang Add Commodity. Pwedeng mag-Upload Photo, i-click ang Auto sa Code *, tapos ilagay ang Name *, Category *, Unit *, at Description.',
         },
+        chips: [
+          { label: 'Add Commodity', icon: 'add', tone: 'green' },
+          { label: 'Upload Photo', icon: 'upload', tone: 'neutral' },
+          { label: 'Auto', icon: 'refresh', tone: 'neutral' },
+        ],
       },
+    ],
+    badges: [
+      { label: '1 urgent', tone: 'amber', meaning: { en: 'Has batches expiring soon or already expired', bis: 'May batches nga hapit na o expired na', tl: 'May batches na malapit o expired na' } },
     ],
     relatedRoutes: [
       { route: 'batches', label: 'Batches' },
