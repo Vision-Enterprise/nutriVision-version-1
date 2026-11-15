@@ -98,7 +98,7 @@ export function addDonorLogEntry(entry) {
       donor_code: saved.donor_code,
     });
   }
-  list.unshift(saved);
+  list.push(saved);
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(DONOR_LOG_KEY, JSON.stringify(list));
@@ -239,7 +239,6 @@ export async function fetchMilkDonations() {
     const { data, error } = await supabase
       .from('milk_donations')
       .select('*')
-      .order('arrival_date', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (error) throw error;

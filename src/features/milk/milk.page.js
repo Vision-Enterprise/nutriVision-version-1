@@ -474,7 +474,7 @@ function _bindDonationsSheetEvents() {
     });
   });
 
-  // Live highlight when Condition @ Donor or Arrival is marked compromised
+  // Live highlight when Condition @ Donor or Arrival is marked compromised + auto-sync Transport -> Arrival dates
   document.querySelectorAll('.grid-row--draft').forEach(row => {
     const condCol = row.querySelector('.js-donor-cond-col');
     const condArr = row.querySelector('.js-donor-cond-arr');
@@ -486,6 +486,21 @@ function _bindDonationsSheetEvents() {
     };
     condCol?.addEventListener('change', syncCompromised);
     condArr?.addEventListener('change', syncCompromised);
+
+    const transStart = row.querySelector('.js-donor-trans-date');
+    const transEnd = row.querySelector('.js-donor-trans-date-end');
+    const arrStart = row.querySelector('.js-donor-arrival-date');
+    const arrEnd = row.querySelector('.js-donor-arrival-date-end');
+    let arrStartEdited = false;
+    let arrEndEdited = false;
+    arrStart?.addEventListener('change', () => { arrStartEdited = true; });
+    arrEnd?.addEventListener('change', () => { arrEndEdited = true; });
+    transStart?.addEventListener('change', () => {
+      if (arrStart && !arrStartEdited) arrStart.value = transStart.value;
+    });
+    transEnd?.addEventListener('change', () => {
+      if (arrEnd && !arrEndEdited) arrEnd.value = transEnd.value;
+    });
   });
 
   // Delete saved donation row
@@ -786,15 +801,18 @@ async function _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, bar
 }
 
 function _queueIntakeDraftFromDonorLog(entry) {
+  const safeDate = (entry.donation_date && entry.expression_date && entry.donation_date < entry.expression_date)
+    ? entry.expression_date
+    : (entry.donation_date || '');
   _draftDonations.push({
     donor_code: entry.donor_code || '',
     expression_date_notes: entry.expression_date || '',
     expression_time: entry.expression_time || '08:00',
-    transport_date: entry.donation_date || '',
+    transport_date: safeDate,
     transport_date_end: '',
     transport_time: entry.donation_time || '09:00',
     condition_at_collection: 'ok',
-    arrival_date: entry.donation_date || '',
+    arrival_date: safeDate,
     arrival_date_end: '',
     arrival_time: entry.donation_time || '09:00',
     condition_at_arrival: 'ok',
