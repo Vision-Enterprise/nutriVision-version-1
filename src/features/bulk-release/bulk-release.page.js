@@ -30,10 +30,11 @@ import { SystemDialog } from '../../shared/components/dialog.component.js';
 let _batches    = [];        // all active batches from DB
 let _filtered   = [];        // currently displayed (after filter/sort)
 let _cart       = new Map(); // batchId -> { batch, qty }
-let _sortMode   = 'fefo';
-let _filterComm = 'all';
-let _profile    = null;
-let _onClose    = null;      // callback: () => void
+let _sortMode    = 'fefo';
+let _filterComm  = 'all';
+let _searchQuery = '';
+let _profile     = null;
+let _onClose     = null;      // callback: () => void
 
 // ── Entry Point ───────────────────────────────────────────────────────────────
 
@@ -43,11 +44,14 @@ let _onClose    = null;      // callback: () => void
  * @param {{ profile: Object, onClose: Function }} options
  */
 export async function openBulkReleaseWorkspace({ profile, onClose }) {
-  _profile  = profile;
-  _onClose  = onClose;
-  _batches  = [];
-  _filtered = [];
-  _cart     = new Map();
+  _profile     = profile;
+  _onClose     = onClose;
+  _batches     = [];
+  _filtered    = [];
+  _cart        = new Map();
+  _sortMode    = 'fefo';
+  _filterComm  = 'all';
+  _searchQuery = '';
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -117,6 +121,15 @@ function _applyFilterAndSort() {
 
   if (_filterComm !== 'all') {
     list = list.filter(b => b.commodities?.name === _filterComm);
+  }
+
+  if (_searchQuery) {
+    const q = _searchQuery.toLowerCase();
+    list = list.filter(b =>
+      (b.batch_number ?? '').toLowerCase().includes(q) ||
+      (b.commodities?.name ?? '').toLowerCase().includes(q) ||
+      (b.commodities?.commodity_code ?? '').toLowerCase().includes(q)
+    );
   }
 
   switch (_sortMode) {
@@ -235,6 +248,13 @@ function _attachCartListeners() {
 }
 
 function _attachFilterListeners() {
+  document.getElementById('bulk-filter-search')?.addEventListener('input', e => {
+    _searchQuery = e.target.value.trim();
+    _applyFilterAndSort();
+    _renderTable();
+    _attachTableListeners();
+  });
+
   document.getElementById('bulk-filter-commodity')?.addEventListener('change', e => {
     _filterComm = e.target.value;
     _applyFilterAndSort();

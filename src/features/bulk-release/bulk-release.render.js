@@ -7,6 +7,7 @@
 
 import { getExpirationStatus, getDaysRemaining, getLocalDateString } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
+import { renderBatchCodeBadge } from '../batches/batches.render.js';
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -72,6 +73,11 @@ export function renderBulkReleaseShell() {
 
           <!-- Filters -->
           <div class="bulk-release-filters">
+            <input type="search"
+                   id="bulk-filter-search"
+                   class="form-input bulk-filter-search"
+                   placeholder="Search batch # or commodity..."
+                   aria-label="Search batch or commodity" />
             <select id="bulk-filter-commodity" class="form-input" style="flex:1; min-width:140px;" aria-label="Filter by commodity">
               <option value="all">All Commodities</option>
             </select>
@@ -242,15 +248,7 @@ export function renderBatchSelectorTable(batches, selectedIds = new Set()) {
                        aria-label="Select batch ${escapeHtml(b.batch_number)}" />
               </td>
               <td>
-                <code style="font-size:var(--font-size-xs);
-                             background:var(--color-surface-alt);
-                             color:var(--color-primary);
-                             padding:2px 8px;
-                             border-radius:var(--radius-sm);
-                             font-weight:var(--font-weight-medium);
-                             letter-spacing:0.05em;">
-                  ${escapeHtml(b.batch_number)}
-                </code>
+                ${renderBatchCodeBadge(b.batch_number)}
               </td>
               <td>
                 <span style="font-weight:var(--font-weight-medium);">
@@ -290,7 +288,7 @@ export function renderCartItem(batch, qty = 1) {
       <div class="bulk-cart-item__top">
         <div class="bulk-cart-item__info">
           <span class="bulk-cart-item__name">${escapeHtml(fullName)}</span>
-          <span class="bulk-cart-item__code">${escapeHtml(batch.batch_number)}</span>
+          <div class="bulk-cart-item__code">${renderBatchCodeBadge(batch.batch_number)}</div>
         </div>
         <button class="btn btn-ghost btn-sm bulk-cart-remove"
                 data-batch-id="${batch.id}"

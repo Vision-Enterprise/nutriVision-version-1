@@ -365,33 +365,33 @@ export const MODULE_GUIDES = {
     theme: 'green',
     adminOnly: false,
     summary: {
-      en: 'Prepare a full distribution list for barangays in one go — oldest-expiring stock is suggested first.',
-      bis: 'Pag-andam og daghang ipanghatag sa mga barangay — ang pinakadali ma-expire ang una nga i-suggest.',
-      tl: 'Maghanda ng maraming ipapamigay sa mga barangay — ang pinakamaagang ma-expire ang unang irerekomenda.',
+      en: 'Pick multiple active batches from the scrollable list on the left, set aligned Release Qty in the Dispatch Cart on the right, and dispatch to one destination.',
+      bis: 'Pilia ang daghang active batches sa scrollable list sa wala, ibutang ang Release Qty sa Dispatch Cart sa tuo, ug i-dispatch sa usa ka destinasyon.',
+      tl: 'Pumili ng maraming active batches sa scrollable list sa kaliwa, ilagay ang Release Qty sa Dispatch Cart sa kanan, at i-dispatch sa isang destinasyon.',
     },
     steps: [
       {
-        title: { en: 'Pick recipient barangay & date', bis: 'Pilia ang barangay ug petsa', tl: 'Piliin ang barangay at petsa' },
+        title: { en: 'Search, filter & select batches', bis: 'Pangitaa, i-filter ug pilia ang batches', tl: 'Maghanap, mag-filter at pumili ng batches' },
         detail: {
-          en: 'Choose which barangay is receiving the supplies and enter the release date.',
-          bis: 'Pilia ang barangay nga modawat ug ibutang ang petsa sa paghatag.',
-          tl: 'Piliin ang barangay na tatanggap at ilagay ang petsa ng pagbibigay.',
+          en: 'Use the Search box, Commodity filter, or FEFO Sort in Select Available Batches, then check the rows you want to release (scroll inside the table for long lists).',
+          bis: 'Gamita ang Search box, Commodity filter, o FEFO Sort sa Select Available Batches, dayon i-check ang mga row nga i-release (i-scroll ang table kon daghan).',
+          tl: 'Gamitin ang Search box, Commodity filter, o FEFO Sort sa Select Available Batches, pagkatapos i-check ang mga row na ire-release (i-scroll ang table kung marami).',
         },
       },
       {
-        title: { en: 'Select batches & quantities', bis: 'Pilia ang batches ug gidaghanon', tl: 'Piliin ang batches at dami' },
+        title: { en: 'Set Release Qty in Dispatch Cart', bis: 'Ibutang ang Release Qty sa Dispatch Cart', tl: 'Ilagay ang Release Qty sa Dispatch Cart' },
         detail: {
-          en: 'Add the items to release. Oldest-expiring batches are marked so you can pick them first.',
-          bis: 'Idugang ang mga items nga ihatag. Gi-markahan ang pinakadali ma-expire para mauna.',
-          tl: 'Idagdag ang mga item na ibibigay. May palatandaan ang pinakamaagang ma-expire para mauna.',
+          en: 'Each selected batch appears in the scrollable Dispatch Cart. Enter the exact Release Qty next to its available balance, or click × to remove an item.',
+          bis: 'Ang matag napiling batch makita sa scrollable Dispatch Cart. Ibutang ang eksaktong Release Qty tupad sa available balance, o i-click ang × para tangtangon.',
+          tl: 'Lalabas ang bawat napiling batch sa scrollable Dispatch Cart. Ilagay ang tamang Release Qty katabi ng available balance, o i-click ang × para tanggalin.',
         },
       },
       {
-        title: { en: 'Confirm & save release', bis: 'I-confirm ug i-save ang release', tl: 'I-confirm at i-save ang release' },
+        title: { en: 'Fill Destination & Confirm Release', bis: 'Isulod ang Destinasyon ug i-Confirm', tl: 'Ilagay ang Destinasyon at i-Confirm' },
         detail: {
-          en: 'Review the summary, then save. Stock counts update automatically.',
-          bis: 'Susiha ang summary, dayon i-save. Awtomatikong makuhaan ang stock.',
-          tl: 'Suriin ang summary, pagkatapos i-save. Awtomatikong mababawas ang stock.',
+          en: 'Choose Destination (Barangay/LGU), Release Date, Received By, and optional Purpose/Remarks at the bottom of the cart, then click Confirm Release.',
+          bis: 'Pilia ang Destination (Barangay/LGU), Release Date, Received By, ug opsyonal nga Purpose/Remarks sa ubos sa cart, dayon i-click ang Confirm Release.',
+          tl: 'Piliin ang Destination (Barangay/LGU), Release Date, Received By, at opsyonal na Purpose/Remarks sa ibaba ng cart, pagkatapos i-click ang Confirm Release.',
         },
       },
     ],
