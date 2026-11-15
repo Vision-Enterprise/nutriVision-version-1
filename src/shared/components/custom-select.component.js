@@ -32,15 +32,29 @@ function _positionMenu(trigger, menu) {
   const maxWidth = Math.min(Math.max(minWidth, 260), window.innerWidth - 16);
   const width = Math.min(Math.max(rect.width, minWidth), maxWidth);
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-  const top = rect.bottom + 4;
-  const availableBelow = window.innerHeight - top - 10;
-  const maxHeight = Math.min(250, Math.max(120, availableBelow));
 
-  menu.style.top = `${Math.round(top)}px`;
+  const availableBelow = window.innerHeight - rect.bottom - 10;
+  const availableAbove = rect.top - 10;
+  const naturalHeight = Math.min(250, menu.scrollHeight || 250);
+  const openUpward = availableBelow < Math.min(naturalHeight, 150) && availableAbove > availableBelow;
+
   menu.style.left = `${Math.round(left)}px`;
   menu.style.width = `${Math.round(rect.width)}px`;
   menu.style.minWidth = `${Math.round(width)}px`;
-  menu.style.maxHeight = `${Math.round(maxHeight)}px`;
+
+  if (openUpward) {
+    const maxHeight = Math.min(250, Math.max(90, availableAbove));
+    menu.style.top = 'auto';
+    menu.style.bottom = `${Math.round(window.innerHeight - rect.top + 4)}px`;
+    menu.style.maxHeight = `${Math.round(maxHeight)}px`;
+    menu.classList.add('is-upward');
+  } else {
+    const maxHeight = Math.min(250, Math.max(90, availableBelow));
+    menu.style.bottom = 'auto';
+    menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+    menu.style.maxHeight = `${Math.round(maxHeight)}px`;
+    menu.classList.remove('is-upward');
+  }
 }
 
 function _openMenuFor(select, trigger) {
