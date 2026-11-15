@@ -170,6 +170,9 @@ export function enhanceSelect(select) {
   if (select.classList.contains('form-select') && !select.style.width) {
     wrapper.style.width = '100%';
   }
+  if (select.classList.contains('grid-cell-select') && !select.style.width) {
+    wrapper.style.width = '100%';
+  }
 
   const trigger = document.createElement('button');
   trigger.type = 'button';
@@ -208,6 +211,9 @@ export function enhanceSelect(select) {
 
     const isSm = select.classList.contains('form-input--sm') || select.classList.contains('form-select--sm');
     trigger.classList.toggle('is-sm', isSm);
+
+    const isGridCell = select.classList.contains('grid-cell-select');
+    trigger.classList.toggle('is-grid-cell', isGridCell);
   };
 
   // Insert wrapper in DOM and move select inside

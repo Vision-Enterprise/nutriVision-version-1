@@ -3399,6 +3399,15 @@
   font-size: var(--font-size-xs);
 }
 
+.nv-select__trigger.is-grid-cell {
+  min-height: 28px;
+  padding: 2px 6px;
+  border-color: transparent;
+  background: transparent;
+  border-radius: 4px;
+  font-size: inherit;
+}
+
 .nv-select__trigger:hover:not(:disabled) {
   border-color: var(--color-primary);
 }
