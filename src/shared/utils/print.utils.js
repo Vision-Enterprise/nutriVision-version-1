@@ -56,25 +56,63 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
     return;
   }
 
-  // Create temporary container for rendering
+  // Parse full HTML document cleanly so <head> styles apply only to the PDF container
+  const parser = new DOMParser();
+  const parsedDoc = parser.parseFromString(htmlContent || '', 'text/html');
+  const rawStyles = Array.from(parsedDoc.querySelectorAll('style'))
+    .map(s => s.textContent || '')
+    .join('\n');
+  const scopedStyles = rawStyles
+    .replace(/(^|[}\s,])body(?=\s*[{,])/gim, '$1#nv-pdf-render-temp')
+    .replace(/(^|[}\s,])\*(?=\s*[{,])/gm, '$1#nv-pdf-render-temp, #nv-pdf-render-temp *');
+
+  // Render at (0, 0) behind the app (NOT left:-9999px, which causes html2canvas to capture blank!)
   const container = document.createElement('div');
   container.id = 'nv-pdf-render-temp';
   container.style.position = 'fixed';
-  container.style.left = '-9999px';
+  container.style.left = '0';
   container.style.top = '0';
+  container.style.zIndex = '-9999';
+  container.style.pointerEvents = 'none';
   container.style.width = orientation === 'landscape' ? '1122px' : '794px';
   container.style.margin = '0';
-  container.style.padding = '0';
   container.style.background = '#ffffff';
-  container.innerHTML = htmlContent;
+  container.style.color = '#1a1a1a';
+
+  if (scopedStyles.trim()) {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = scopedStyles;
+    container.appendChild(styleEl);
+  }
+
+  const contentWrap = document.createElement('div');
+  contentWrap.innerHTML = parsedDoc.body ? parsedDoc.body.innerHTML : htmlContent;
+  container.appendChild(contentWrap);
   document.body.appendChild(container);
 
   try {
+    // Wait for embedded images (e.g. logos, photo evidence) before capturing canvas
+    const imgs = Array.from(container.querySelectorAll('img'));
+    if (imgs.length) {
+      await Promise.all(
+        imgs.map(img =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise(resolve => {
+                const done = () => resolve();
+                img.addEventListener('load', done, { once: true });
+                img.addEventListener('error', done, { once: true });
+                setTimeout(done, 3000);
+              })
+        )
+      );
+    }
+
     const opt = {
       margin: orientation === 'landscape' ? [6, 8, 6, 8] : [8, 8, 8, 8],
       filename: cleanName,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
+      html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: orientation }
     };
 
