@@ -330,8 +330,13 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
                value="${draft.expression_time || '08:00'}" aria-label="Milk Expression Time">
       </td>
       <td>
-        <input type="date" class="grid-cell-input js-donor-trans-date"
-               value="${draft.transport_date || today}" aria-label="Transport Date" title="Collection / Transport Date">
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="date" class="grid-cell-input js-donor-trans-date"
+                 value="${draft.transport_date || today}" aria-label="Transport Start Date" title="Collection / Transport Start Date" style="min-width:115px;">
+          <span style="color:#94a3b8;font-size:12px;">–</span>
+          <input type="date" class="grid-cell-input js-donor-trans-date-end"
+                 value="${draft.transport_date_end || ''}" aria-label="Transport End Date (optional)" title="Optional End Date (for multi-day range)" style="min-width:115px;">
+        </div>
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-trans-time"
@@ -344,8 +349,13 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </select>
       </td>
       <td>
-        <input type="date" class="grid-cell-input js-donor-arrival-date"
-               value="${draft.arrival_date || today}" aria-label="Arrival Date" title="Arrival Date at Milk Bank">
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="date" class="grid-cell-input js-donor-arrival-date"
+                 value="${draft.arrival_date || today}" aria-label="Arrival Start Date" title="Arrival Start Date at Milk Bank" style="min-width:115px;">
+          <span style="color:#94a3b8;font-size:12px;">–</span>
+          <input type="date" class="grid-cell-input js-donor-arrival-date-end"
+                 value="${draft.arrival_date_end || ''}" aria-label="Arrival End Date (optional)" title="Optional End Date (for multi-day range)" style="min-width:115px;">
+        </div>
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-arrival-time"
