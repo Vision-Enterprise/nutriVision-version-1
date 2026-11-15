@@ -32,42 +32,54 @@ export const MODULE_GUIDES = {
     theme: 'green',
     adminOnly: false,
     summary: {
-      en: 'Your home screen. See what supplies are in stock, what expires soon, and jump to daily tasks.',
-      bis: 'Kini ang imong home screen. Makita diri ang stock, hapit na ma-expire, ug mga dali nga button.',
-      tl: 'Ito ang home screen. Makikita rito ang stock, malapit nang ma-expire, at mabilis na buttons.',
+      en: 'Your home screen. See stock counts, urgent alerts, recent staff activity, and quick shortcuts in one place.',
+      bis: 'Kini ang imong home screen. Makita diri ang stock, mga alert, bag-ong lihok sa staff, ug mga shortcut.',
+      tl: 'Ito ang home screen. Makikita rito ang bilang ng stock, mga alert, bagong galaw ng staff, at shortcuts.',
     },
     steps: [
       {
-        title: { en: 'Check the 4 top boxes', bis: 'Tan-awa ang 4 ka kahon sa taas', tl: 'Tingnan ang 4 na kahon sa itaas' },
+        title: { en: 'Use the 5 top shortcut buttons', bis: 'Gamita ang 5 ka shortcut buttons sa taas', tl: 'Gamitin ang 5 shortcut buttons sa itaas' },
         detail: {
-          en: 'Look at Near Expiry (orange) and Expired (red) first so nothing goes to waste.',
-          bis: 'Una tan-awa ang Near Expiry (orange) ug Expired (pula) para walay masayang.',
-          tl: 'Unahin tingnan ang Near Expiry (orange) at Expired (pula) para walang masayang.',
-        },
-      },
-      {
-        title: { en: 'Click Advisor alerts', bis: 'I-click ang Advisor alerts', tl: 'I-click ang Advisor alerts' },
-        detail: {
-          en: 'Click any colored alert chip to see which items need action, or open the red Advisor button.',
-          bis: 'I-click ang bisan unsang kolor nga chip para makita ang detalye, o ablihi ang pula nga Advisor.',
-          tl: 'I-click ang kahit anong may kulay na chip para makita ang detalye, o buksan ang pulang Advisor.',
-        },
-        chips: [
-          { label: 'Advisor', icon: 'insights', tone: 'red' },
-        ],
-      },
-      {
-        title: { en: 'Start a task in 1 click', bis: 'Sugdi ang trabaho sa 1 click', tl: 'Simulan ang gawain sa 1 click' },
-        detail: {
-          en: 'Use the top buttons to open Milk Bank, release items, or add new deliveries.',
-          bis: 'Gamita ang mga button sa taas para sa Milk Bank, pag-release, o pagdugang og stock.',
-          tl: 'Gamitin ang mga button sa itaas para sa Milk Bank, pag-release, o pagdagdag ng stock.',
+          en: 'Jump straight to Milk Bank, give out supplies (Bulk Release), log deliveries (Add Batch), register items (Add Commodity), or open Calendar.',
+          bis: 'Dali nga pag-abli sa Milk Bank, paghatag og stock (Bulk Release), pagdugang og delivery (Add Batch), bag-ong item (Add Commodity), o Calendar.',
+          tl: 'Mabilis na pumunta sa Milk Bank, mag-release (Bulk Release), magdagdag ng delivery (Add Batch), bagong item (Add Commodity), o Calendar.',
         },
         chips: [
           { label: 'Milk Bank', icon: 'water_drop', tone: 'blue' },
           { label: 'Bulk Release', icon: 'shopping_cart', tone: 'orange' },
-          { label: '+ Add Batch', icon: 'add', tone: 'green' },
+          { label: 'Add Batch', icon: 'add', tone: 'green' },
+          { label: 'Add Commodity', icon: 'add', tone: 'green' },
+          { label: 'Calendar', icon: 'calendar_month', tone: 'neutral' },
         ],
+      },
+      {
+        title: { en: 'Check the 4 summary boxes', bis: 'Tan-awa ang 4 ka summary boxes', tl: 'Tingnan ang 4 na summary boxes' },
+        detail: {
+          en: 'Shows total Commodities, active Batches, Near Expiry (orange — within 3 months), and Expired (red — needs disposal).',
+          bis: 'Nagpakita sa kinatibuk-ang Commodities, active Batches, Near Expiry (orange), ug Expired (pula).',
+          tl: 'Nagpapakita ng kabuuang Commodities, active Batches, Near Expiry (orange), at Expired (pula).',
+        },
+      },
+      {
+        title: { en: 'Click Advisor Action Summary chips', bis: 'I-click ang mga chip sa Advisor Action Summary', tl: 'I-click ang mga chip sa Advisor Action Summary' },
+        detail: {
+          en: 'Click any colored chip (Expired, Nearing Expiry, Low Stock, Program Event) to inspect items right away, or click the red Advisor button for full details.',
+          bis: 'I-click ang kolor nga chip para makita dayon ang listahan, o ang pula nga Advisor button para sa tibuok detalye.',
+          tl: 'I-click ang may kulay na chip para makita agad ang listahan, o ang pulang Advisor button para sa buong detalye.',
+        },
+        chips: [
+          { label: 'Expired Batches', icon: 'error', tone: 'red' },
+          { label: 'Nearing Expiry (90d)', icon: 'warning', tone: 'amber' },
+          { label: 'Advisor', icon: 'insights', tone: 'red' },
+        ],
+      },
+      {
+        title: { en: 'Check Recent Activity & Top Bar', bis: 'Tan-awa ang Recent Activity ug Top Bar', tl: 'Tingnan ang Recent Activity at Top Bar' },
+        detail: {
+          en: 'Scroll down to see Recent Activity (latest staff logins and updates). Use the Bell icon at the top right for alerts, or the left green bar to switch pages.',
+          bis: 'Sa ubos makita ang Recent Activity sa staff. Gamita ang Bell icon sa taas para sa alerts, o ang berdeng bar sa wala para mobalhin og page.',
+          tl: 'Sa ibaba makikita ang Recent Activity ng staff. Gamitin ang Bell icon sa itaas para sa alerts, o ang berdeng bar sa kaliwa para lumipat ng page.',
+        },
       },
     ],
     badges: [
@@ -143,7 +155,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang + Add Commodity para magrehistro og bag-ong ngalan sa produkto ug unit.',
           tl: 'I-click ang + Add Commodity para magdagdag ng bagong pangalan ng produkto at unit.',
         },
-        chips: [{ label: '+ Add Commodity', icon: 'add', tone: 'green' }],
+        chips: [{ label: 'Add Commodity', icon: 'add', tone: 'green' }],
       },
       {
         title: { en: 'Find items fast', bis: 'Pangitaa dayon ang item', tl: 'Hanapin agad ang item' },
@@ -187,7 +199,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang + Add Batch para maabli ang Bulk Batch Registration (may Scanner o manual table).',
           tl: 'I-click ang + Add Batch para mabuksan ang Bulk Batch Registration (may Scanner o manual table).',
         },
-        chips: [{ label: '+ Add Batch', icon: 'add', tone: 'green' }],
+        chips: [{ label: 'Add Batch', icon: 'add', tone: 'green' }],
       },
       {
         title: { en: 'Filter by status or commodity', bis: 'I-filter pinaagi sa status o item', tl: 'I-filter ayon sa status o item' },
@@ -245,7 +257,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang + Add New Row Manually sa tuo nga table ug sulati ang Commodity, Unit, Qty, ug Petsa.',
           tl: 'I-click ang + Add New Row Manually sa kanang table at punan ang Commodity, Unit, Qty, at Petsa.',
         },
-        chips: [{ label: '+ Add New Row Manually', icon: 'add', tone: 'green' }],
+        chips: [{ label: 'Add New Row Manually', icon: 'add', tone: 'green' }],
       },
       {
         title: { en: 'Save all batches', bis: 'I-save ang tanang batches', tl: 'I-save ang lahat ng batches' },
@@ -404,7 +416,7 @@ export const MODULE_GUIDES = {
           tl: 'I-click ang + Add Row, ilagay ang pangalan, barangay, at volume, tapos i-Save. Awtomatiko ring lalabas ito sa Log of Milk Received.',
         },
         chips: [
-          { label: '+ Add Row', icon: 'add', tone: 'blue' },
+          { label: 'Add Row', icon: 'add', tone: 'blue' },
           { label: 'Save', icon: 'check', tone: 'blue' },
         ],
       },
@@ -469,7 +481,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang bisan unsang petsa o + Add Event para mag-schedule og kalihokan.',
           tl: 'I-click ang kahit anong petsa o + Add Event para mag-schedule ng gawain.',
         },
-        chips: [{ label: '+ Add Event', icon: 'add', tone: 'green' }],
+        chips: [{ label: 'Add Event', icon: 'add', tone: 'green' }],
       },
       {
         title: { en: 'Check expiry markers', bis: 'Tan-awa ang expiry markers', tl: 'Tingnan ang expiry markers' },
@@ -544,7 +556,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang + Report Defect, pilia ang batch, pila ka buok ang nadaot, ug isulat ang rason.',
           tl: 'I-click ang + Report Defect, piliin ang batch, ilan ang nasira, at ilagay ang dahilan.',
         },
-        chips: [{ label: '+ Report Defect', icon: 'add', tone: 'red' }],
+        chips: [{ label: 'Report Defect', icon: 'add', tone: 'red' }],
       },
       {
         title: { en: 'Automatic stock update', bis: 'Awtomatikong update sa stock', tl: 'Awtomatikong update sa stock' },
@@ -580,7 +592,7 @@ export const MODULE_GUIDES = {
           bis: 'I-click ang + Add User, isulod ang ngalan, email, ug role.',
           tl: 'I-click ang + Add User, ilagay ang pangalan, email, at role.',
         },
-        chips: [{ label: '+ Add User', icon: 'person_add', tone: 'green' }],
+        chips: [{ label: 'Add User', icon: 'person_add', tone: 'green' }],
       },
       {
         title: { en: 'Edit or deactivate', bis: 'I-edit o i-deactivate', tl: 'I-edit o i-deactivate' },
