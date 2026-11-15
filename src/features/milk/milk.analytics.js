@@ -1,24 +1,16 @@
 /**
- * Milk Bank Analytics & Operations Console (Advisor-Style Single-Console System)
+ * Milk Bank Advisor Console
  *
- * Operationally focused intelligence for cold-chain breastmilk banking:
- *   1. Monthly Milk Inflow vs. Outflow (Collected vs. Dispensed in Bags)
- *   2. Distribution Volume Categorized by Barangay (Clean Bags metric, no clinical indications breakdown)
- *   3. Total Active Donor Count per Barangay (Identifies clusters & zero-donor drive targets)
- *   4. Spoilage & Expiry Warning Indicators (FEFO priority risk monitoring)
- *   5. Inventory Status by Freezer Shelf (Remaining bags per batch BM-XXX across shelves)
- *
- * Designed to mirror the Inventory Advisor Console:
- *   - Screen Header with live total/top summary pill and quick export slot
- *   - Spoon-fed Key Takeaway banner
- *   - Interactive single-chart display (ApexCharts) with crisp responsive layout
- *   - 5-Channel Control Deck with clean button borders and sub-labels
- *   - Filter tuners: Year, Period / Quarter, and Scope limit
+ * Plain-English operational intelligence for Milk Bank staff:
+ *   1. Milk In vs. Out      (Monthly bags collected vs. dispensed)
+ *   2. Where Milk Goes      (Bags delivered per barangay)
+ *   3. Donor Outreach       (By Barangay OR By Individual Donation)
+ *   4. Expiry Check         (Stored bags grouped by shelf-life urgency)
  */
 
 import ApexCharts from 'apexcharts';
 import { BARANGAYS } from '../../shared/constants/app.constants.js';
-import { formatDate, getDaysRemaining } from '../../shared/utils/date.utils.js';
+import { getDaysRemaining } from '../../shared/utils/date.utils.js';
 
 let _activeChartInstance = null;
 let _cachedAnalyticsData = null;
@@ -26,6 +18,7 @@ let _currentChannel = 'inflow';
 let _yearFilter = 'all';
 let _periodFilter = 'all';
 let _limitFilter = '10';
+let _donorViewFilter = 'barangay'; // 'barangay' | 'individual'
 
 export function escapeHtml(str) {
   return String(str ?? '')
@@ -38,12 +31,9 @@ export function escapeHtml(str) {
 
 const MONTH_LABELS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/**
- * Filter helper by Year & Quarter/Period
- */
 function isDateMatchingFilter(dateStr, yearVal, periodVal, customStart, customEnd) {
   if (!dateStr) return false;
   const d = new Date(dateStr);
@@ -59,7 +49,7 @@ function isDateMatchingFilter(dateStr, yearVal, periodVal, customStart, customEn
   }
 
   if (periodVal !== 'all') {
-    const m = d.getMonth() + 1; // 1-12
+    const m = d.getMonth() + 1;
     if (periodVal === 'q1' && (m < 1 || m > 3)) return false;
     if (periodVal === 'q2' && (m < 4 || m > 6)) return false;
     if (periodVal === 'q3' && (m < 7 || m > 9)) return false;
@@ -69,14 +59,13 @@ function isDateMatchingFilter(dateStr, yearVal, periodVal, customStart, customEn
   return true;
 }
 
-/**
- * Resolve Barangay from a donor record by searching donor_code, notes, or transport
- */
-function resolveDonorBarangay(donorRecord) {
-  const code = String(donorRecord.donor_code || '').toLowerCase();
+function resolveDonorBarangay(donorRecord, donorLogs = []) {
+  const code = String(donorRecord.donor_code || '').trim().toLowerCase();
+  const matchedLog = donorLogs.find(l => String(l.donor_code || '').trim().toLowerCase() === code && l.barangay);
+  if (matchedLog) return matchedLog.barangay;
+
   const notes = String(donorRecord.expression_date_notes || '').toLowerCase();
   const transport = String(donorRecord.transport_condition || '').toLowerCase();
-
   for (const b of BARANGAYS) {
     const bLower = b.toLowerCase();
     if (code.includes(bLower) || notes.includes(bLower) || transport.includes(bLower)) {
@@ -86,10 +75,8 @@ function resolveDonorBarangay(donorRecord) {
   return 'Unassigned / MNAO Center';
 }
 
-/**
- * Compute Aggregated Analytics for all 5 Channels (Measured purely in BAGS)
- */
 export function computeMilkAnalytics({
+  donorLogs = [],
   donations = [],
   dispatches = [],
   batches = [],
@@ -98,6 +85,7 @@ export function computeMilkAnalytics({
   customEnd = '',
 }) {
   return {
+    rawDonorLogs: donorLogs || [],
     rawDonations: donations || [],
     rawDispatches: dispatches || [],
     rawBatches: batches || [],
@@ -107,14 +95,14 @@ export function computeMilkAnalytics({
   };
 }
 
-/**
- * Render the HTML layout for the Milk Bank Analytics Console
- */
 export function renderMilkAnalyticsSheet(analyticsData) {
   _cachedAnalyticsData = analyticsData;
 
-  // Determine available years from records
   const yearsSet = new Set(['2026', '2025']);
+  analyticsData.rawDonorLogs.forEach(l => {
+    const dt = l.donation_date || l.created_at;
+    if (dt) yearsSet.add(new Date(dt).getFullYear().toString());
+  });
   analyticsData.rawDonations.forEach(d => {
     const dt = d.arrival_date || d.created_at;
     if (dt) yearsSet.add(new Date(dt).getFullYear().toString());
@@ -126,181 +114,131 @@ export function renderMilkAnalyticsSheet(analyticsData) {
   const sortedYears = Array.from(yearsSet).filter(Boolean).sort().reverse();
 
   return `
-    <div class="milk-analytics-container" style="padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 20px;">
-      
-      <!-- ── TV-Style Console Card (Mirrors Advisor Layout) ──────────────── -->
+    <div class="milk-analytics-container" style="padding: 18px 22px 28px; display: flex; flex-direction: column; gap: 16px;">
       <div class="card milk-console-card" style="border: 1.5px solid #bae6fd; border-radius: 16px; overflow: hidden; background: #ffffff; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); padding: 0;">
-        
-        <!-- Console Header with Live Ticker Slot & PDF Export -->
-        <div class="milk-console-header" style="padding: 16px 22px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-bottom: 1.5px solid #bae6fd;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
-            <div style="flex: 1; min-width: 240px;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span class="icon" style="color: var(--color-milk-primary, #0284c7); font-size: 24px;">insights</span>
-                <h3 id="milk-console-title" style="margin: 0; font-size: 1.25rem; color: #0c4a6e; font-weight: 700;">Monthly Milk Inflow vs. Outflow</h3>
+
+        <!-- Header -->
+        <div class="milk-console-header" style="padding: 14px 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-bottom: 1.5px solid #bae6fd;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="flex: 1; min-width: 220px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                <span class="icon" style="color: #dc2626; font-size: 22px;">insights</span>
+                <h3 id="milk-console-title" style="margin: 0; font-size: 1.15rem; color: #0c4a6e; font-weight: 700;">Milk In vs. Out</h3>
               </div>
-              <p id="milk-console-subtitle" style="font-size: 13px; color: #0369a1; margin: 0; line-height: 1.4; font-weight: 500;">
-                Compare monthly milk collected vs. total volume dispensed to infants (in bags)
+              <p id="milk-console-subtitle" style="font-size: 13px; color: #0369a1; margin: 0; font-weight: 500;">
+                How many bags came in vs. how many went out each month
               </p>
             </div>
 
-            <!-- Live Summary Ticker & Print Preview Action -->
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div id="milk-console-ticker" style="background: #ffffff; padding: 7px 16px; border-radius: 999px; font-size: 13px; color: #0f172a; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.1); border: 1.5px solid #bae6fd; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-weight: 600;">
-                <span style="display: flex; align-items: center; gap: 6px;">
-                  <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">summarize</span>
-                  <span style="color: #64748b; font-weight: 500;">Total:</span>
-                  <strong id="milk-ticker-total" style="color: #0284c7;">Calculating...</strong>
-                </span>
-                <span id="milk-ticker-top-wrap" style="display: flex; align-items: center; gap: 6px;">
-                  <span class="icon icon--sm" style="color: #059669; font-size: 16px;">trending_up</span>
-                  <span style="color: #64748b; font-weight: 500;">Top:</span>
-                  <strong id="milk-ticker-top" style="color: #059669;">Calculating...</strong>
-                </span>
+              <div id="milk-console-ticker" style="background: #ffffff; padding: 6px 14px; border-radius: 9999px; font-size: 12.5px; color: #0f172a; border: 1.5px solid #bae6fd; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-weight: 600;">
+                <strong id="milk-ticker-total" style="color: #0284c7;">Loading...</strong>
+                <span style="color: #cbd5e1;">|</span>
+                <strong id="milk-ticker-top" style="color: #059669;">Loading...</strong>
               </div>
 
-              <button type="button" id="btn-export-milk-awards-pdf" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-weight: 600;">
+              <button type="button" id="btn-export-milk-awards-pdf" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 600; border-radius: 9999px;">
                 <span class="icon icon--sm" style="font-size: 17px; color: #0284c7;">print</span>
-                Export Report (PDF)
+                Export PDF
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Spoon-Fed Takeaway Banner (Cold-chain alert style) -->
-        <div id="milk-console-insight-card" style="margin: 14px 22px 0 22px; padding: 12px 18px; background: #f0f9ff; border: 1.5px solid #bae6fd; border-left: 5px solid #0284c7; border-radius: 8px; font-size: 13px; color: #0369a1; display: flex; align-items: center; gap: 12px; line-height: 1.5;">
-          <span class="icon" style="font-size: 22px; color: #0284c7; flex-shrink: 0;">lightbulb</span>
-          <div id="milk-console-insight-text" style="font-weight: 500;">Analyzing milk bank operations...</div>
+        <!-- Plain-English Takeaway -->
+        <div id="milk-console-insight-card" style="margin: 14px 20px 0 20px; padding: 11px 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0284c7; border-radius: 10px; font-size: 13px; color: #0c4a6e; display: flex; align-items: center; gap: 10px; line-height: 1.45;">
+          <span class="icon" style="font-size: 20px; color: #0284c7; flex-shrink: 0;">lightbulb</span>
+          <div id="milk-console-insight-text" style="font-weight: 500;">Analyzing records...</div>
         </div>
 
-        <!-- Chart Display Stage -->
-        <div style="padding: 16px 22px 20px 22px; background: #ffffff;">
-          <div id="milk-console-chart" style="min-height: 420px; width: 100%;"></div>
+        <!-- Dark Chart Stage (White text on dark background for crisp readability) -->
+        <div style="padding: 14px 20px 18px 20px; background: #ffffff;">
+          <div style="background: #0f172a; border-radius: 14px; padding: 14px 16px 8px 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);">
+            <div id="milk-console-chart" style="min-height: 390px; width: 100%;"></div>
+          </div>
         </div>
 
-        <!-- Control Deck: Channel Selector & Filters -->
-        <div style="padding: 18px 22px 22px; background-color: #f8fafc; border-top: 1.5px solid #bae6fd;">
-          
-          <!-- Channel Switcher -->
-          <div style="margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <p style="font-size: 12px; font-weight: 700; color: #0369a1; text-transform: uppercase; letter-spacing: 0.6px; margin: 0;">
-                Choose an Analytics Report
-              </p>
-              <span style="font-size: 12px; color: #64748b;">Click channel button to switch chart</span>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px;" id="milk-channel-controls">
-              
-              <!-- Channel 1: Inflow vs Outflow -->
-              <button class="btn milk-channel-btn ${(_currentChannel === 'inflow') ? 'milk-channel-btn--active' : ''}" data-channel="inflow" type="button">
-                <span class="icon" style="font-size: 22px;">swap_vert</span>
-                <span style="text-align: left;">
-                  <strong style="display: block; font-size: 13px;">Inflow vs Outflow</strong>
-                  <span style="font-size: 11px; opacity: 0.85; font-weight: 400;">Monthly collected vs dispensed</span>
-                </span>
-              </button>
+        <!-- Clean Control Deck -->
+        <div style="padding: 14px 20px 18px; background-color: #f8fafc; border-top: 1.5px solid #bae6fd; display: flex; flex-direction: column; gap: 12px;">
 
-              <!-- Channel 2: Distribution by Barangay -->
-              <button class="btn milk-channel-btn ${(_currentChannel === 'barangay') ? 'milk-channel-btn--active' : ''}" data-channel="barangay" type="button">
-                <span class="icon" style="font-size: 22px;">location_on</span>
-                <span style="text-align: left;">
-                  <strong style="display: block; font-size: 13px;">By Barangay</strong>
-                  <span style="font-size: 11px; opacity: 0.85; font-weight: 400;">Bags delivered to infants</span>
-                </span>
-              </button>
+          <!-- Channel Buttons -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px;" id="milk-channel-controls">
+            <button class="btn milk-channel-btn ${(_currentChannel === 'inflow') ? 'milk-channel-btn--active' : ''}" data-channel="inflow" type="button" style="border-radius: 9999px !important; justify-content: center;">
+              <span class="icon" style="font-size: 19px;">swap_vert</span>
+              <strong>Milk In vs. Out</strong>
+            </button>
 
-              <!-- Channel 3: Active Donors by Barangay -->
-              <button class="btn milk-channel-btn ${(_currentChannel === 'donors') ? 'milk-channel-btn--active' : ''}" data-channel="donors" type="button">
-                <span class="icon" style="font-size: 22px;">diversity_1</span>
-                <span style="text-align: left;">
-                  <strong style="display: block; font-size: 13px;">Donor Outreach</strong>
-                  <span style="font-size: 11px; opacity: 0.85; font-weight: 400;">Active donors to target drives</span>
-                </span>
-              </button>
+            <button class="btn milk-channel-btn ${(_currentChannel === 'barangay') ? 'milk-channel-btn--active' : ''}" data-channel="barangay" type="button" style="border-radius: 9999px !important; justify-content: center;">
+              <span class="icon" style="font-size: 19px;">location_on</span>
+              <strong>Where Milk Goes</strong>
+            </button>
 
-              <!-- Channel 4: Spoilage & Expiry Risk -->
-              <button class="btn milk-channel-btn ${(_currentChannel === 'expiry') ? 'milk-channel-btn--active' : ''}" data-channel="expiry" type="button">
-                <span class="icon" style="font-size: 22px;">schedule</span>
-                <span style="text-align: left;">
-                  <strong style="display: block; font-size: 13px;">Expiry Monitor</strong>
-                  <span style="font-size: 11px; opacity: 0.85; font-weight: 400;">Shelf-life & spoilage risk</span>
-                </span>
-              </button>
+            <button class="btn milk-channel-btn ${(_currentChannel === 'donors') ? 'milk-channel-btn--active' : ''}" data-channel="donors" type="button" style="border-radius: 9999px !important; justify-content: center;">
+              <span class="icon" style="font-size: 19px;">diversity_1</span>
+              <strong>Donor Outreach</strong>
+            </button>
 
-            </div>
+            <button class="btn milk-channel-btn ${(_currentChannel === 'expiry') ? 'milk-channel-btn--active' : ''}" data-channel="expiry" type="button" style="border-radius: 9999px !important; justify-content: center;">
+              <span class="icon" style="font-size: 19px;">schedule</span>
+              <strong>Expiry Check</strong>
+            </button>
           </div>
 
-          <!-- Section: Filters & Customization -->
-          <div>
-            <p style="font-size: 12px; font-weight: 700; color: #0369a1; text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 8px 0;">
-              Filters &amp; Customization
-            </p>
-            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-              
-              <!-- Year Filter -->
-              <div id="milk-tuner-year-wrap" style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 6px 14px; border-radius: 8px; border: 1.5px solid #bae6fd; box-shadow: 0 1px 2px rgba(2, 132, 199, 0.05);">
-                <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">calendar_today</span>
-                <label for="milk-tuner-year" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Year:</label>
-                <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                  <option value="all" ${_yearFilter === 'all' ? 'selected' : ''}>All Years</option>
-                  ${sortedYears.map(y => `<option value="${y}" ${_yearFilter === y ? 'selected' : ''}>${y}</option>`).join('')}
-                </select>
-              </div>
+          <!-- Inline Filters -->
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div id="milk-tuner-year-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">calendar_today</span>
+              <label for="milk-tuner-year" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Year:</label>
+              <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                <option value="all" ${_yearFilter === 'all' ? 'selected' : ''}>All Years</option>
+                ${sortedYears.map(y => `<option value="${y}" ${_yearFilter === y ? 'selected' : ''}>${y}</option>`).join('')}
+              </select>
+            </div>
 
-              <!-- Period Filter (Full Year / Quarters) -->
-              <div id="milk-tuner-period-wrap" style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 6px 14px; border-radius: 8px; border: 1.5px solid #bae6fd; box-shadow: 0 1px 2px rgba(2, 132, 199, 0.05);">
-                <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">date_range</span>
-                <label for="milk-tuner-period" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Period:</label>
-                <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                  <option value="all" ${_periodFilter === 'all' ? 'selected' : ''}>Full Year</option>
-                  <option value="q1" ${_periodFilter === 'q1' ? 'selected' : ''}>Q1 (Jan – Mar)</option>
-                  <option value="q2" ${_periodFilter === 'q2' ? 'selected' : ''}>Q2 (Apr – Jun)</option>
-                  <option value="q3" ${_periodFilter === 'q3' ? 'selected' : ''}>Q3 (Jul – Sep)</option>
-                  <option value="q4" ${_periodFilter === 'q4' ? 'selected' : ''}>Q4 (Oct – Dec)</option>
-                </select>
-              </div>
+            <div id="milk-tuner-period-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">date_range</span>
+              <label for="milk-tuner-period" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Period:</label>
+              <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                <option value="all" ${_periodFilter === 'all' ? 'selected' : ''}>Full Year</option>
+                <option value="q1" ${_periodFilter === 'q1' ? 'selected' : ''}>Q1 (Jan–Mar)</option>
+                <option value="q2" ${_periodFilter === 'q2' ? 'selected' : ''}>Q2 (Apr–Jun)</option>
+                <option value="q3" ${_periodFilter === 'q3' ? 'selected' : ''}>Q3 (Jul–Sep)</option>
+                <option value="q4" ${_periodFilter === 'q4' ? 'selected' : ''}>Q4 (Oct–Dec)</option>
+              </select>
+            </div>
 
-              <!-- Limit / Scope Filter (For Barangay & Donors) -->
-              <div id="milk-tuner-limit-wrap" style="display: none; align-items: center; gap: 8px; background: #ffffff; padding: 6px 14px; border-radius: 8px; border: 1.5px solid #bae6fd; box-shadow: 0 1px 2px rgba(2, 132, 199, 0.05);">
-                <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">filter_list</span>
-                <label for="milk-tuner-limit" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Show:</label>
-                <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                  <option value="10" ${_limitFilter === '10' ? 'selected' : ''}>Top 10</option>
-                  <option value="all" ${_limitFilter === 'all' ? 'selected' : ''}>All 22 Barangays</option>
-                </select>
-              </div>
+            <div id="milk-tuner-donor-view-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">person_search</span>
+              <label for="milk-tuner-donor-view" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Group By:</label>
+              <select id="milk-tuner-donor-view" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                <option value="barangay" ${_donorViewFilter === 'barangay' ? 'selected' : ''}>By Barangay</option>
+                <option value="individual" ${_donorViewFilter === 'individual' ? 'selected' : ''}>By Individual Donation</option>
+              </select>
+            </div>
 
-              <!-- Expiry Horizon Note (For Expiry Channel only) -->
-              <div id="milk-tuner-expiry-note" style="display: none; align-items: center; gap: 6px; font-size: 12px; color: #64748b; font-weight: 500;">
-                <span class="icon icon--sm" style="color: #d97706; font-size: 16px;">info</span>
-                Thresholds: Expired (0d), Priority Dispatch (&le;30d), Moderate (31&ndash;60d), Safe (&gt;60d)
-              </div>
-
+            <div id="milk-tuner-limit-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">filter_list</span>
+              <label for="milk-tuner-limit" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Show:</label>
+              <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                <option value="10" ${_limitFilter === '10' ? 'selected' : ''}>Top 10</option>
+                <option value="all" ${_limitFilter === 'all' ? 'selected' : ''}>All</option>
+              </select>
             </div>
           </div>
 
         </div>
       </div>
-
     </div>
   `;
 }
 
-/**
- * Mount and Render ApexCharts according to Active Channel
- */
 export function mountMilkAnalyticsCharts(analyticsData) {
   _cachedAnalyticsData = analyticsData;
   _bindConsoleControls();
   _renderChannelChart();
 }
 
-/**
- * Bind Click & Change Events on Control Deck
- */
 function _bindConsoleControls() {
-  // Channel Buttons
   const channelBtns = document.querySelectorAll('.milk-channel-btn');
   channelBtns.forEach(btn => {
     btn.onclick = (e) => {
@@ -315,7 +253,6 @@ function _bindConsoleControls() {
     };
   });
 
-  // Year Tuner
   const yearEl = document.getElementById('milk-tuner-year');
   if (yearEl) {
     yearEl.onchange = (e) => {
@@ -324,7 +261,6 @@ function _bindConsoleControls() {
     };
   }
 
-  // Period Tuner
   const periodEl = document.getElementById('milk-tuner-period');
   if (periodEl) {
     periodEl.onchange = (e) => {
@@ -333,7 +269,14 @@ function _bindConsoleControls() {
     };
   }
 
-  // Limit Tuner
+  const donorViewEl = document.getElementById('milk-tuner-donor-view');
+  if (donorViewEl) {
+    donorViewEl.onchange = (e) => {
+      _donorViewFilter = e.target.value;
+      _renderChannelChart();
+    };
+  }
+
   const limitEl = document.getElementById('milk-tuner-limit');
   if (limitEl) {
     limitEl.onchange = (e) => {
@@ -343,9 +286,6 @@ function _bindConsoleControls() {
   }
 }
 
-/**
- * Master Chart Switcher & Renderer
- */
 function _renderChannelChart() {
   if (!_cachedAnalyticsData) return;
 
@@ -353,9 +293,7 @@ function _renderChannelChart() {
   if (!chartEl) return;
 
   if (_activeChartInstance) {
-    try {
-      _activeChartInstance.destroy();
-    } catch {}
+    try { _activeChartInstance.destroy(); } catch {}
     _activeChartInstance = null;
   }
 
@@ -363,18 +301,21 @@ function _renderChannelChart() {
     _currentChannel = 'inflow';
   }
 
-  // Toggle tuner visibility
   const yearWrap = document.getElementById('milk-tuner-year-wrap');
   const periodWrap = document.getElementById('milk-tuner-period-wrap');
+  const donorViewWrap = document.getElementById('milk-tuner-donor-view-wrap');
   const limitWrap = document.getElementById('milk-tuner-limit-wrap');
-  const expiryNote = document.getElementById('milk-tuner-expiry-note');
 
   if (yearWrap) yearWrap.style.display = (_currentChannel === 'expiry') ? 'none' : 'flex';
   if (periodWrap) periodWrap.style.display = (_currentChannel === 'expiry') ? 'none' : 'flex';
+  if (donorViewWrap) donorViewWrap.style.display = (_currentChannel === 'donors') ? 'flex' : 'none';
   if (limitWrap) limitWrap.style.display = (_currentChannel === 'barangay' || _currentChannel === 'donors') ? 'flex' : 'none';
-  if (expiryNote) expiryNote.style.display = (_currentChannel === 'expiry') ? 'flex' : 'none';
 
-  // Filter raw collections and dispatches according to year and period
+  const filteredDonorLogs = (_cachedAnalyticsData.rawDonorLogs || []).filter(l => {
+    const dt = l.donation_date || l.created_at;
+    return isDateMatchingFilter(dt, _yearFilter, _periodFilter, _cachedAnalyticsData.customStart, _cachedAnalyticsData.customEnd);
+  });
+
   const filteredDonations = _cachedAnalyticsData.rawDonations.filter(d => {
     const dt = d.arrival_date || d.created_at;
     return isDateMatchingFilter(dt, _yearFilter, _periodFilter, _cachedAnalyticsData.customStart, _cachedAnalyticsData.customEnd);
@@ -387,22 +328,26 @@ function _renderChannelChart() {
 
   const activeBatches = _cachedAnalyticsData.rawBatches.filter(b => (Number(b.remaining_bags || 0) > 0));
 
+  const darkThemeBase = {
+    background: '#0f172a',
+    foreColor: '#f8fafc',
+    fontFamily: "'Inter', sans-serif",
+    toolbar: { show: false },
+  };
+
   let chartOptions = {};
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // CHANNEL 1: Monthly Milk Inflow vs. Outflow (in Bags)
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── 1. Milk In vs. Out ─────────────────────────────────────────────────────
   if (_currentChannel === 'inflow') {
     _setConsoleHeader(
-      'Monthly Milk Inflow vs. Outflow',
-      'Compare monthly milk collected vs. total volume dispensed to infants (in bags)'
+      'Milk In vs. Out',
+      'How many bags came in vs. how many went out each month'
     );
 
-    const monthlyInflow = new Array(12).fill(0);
-    const monthlyOutflow = new Array(12).fill(0);
-
-    let totalInflowBags = 0;
-    let totalOutflowBags = 0;
+    const monthlyIn = new Array(12).fill(0);
+    const monthlyOut = new Array(12).fill(0);
+    let totalIn = 0;
+    let totalOut = 0;
 
     filteredDonations.forEach(d => {
       const dt = d.arrival_date || d.created_at;
@@ -410,8 +355,8 @@ function _renderChannelChart() {
       const m = new Date(dt).getMonth();
       const bags = Number(d.bags_count || 1);
       if (m >= 0 && m < 12) {
-        monthlyInflow[m] += bags;
-        totalInflowBags += bags;
+        monthlyIn[m] += bags;
+        totalIn += bags;
       }
     });
 
@@ -421,275 +366,314 @@ function _renderChannelChart() {
       const m = new Date(dt).getMonth();
       const bags = Number(disp.bags_dispensed || 0);
       if (m >= 0 && m < 12) {
-        monthlyOutflow[m] += bags;
-        totalOutflowBags += bags;
+        monthlyOut[m] += bags;
+        totalOut += bags;
       }
     });
 
-    const netBalance = totalInflowBags - totalOutflowBags;
+    const net = totalIn - totalOut;
+    _updateTicker(`${totalIn} Bags In · ${totalOut} Bags Out`, `${net >= 0 ? '+' : ''}${net} Bags Left`);
 
-    _updateTicker(
-      `${totalInflowBags} Bags Inflow · ${totalOutflowBags} Bags Dispensed`,
-      `${netBalance >= 0 ? '+' : ''}${netBalance} Bags Net Reserve`
-    );
-
-    let peakMonthName = 'None';
-    let peakMonthBags = 0;
-    monthlyInflow.forEach((qty, idx) => {
-      if (qty > peakMonthBags) {
-        peakMonthBags = qty;
-        peakMonthName = MONTH_LABELS[idx];
+    let peakMonth = 'None';
+    let peakBags = 0;
+    monthlyIn.forEach((qty, idx) => {
+      if (qty > peakBags) {
+        peakBags = qty;
+        peakMonth = MONTH_LABELS[idx];
       }
     });
 
     _updateTakeaway(
-      `Peak intake was observed in <strong>${peakMonthName}</strong> (${peakMonthBags} bags collected). Net balance for this filter period stands at <strong>${netBalance >= 0 ? '+' : ''}${netBalance} bags</strong>.`
+      peakBags > 0
+        ? `Most milk arrived in <strong>${peakMonth}</strong> (${peakBags} bags). Overall difference is <strong>${net >= 0 ? '+' : ''}${net} bags</strong>.`
+        : `No milk intake recorded for this period yet.`
     );
 
     chartOptions = {
       series: [
-        { name: 'Milk Bags Collected', data: monthlyInflow },
-        { name: 'Milk Bags Dispensed', data: monthlyOutflow },
+        { name: 'Collected (In)', data: monthlyIn },
+        { name: 'Given Out (Out)', data: monthlyOut },
       ],
-      chart: {
-        type: 'bar',
-        height: 400,
-        fontFamily: "'Inter', sans-serif",
-        toolbar: { show: false },
-      },
-      colors: ['#0284c7', '#059669'],
+      chart: { ...darkThemeBase, type: 'bar', height: 390 },
+      theme: { mode: 'dark' },
+      colors: ['#38bdf8', '#34d399'],
       plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: '55%',
-          borderRadius: 4,
-          dataLabels: { position: 'top' },
-        },
+        bar: { horizontal: false, columnWidth: '55%', borderRadius: 6, dataLabels: { position: 'top' } },
       },
       dataLabels: {
         enabled: true,
         formatter: (val) => (val > 0 ? `${val}` : ''),
         offsetY: -20,
-        style: { fontSize: '11px', fontWeight: 600, colors: ['#475569'] },
+        style: { fontSize: '12px', fontWeight: 700, colors: ['#ffffff'] },
       },
-      stroke: { show: true, width: 2, colors: ['transparent'] },
       xaxis: {
         categories: MONTH_LABELS,
-        labels: { style: { colors: '#64748b', fontSize: '12px', fontWeight: 600 } },
+        labels: { style: { colors: '#e2e8f0', fontSize: '12px', fontWeight: 600 } },
       },
       yaxis: {
-        title: { text: 'Number of Bags', style: { color: '#0369a1', fontWeight: 600 } },
-        labels: { style: { colors: '#64748b' } },
+        title: { text: 'Bags', style: { color: '#94a3b8', fontWeight: 600 } },
+        labels: { style: { colors: '#cbd5e1' } },
       },
-      fill: { opacity: 0.95 },
-      tooltip: {
-        y: { formatter: (val) => `${val} Bags` },
-      },
-      legend: {
-        position: 'top',
-        horizontalAlign: 'right',
-        fontSize: '13px',
-        fontWeight: 600,
-      },
-      grid: { borderColor: '#f1f5f9' },
+      tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags` } },
+      legend: { position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#f8fafc' } },
+      grid: { borderColor: '#1e293b' },
     };
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // CHANNEL 2: Distribution Volume Categorized by Barangay (Clean Bags)
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── 2. Where Milk Goes ─────────────────────────────────────────────────────
   else if (_currentChannel === 'barangay') {
     _setConsoleHeader(
-      'Distribution Volume by Barangay',
-      'Total pasteurized milk bags delivered to infant beneficiaries across Manolo Fortich'
+      'Where Milk Goes',
+      'Total pasteurized milk bags delivered to babies in each barangay'
     );
 
     const brgyMap = {};
-    let totalDispensedBags = 0;
+    let totalDispensed = 0;
 
     filteredDispatches.forEach(disp => {
       const b = String(disp.barangay || 'Unspecified').trim();
       const bags = Number(disp.bags_dispensed || 0);
       brgyMap[b] = (brgyMap[b] || 0) + bags;
-      totalDispensedBags += bags;
+      totalDispensed += bags;
     });
 
     let sortedBrgys = Object.keys(brgyMap).sort((a, b) => brgyMap[b] - brgyMap[a]);
     if (_limitFilter !== 'all') {
-      const limit = parseInt(_limitFilter, 10) || 10;
-      sortedBrgys = sortedBrgys.slice(0, limit);
+      sortedBrgys = sortedBrgys.slice(0, parseInt(_limitFilter, 10) || 10);
     }
-
-    const seriesData = sortedBrgys.map(b => brgyMap[b] || 0);
 
     const topName = sortedBrgys[0] || 'None';
     const topQty = brgyMap[topName] || 0;
 
-    _updateTicker(
-      `${totalDispensedBags.toLocaleString()} Total Bags Delivered`,
-      `${topName} (${topQty.toLocaleString()} Bags)`
-    );
+    _updateTicker(`${totalDispensed.toLocaleString()} Bags Delivered`, `Top: ${topName} (${topQty})`);
 
-    if (totalDispensedBags > 0 && topQty > 0) {
-      const topPct = Math.round((topQty / totalDispensedBags) * 100);
+    if (totalDispensed > 0 && topQty > 0) {
+      const topPct = Math.round((topQty / totalDispensed) * 100);
       _updateTakeaway(
-        `<strong>${topName}</strong> received the largest infant allocation with <strong>${topQty} bags</strong> (~${topPct}% of all distributed milk across ${Object.keys(brgyMap).length} recipient barangays).`
+        `<strong>${topName}</strong> received the most milk with <strong>${topQty} bags</strong> (${topPct}% of deliveries across ${Object.keys(brgyMap).length} barangays).`
       );
     } else {
-      _updateTakeaway(
-        `No pasteurized milk dispatch records found for the selected filter period.`
-      );
+      _updateTakeaway(`No deliveries recorded for this period yet.`);
     }
 
     chartOptions = {
-      series: [
-        { name: 'Bags Dispensed', data: seriesData },
-      ],
-      chart: {
-        type: 'bar',
-        height: Math.max(380, sortedBrgys.length * 36),
-        fontFamily: "'Inter', sans-serif",
-        toolbar: { show: false },
-      },
-      colors: ['#0284c7'],
+      series: [{ name: 'Bags Delivered', data: sortedBrgys.map(b => brgyMap[b] || 0) }],
+      chart: { ...darkThemeBase, type: 'bar', height: Math.max(360, sortedBrgys.length * 40) },
+      theme: { mode: 'dark' },
+      colors: ['#38bdf8'],
       plotOptions: {
-        bar: {
-          horizontal: true,
-          barHeight: '60%',
-          borderRadius: 6,
-          dataLabels: { position: 'right' },
-        },
+        bar: { horizontal: true, barHeight: '60%', borderRadius: 6, dataLabels: { position: 'right' } },
       },
       dataLabels: {
         enabled: true,
-        formatter: (val) => `${val} Bags`,
-        offsetX: 10,
-        style: { fontSize: '12px', fontWeight: 700, colors: ['#0369a1'] },
+        formatter: (val) => (val > 0 ? `${val} Bags` : ''),
+        offsetX: 8,
+        style: { fontSize: '12px', fontWeight: 700, colors: ['#ffffff'] },
       },
       xaxis: {
         categories: sortedBrgys,
-        labels: { style: { colors: '#64748b' } },
-        title: { text: 'Total Bags Delivered', style: { color: '#0369a1', fontWeight: 600 } },
+        labels: { style: { colors: '#cbd5e1' } },
+        title: { text: 'Bags Delivered', style: { color: '#94a3b8', fontWeight: 600 } },
       },
       yaxis: {
-        labels: { style: { colors: '#334155', fontWeight: 600, fontSize: '12.5px' } },
+        labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
       },
-      tooltip: {
-        y: { formatter: (val) => `${val} Bags delivered` },
-      },
-      grid: { borderColor: '#f1f5f9' },
+      tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags delivered` } },
+      grid: { borderColor: '#1e293b' },
     };
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // CHANNEL 3: Active Donors Count per Barangay (Targeting Donor Drives)
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── 3. Donor Outreach (By Barangay OR By Individual Donation) ──────────────
   else if (_currentChannel === 'donors') {
-    _setConsoleHeader(
-      'Active Donors Count & Drive Targets',
-      'Active donor mothers per barangay to identify donor clusters and target community drives'
-    );
+    if (_donorViewFilter === 'individual') {
+      _setConsoleHeader(
+        'Donor Outreach — By Individual Donation',
+        'Total milk volume donated by each mother'
+      );
 
-    const brgyDonorsMap = {};
-    BARANGAYS.forEach(b => {
-      brgyDonorsMap[b] = new Set();
-    });
-    brgyDonorsMap['Unassigned / MNAO Center'] = new Set();
+      // Prefer Donor Log entries (has donor_name, donor_code, volume_ml); fallback to Milk Received if empty
+      const donorTotals = new Map();
+      const useDonorLogs = filteredDonorLogs.length > 0;
 
-    filteredDonations.forEach(d => {
-      const donorKey = String(d.donor_code || '').trim().toLowerCase();
-      if (!donorKey) return;
-      const brgy = resolveDonorBarangay(d);
-      if (!brgyDonorsMap[brgy]) brgyDonorsMap[brgy] = new Set();
-      brgyDonorsMap[brgy].add(donorKey);
-    });
+      if (useDonorLogs) {
+        filteredDonorLogs.forEach(entry => {
+          const code = String(entry.donor_code || '').trim();
+          const name = String(entry.donor_name || '').trim();
+          const key = code || name || 'Unknown';
+          const label = name && code ? `${name} (${code})` : (name || code || 'Unknown');
+          const vol = Number(entry.volume_ml || 0);
+          if (!donorTotals.has(key)) {
+            donorTotals.set(key, { label, value: 0, count: 0, brgy: entry.barangay || '' });
+          }
+          const rec = donorTotals.get(key);
+          rec.value += vol;
+          rec.count += 1;
+        });
+      } else {
+        filteredDonations.forEach(d => {
+          const code = String(d.donor_code || '').trim() || 'Unknown';
+          const bags = Number(d.bags_count || 1);
+          if (!donorTotals.has(code)) {
+            donorTotals.set(code, { label: code, value: 0, count: 0, brgy: '' });
+          }
+          const rec = donorTotals.get(code);
+          rec.value += bags;
+          rec.count += 1;
+        });
+      }
 
-    let donorEntries = Object.keys(brgyDonorsMap).map(b => ({
-      barangay: b,
-      count: brgyDonorsMap[b].size,
-    })).sort((a, b) => b.count - a.count);
+      let entries = Array.from(donorTotals.values()).sort((a, b) => b.value - a.value);
+      const totalDonors = entries.length;
+      const totalAmt = entries.reduce((sum, e) => sum + e.value, 0);
+      const unitLabel = useDonorLogs ? 'mL' : 'Bags';
 
-    const totalDonors = new Set(
-      filteredDonations.map(d => String(d.donor_code || '').trim().toLowerCase()).filter(Boolean)
-    ).size;
+      if (_limitFilter !== 'all') {
+        entries = entries.slice(0, parseInt(_limitFilter, 10) || 10);
+      }
 
-    const zeroDonorBrgys = donorEntries.filter(e => e.count === 0 && e.barangay !== 'Unassigned / MNAO Center');
+      const top = entries[0];
+      _updateTicker(
+        `${totalDonors} Donor${totalDonors === 1 ? '' : 's'}`,
+        `${totalAmt.toLocaleString()} ${unitLabel} Total`
+      );
 
-    if (_limitFilter !== 'all') {
-      const limit = parseInt(_limitFilter, 10) || 10;
-      donorEntries = donorEntries.slice(0, limit);
-    }
+      _updateTakeaway(
+        top
+          ? `Top contributor is <strong>${escapeHtml(top.label)}</strong> with <strong>${top.value.toLocaleString()} ${unitLabel}</strong> across ${top.count} donation${top.count === 1 ? '' : 's'}.`
+          : `No individual donations recorded for this period yet.`
+      );
 
-    const topDonorArea = donorEntries[0] || { barangay: 'None', count: 0 };
-
-    _updateTicker(
-      `${totalDonors} Active Donor Mothers`,
-      `${zeroDonorBrgys.length} Target Drive Areas`
-    );
-
-    _updateTakeaway(
-      `<strong>${topDonorArea.barangay}</strong> leads with <strong>${topDonorArea.count} active donors</strong>. A total of <strong>${zeroDonorBrgys.length} barangays</strong> have 0 active contributors &mdash; prioritize these areas for MNAO mobile lactation collection drives.`
-    );
-
-    chartOptions = {
-      series: [
-        { name: 'Active Donor Mothers', data: donorEntries.map(e => e.count) },
-      ],
-      chart: {
-        type: 'bar',
-        height: Math.max(380, donorEntries.length * 36),
-        fontFamily: "'Inter', sans-serif",
-        toolbar: { show: false },
-      },
-      colors: ['#0284c7'],
-      plotOptions: {
-        bar: {
-          horizontal: true,
-          barHeight: '60%',
-          borderRadius: 6,
-          distributed: true,
-          dataLabels: { position: 'right' },
+      chartOptions = {
+        series: [{ name: useDonorLogs ? 'Volume Donated (mL)' : 'Bags Donated', data: entries.map(e => e.value) }],
+        chart: { ...darkThemeBase, type: 'bar', height: Math.max(360, entries.length * 42) },
+        theme: { mode: 'dark' },
+        colors: ['#38bdf8'],
+        plotOptions: {
+          bar: { horizontal: true, barHeight: '60%', borderRadius: 6, dataLabels: { position: 'right' } },
         },
-      },
-      colors: donorEntries.map(e => (e.count > 0 ? '#0284c7' : '#cbd5e1')),
-      dataLabels: {
-        enabled: true,
-        formatter: (val) => `${val} Donors`,
-        offsetX: 10,
-        style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
-      },
-      xaxis: {
-        categories: donorEntries.map(e => e.barangay),
-        title: { text: 'Unique Donor Mothers Count', style: { color: '#0369a1', fontWeight: 600 } },
-        labels: { style: { colors: '#64748b' } },
-      },
-      yaxis: {
-        labels: { style: { colors: '#334155', fontWeight: 600, fontSize: '12.5px' } },
-      },
-      legend: { show: false },
-      tooltip: {
-        y: { formatter: (val) => `${val} Active donor mothers` },
-      },
-      grid: { borderColor: '#f1f5f9' },
-    };
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opts) => {
+            if (!val) return '';
+            const item = entries[opts.dataPointIndex];
+            return `${val.toLocaleString()} ${unitLabel} (${item?.count || 1}x)`;
+          },
+          offsetX: 8,
+          style: { fontSize: '12px', fontWeight: 700, colors: ['#ffffff'] },
+        },
+        xaxis: {
+          categories: entries.map(e => e.label),
+          title: { text: useDonorLogs ? 'Total Volume (mL)' : 'Total Bags', style: { color: '#94a3b8', fontWeight: 600 } },
+          labels: { style: { colors: '#cbd5e1' } },
+        },
+        yaxis: {
+          labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
+        },
+        tooltip: {
+          theme: 'dark',
+          y: {
+            formatter: (val, opts) => {
+              const item = entries[opts.dataPointIndex];
+              return `${val.toLocaleString()} ${unitLabel} · ${item?.count || 1} donation(s)`;
+            },
+          },
+        },
+        grid: { borderColor: '#1e293b' },
+      };
+    } else {
+      _setConsoleHeader(
+        'Donor Outreach — By Barangay',
+        'Active donor mothers per barangay to see where to hold donor drives'
+      );
+
+      const brgyDonorsMap = {};
+      BARANGAYS.forEach(b => { brgyDonorsMap[b] = new Set(); });
+
+      const uniqueDonors = new Set();
+
+      // Use Donor Log entries first (exact barangay field)
+      filteredDonorLogs.forEach(entry => {
+        const donorKey = String(entry.donor_code || entry.donor_name || '').trim().toLowerCase();
+        if (!donorKey) return;
+        const brgy = entry.barangay || 'Unassigned / MNAO Center';
+        if (!brgyDonorsMap[brgy]) brgyDonorsMap[brgy] = new Set();
+        brgyDonorsMap[brgy].add(donorKey);
+        uniqueDonors.add(donorKey);
+      });
+
+      // Merge any Milk Received donors not already in Donor Log
+      filteredDonations.forEach(d => {
+        const donorKey = String(d.donor_code || '').trim().toLowerCase();
+        if (!donorKey || uniqueDonors.has(donorKey)) return;
+        const brgy = resolveDonorBarangay(d, _cachedAnalyticsData.rawDonorLogs || []);
+        if (!brgyDonorsMap[brgy]) brgyDonorsMap[brgy] = new Set();
+        brgyDonorsMap[brgy].add(donorKey);
+        uniqueDonors.add(donorKey);
+      });
+
+      let donorEntries = Object.keys(brgyDonorsMap).map(b => ({
+        barangay: b,
+        count: brgyDonorsMap[b].size,
+      })).sort((a, b) => b.count - a.count);
+
+      const zeroDonorCount = donorEntries.filter(e => e.count === 0 && e.barangay !== 'Unassigned / MNAO Center').length;
+
+      if (_limitFilter !== 'all') {
+        donorEntries = donorEntries.slice(0, parseInt(_limitFilter, 10) || 10);
+      }
+
+      const topArea = donorEntries[0] || { barangay: 'None', count: 0 };
+
+      _updateTicker(`${uniqueDonors.size} Active Donor${uniqueDonors.size === 1 ? '' : 's'}`, `${zeroDonorCount} Barangays Need Drives`);
+      _updateTakeaway(
+        topArea.count > 0
+          ? `<strong>${escapeHtml(topArea.barangay)}</strong> has the most donors (<strong>${topArea.count}</strong>). <strong>${zeroDonorCount} barangays</strong> have 0 donors yet — good spots for outreach.`
+          : `No active donors recorded for this period yet.`
+      );
+
+      chartOptions = {
+        series: [{ name: 'Active Donors', data: donorEntries.map(e => e.count) }],
+        chart: { ...darkThemeBase, type: 'bar', height: Math.max(360, donorEntries.length * 36) },
+        theme: { mode: 'dark' },
+        plotOptions: {
+          bar: { horizontal: true, barHeight: '60%', borderRadius: 6, distributed: true, dataLabels: { position: 'right' } },
+        },
+        colors: donorEntries.map(e => (e.count > 0 ? '#38bdf8' : '#334155')),
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => (val > 0 ? `${val} Donor${val === 1 ? '' : 's'}` : ''),
+          offsetX: 8,
+          style: { fontSize: '12px', fontWeight: 700, colors: ['#ffffff'] },
+        },
+        xaxis: {
+          categories: donorEntries.map(e => e.barangay),
+          title: { text: 'Active Donors', style: { color: '#94a3b8', fontWeight: 600 } },
+          labels: { style: { colors: '#cbd5e1' } },
+        },
+        yaxis: {
+          labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
+        },
+        legend: { show: false },
+        tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Active donor(s)` } },
+        grid: { borderColor: '#1e293b' },
+      };
+    }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // CHANNEL 4: Spoilage / Expiration Warning Indicators (Bags)
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── 4. Expiry Check ────────────────────────────────────────────────────────
   else if (_currentChannel === 'expiry') {
     _setConsoleHeader(
-      'Spoilage & Expiry Risk Indicators',
-      'Remaining pasteurized bags categorized by shelf-life thresholds for FEFO dispatch'
+      'Expiry Check',
+      'Which stored milk bags should be used first'
     );
 
     let expiredBags = 0;
-    let nearExpiryBags = 0;  // 1-30 days
-    let moderateBags = 0;    // 31-60 days
-    let optimalBags = 0;     // >60 days
+    let useSoonBags = 0;  // 0-30 days
+    let watchBags = 0;    // 31-60 days
+    let freshBags = 0;    // >60 days
 
-    let expiredBatches = [];
-    let nearExpiryBatches = [];
+    const expiredBatches = [];
+    const useSoonBatches = [];
 
     activeBatches.forEach(b => {
       const days = getDaysRemaining(b.expiry_date);
@@ -699,78 +683,59 @@ function _renderChannelChart() {
         expiredBags += rem;
         expiredBatches.push(b.batch_number);
       } else if (days <= 30) {
-        nearExpiryBags += rem;
-        nearExpiryBatches.push(`${b.batch_number} (${days}d)`);
+        useSoonBags += rem;
+        useSoonBatches.push(`${b.batch_number} (${days}d)`);
       } else if (days <= 60) {
-        moderateBags += rem;
+        watchBags += rem;
       } else {
-        optimalBags += rem;
+        freshBags += rem;
       }
     });
 
-    const totalActiveBags = expiredBags + nearExpiryBags + moderateBags + optimalBags;
-
-    _updateTicker(
-      `${totalActiveBags} Total In-Stock Bags`,
-      `${nearExpiryBags} Bags Priority Dispatch (≤30d)`
-    );
+    const totalActive = expiredBags + useSoonBags + watchBags + freshBags;
+    _updateTicker(`${totalActive} Bags in Freezer`, `${useSoonBags} Use Soon (≤30d)`);
 
     if (expiredBags > 0) {
       _updateTakeaway(
-        `<span style="color:#dc2626; font-weight:700;">Critical Alert:</span> <strong>${expiredBags} bags</strong> are past expiration (${expiredBatches.join(', ')}). Immediate quarantine required.`
+        `<span style="color:#dc2626; font-weight:700;">Action Needed:</span> <strong>${expiredBags} bags</strong> are past expiry (${expiredBatches.join(', ')}). Remove from dispatch.`
       );
-    } else if (nearExpiryBags > 0) {
+    } else if (useSoonBags > 0) {
       _updateTakeaway(
-        `<strong>${nearExpiryBags} bags</strong> require priority dispatch under FEFO within 30 days (${nearExpiryBatches.slice(0, 3).join(', ')}). <strong>${optimalBags} bags</strong> remain in safe cold storage.`
+        `Give out <strong>${useSoonBags} bags</strong> within 30 days (${useSoonBatches.slice(0, 3).join(', ')}). <strong>${freshBags} bags</strong> are still fresh.`
       );
     } else {
-      _updateTakeaway(
-        `All <strong>${totalActiveBags} active bags</strong> in cold chain are in safe, optimal condition with &gt;30 days remaining shelf-life.`
-      );
+      _updateTakeaway(`All <strong>${totalActive} bags</strong> in storage are fresh (>30 days left).`);
     }
 
-    const categories = ['Expired (>0d overdue)', 'Near Expiry (≤30d)', 'Moderate (31-60d)', 'Optimal (>60d)'];
-    const bagCounts = [expiredBags, nearExpiryBags, moderateBags, optimalBags];
-    const riskColors = ['#dc2626', '#d97706', '#ca8a04', '#059669'];
+    const categories = ['Expired', 'Use Soon (≤30d)', 'Watch (31–60d)', 'Fresh (>60d)'];
+    const bagCounts = [expiredBags, useSoonBags, watchBags, freshBags];
+    const riskColors = ['#ef4444', '#f97316', '#eab308', '#10b981'];
 
     chartOptions = {
-      series: [
-        { name: 'Remaining Bags', data: bagCounts },
-      ],
-      chart: {
-        type: 'bar',
-        height: 380,
-        fontFamily: "'Inter', sans-serif",
-        toolbar: { show: false },
-      },
+      series: [{ name: 'Bags in Storage', data: bagCounts }],
+      chart: { ...darkThemeBase, type: 'bar', height: 370 },
+      theme: { mode: 'dark' },
       plotOptions: {
-        bar: {
-          distributed: true,
-          columnWidth: '50%',
-          borderRadius: 6,
-          dataLabels: { position: 'top' },
-        },
+        bar: { distributed: true, columnWidth: '48%', borderRadius: 8, dataLabels: { position: 'top' } },
       },
       colors: riskColors,
       dataLabels: {
         enabled: true,
-        formatter: (val) => `${val} Bags`,
+        formatter: (val) => (val > 0 ? `${val} Bags` : '0'),
         offsetY: -22,
-        style: { fontSize: '13px', fontWeight: 700, colors: ['#0f172a'] },
+        style: { fontSize: '13px', fontWeight: 700, colors: ['#ffffff'] },
       },
       xaxis: {
-        categories: categories,
-        labels: { style: { colors: '#475569', fontWeight: 700, fontSize: '12.5px' } },
+        categories,
+        labels: { style: { colors: '#f8fafc', fontWeight: 700, fontSize: '12.5px' } },
       },
       yaxis: {
-        title: { text: 'Remaining Bags', style: { color: '#0369a1', fontWeight: 600 } },
-        labels: { style: { colors: '#64748b' } },
+        title: { text: 'Bags', style: { color: '#94a3b8', fontWeight: 600 } },
+        labels: { style: { colors: '#cbd5e1' } },
       },
       legend: { show: false },
-      tooltip: {
-        y: { formatter: (val) => `${val} Bags in risk tier` },
-      },
-      grid: { borderColor: '#f1f5f9' },
+      tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags` } },
+      grid: { borderColor: '#1e293b' },
     };
   }
 
@@ -786,7 +751,7 @@ function _setConsoleHeader(title, subtitle) {
   const tEl = document.getElementById('milk-console-title');
   const sEl = document.getElementById('milk-console-subtitle');
   if (tEl) tEl.textContent = title;
-  if (sEl) tEl && (sEl.textContent = subtitle);
+  if (sEl) sEl.textContent = subtitle;
 }
 
 function _updateTicker(totalText, topText) {

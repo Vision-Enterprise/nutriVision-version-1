@@ -144,6 +144,23 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
   box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25) !important;
 }
 
+.milk-tab--advisor {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
+.milk-tab--advisor:hover {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+.milk-tab--advisor.milk-tab--active {
+  background-color: #991b1b !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(185, 28, 28, 0.4) !important;
+}
+
 .milk-tab__count {
   background: rgba(2, 132, 199, 0.12);
   color: #0369a1;

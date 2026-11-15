@@ -1001,7 +1001,7 @@ function generateMilkAnalyticsReportHTML(data = {}, profile = null) {
 
       ${getSignaturesHTML(
         'Prepared & Certified by:',
-        profile?.full_name ? `${profile.full_name} / Nutrition Staff` : 'Milk Bank Coordinator / Nutrition Personnel',
+        profile?.full_name ? profile.full_name : 'Milk Bank Coordinator',
         'Noted & Approved by:',
         'Municipal Nutrition Action Officer (MNAO)'
       )}

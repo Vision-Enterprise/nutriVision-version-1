@@ -250,6 +250,7 @@ function _renderActiveSheet() {
     _bindAuditSheetEvents();
   } else if (_activeTab === 'analytics') {
     const analyticsData = computeMilkAnalytics({
+      donorLogs: _donorLogEntries,
       donations: _donations,
       dispatches: _dispatches,
       batches: _batches,
