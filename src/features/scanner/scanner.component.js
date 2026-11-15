@@ -1418,7 +1418,7 @@ export class ScannerComponent {
       if (!imgEl || !svgEl) continue;
 
       const hasRowHighlight = this.highlightedRowIndex !== null && this.highlightedRowIndex !== undefined;
-      if ((!this.showOcrBoxes && !hasRowHighlight) || !overlay || !overlay.cells.length || !overlay.width || !overlay.height) {
+      if (!this.showOcrBoxes || !overlay || !overlay.cells.length || !overlay.width || !overlay.height) {
         svgEl.style.display = 'none';
         svgEl.innerHTML = '';
         continue;
