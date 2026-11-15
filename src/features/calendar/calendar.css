@@ -229,6 +229,24 @@
   display: block;
   color: inherit;
 }
+.fc-event .fc-event-main,
+.fc-event .fc-event-title,
+.fc-event .cal-fc-chip-time,
+.fc-event .cal-fc-chip-pic {
+  color: inherit !important;
+}
+.fc-event.cal-pill-delivery,
+.fc-event.cal-pill-delivery .fc-event-main { background: #dbeafe !important; color: #1e40af !important; }
+.fc-event.cal-pill-good,
+.fc-event.cal-pill-good .fc-event-main     { background: var(--color-exp-good-bg) !important; color: var(--color-exp-good) !important; }
+.fc-event.cal-pill-moderate,
+.fc-event.cal-pill-moderate .fc-event-main { background: var(--color-exp-moderate-bg) !important; color: var(--color-exp-moderate) !important; }
+.fc-event.cal-pill-near,
+.fc-event.cal-pill-near .fc-event-main     { background: var(--color-exp-near-bg) !important; color: var(--color-exp-near) !important; }
+.fc-event.cal-pill-expired,
+.fc-event.cal-pill-expired .fc-event-main  { background: var(--color-exp-expired-bg) !important; color: var(--color-exp-expired) !important; }
+.fc-event.cal-pill-custom,
+.fc-event.cal-pill-custom .fc-event-main   { background: #ede9fe !important; color: #5b21b6 !important; }
 .fc-event-main {
   display: flex;
   align-items: center;

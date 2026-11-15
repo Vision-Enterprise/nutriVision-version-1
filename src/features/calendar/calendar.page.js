@@ -29,15 +29,15 @@ function getExpColor(dateStr, batch = null) {
   if (!dateStr) return null;
   const status = getExpirationStatus(dateStr, batch);
   if (status === EXPIRATION_STATUS.EXPIRED) {
-    return { bg: '#fee2e2', border: '#fee2e2', textColor: '#991b1b' };
+    return { bg: '#fee2e2', border: '#fee2e2', textColor: '#991b1b', cls: 'cal-pill-expired' };
   }
   if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
-    return { bg: '#ffedd5', border: '#ffedd5', textColor: '#9a3412' };
+    return { bg: '#ffedd5', border: '#ffedd5', textColor: '#9a3412', cls: 'cal-pill-near' };
   }
   if (status === EXPIRATION_STATUS.MODERATE) {
-    return { bg: '#fef3c7', border: '#fef3c7', textColor: '#92400e' };
+    return { bg: '#fef3c7', border: '#fef3c7', textColor: '#92400e', cls: 'cal-pill-moderate' };
   }
-  return { bg: '#d1fae5', border: '#d1fae5', textColor: '#065f46' };
+  return { bg: '#d1fae5', border: '#d1fae5', textColor: '#065f46', cls: 'cal-pill-good' };
 }
 
 function loadFullCalendar() {
@@ -85,6 +85,7 @@ async function loadAllEvents(info, successCb, failCb) {
           title:           name,
           start:           b.delivery_date,
           allDay:          true,
+          classNames:      ['cal-pill-delivery'],
           backgroundColor: '#dbeafe',
           borderColor:     '#dbeafe',
           textColor:       '#1e40af',
@@ -98,6 +99,7 @@ async function loadAllEvents(info, successCb, failCb) {
           title:           name,
           start:           b.expiration_date,
           allDay:          true,
+          classNames:      [col.cls],
           backgroundColor: col.bg,
           borderColor:     col.border,
           textColor:       col.textColor || '#065f46',
@@ -117,6 +119,7 @@ async function loadAllEvents(info, successCb, failCb) {
         end:             e.end_date || null,
         allDay:          !e.start_time,
         display:         'block',
+        classNames:      ['cal-pill-custom'],
         backgroundColor: '#ede9fe',
         borderColor:     '#ede9fe',
         textColor:       '#5b21b6',
