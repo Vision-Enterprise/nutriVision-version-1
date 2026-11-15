@@ -303,11 +303,8 @@ export function renderTable(commodities, stockMap = {}) {
             const art = getCategoryArtwork(c);
             const hasPhoto = Boolean(c.image_url && String(c.image_url).trim());
             const stock = stockMap[c.id] || { activeBatchCount: 0, totalUnits: 0, urgentBatchCount: 0 };
-            const policyPill = policy.badgeLabel
-              ? `<span style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28); vertical-align:middle;" title="${escapeHtml(policy.label)}">${escapeHtml(policy.badgeLabel)}</span>`
-              : '';
             return `
-            <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description & shelf-life policy">
+            <tr class="commodity-row" data-commodity-id="${c.id}" style="cursor: pointer;" title="Click to view description & FEFO thresholds">
               <td>
                 <code class="code-badge">${escapeHtml(c.commodity_code)}</code>
               </td>
@@ -318,7 +315,7 @@ export function renderTable(commodities, stockMap = {}) {
                       ? `<img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.name)}" loading="lazy" />`
                       : art.svgHtml}
                   </span>
-                  <span style="font-weight: var(--font-weight-medium);">${escapeHtml(c.name)}${policyPill}</span>
+                  <span style="font-weight: var(--font-weight-medium);">${escapeHtml(c.name)}</span>
                 </div>
               </td>
               <td>${escapeHtml(c.category)}</td>
@@ -377,8 +374,7 @@ export function renderTable(commodities, stockMap = {}) {
                   <div style="display: flex; gap: var(--space-2); align-items: flex-start; min-width: 260px;">
                     <span class="icon icon--sm" style="color: var(--color-primary); margin-top: 2px;">schedule</span>
                     <div style="font-size: var(--font-size-sm); line-height: 1.5;">
-                      <strong style="color: var(--color-text-secondary);">Shelf-Life Policy:</strong>
-                      <span style="color: var(--color-text); font-weight: 600;">${escapeHtml(policy.shortLabel)}</span>
+                      <strong style="color: var(--color-text-secondary);">FEFO Thresholds:</strong>
                       <div style="font-size: 11.5px; color: var(--color-text-muted); margin-top: 2px;">
                         Good: ${escapeHtml(ranges.goodRange)} &bull; Moderate: ${escapeHtml(ranges.moderateRange)} &bull; Near: ${escapeHtml(ranges.nearRange)}
                       </div>
