@@ -237,7 +237,7 @@ export function renderAdvisorSummaryCard(data, { isDashboard = false } = {}) {
             <span class="icon" style="font-size: 14px;">touch_app</span> Click any status chip to inspect details
           </span>
           ${isDashboard ? `
-            <a href="#/advisor" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; background: #059669; border-color: #059669; font-weight: 600; padding: 0.5rem 1.15rem; font-size: 0.875rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <a href="#/advisor" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; background: #dc2626; border-color: #dc2626; font-weight: 600; padding: 0.5rem 1.15rem; font-size: 0.875rem; box-shadow: 0 2px 6px rgba(220,38,38,0.28);">
               <span class="icon" style="font-size: 18px;">insights</span>
               Advisor
             </a>
