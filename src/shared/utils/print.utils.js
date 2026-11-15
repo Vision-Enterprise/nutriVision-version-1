@@ -64,7 +64,7 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
     .join('\n');
   const scopedStyles = rawStyles
     .replace(/(^|[}\s,])body(?=\s*[{,])/gim, '$1#nv-pdf-render-temp')
-    .replace(/(^|[}\s,])\*(?=\s*[{,])/gm, '$1#nv-pdf-render-temp, #nv-pdf-render-temp *');
+    .replace(/(^|[}\s,])\*(?=\s*[{,])/gm, '$1:where(#nv-pdf-render-temp, #nv-pdf-render-temp *)');
 
   // Mask viewport with a clean "Generating PDF..." overlay while html2pdf renders
   const backdrop = document.createElement('div');
