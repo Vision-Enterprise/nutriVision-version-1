@@ -186,19 +186,19 @@ export function renderMilkAnalyticsSheet(analyticsData) {
 
           <!-- Inline Filters -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <div id="milk-tuner-year-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+            <div id="milk-tuner-year-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
               <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">calendar_today</span>
-              <label for="milk-tuner-year" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Year:</label>
-              <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+              <label for="milk-tuner-year" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Year:</label>
+              <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
                 <option value="all" ${_yearFilter === 'all' ? 'selected' : ''}>All Years</option>
                 ${sortedYears.map(y => `<option value="${y}" ${_yearFilter === y ? 'selected' : ''}>${y}</option>`).join('')}
               </select>
             </div>
 
-            <div id="milk-tuner-period-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+            <div id="milk-tuner-period-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
               <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">date_range</span>
-              <label for="milk-tuner-period" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Period:</label>
-              <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+              <label for="milk-tuner-period" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Period:</label>
+              <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
                 <option value="all" ${_periodFilter === 'all' ? 'selected' : ''}>Full Year</option>
                 <option value="q1" ${_periodFilter === 'q1' ? 'selected' : ''}>Q1 (Jan–Mar)</option>
                 <option value="q2" ${_periodFilter === 'q2' ? 'selected' : ''}>Q2 (Apr–Jun)</option>
@@ -207,19 +207,19 @@ export function renderMilkAnalyticsSheet(analyticsData) {
               </select>
             </div>
 
-            <div id="milk-tuner-donor-view-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+            <div id="milk-tuner-donor-view-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
               <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">person_search</span>
-              <label for="milk-tuner-donor-view" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Group By:</label>
-              <select id="milk-tuner-donor-view" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+              <label for="milk-tuner-donor-view" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Group By:</label>
+              <select id="milk-tuner-donor-view" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
                 <option value="barangay" ${_donorViewFilter === 'barangay' ? 'selected' : ''}>By Barangay</option>
                 <option value="individual" ${_donorViewFilter === 'individual' ? 'selected' : ''}>By Individual Donation</option>
               </select>
             </div>
 
-            <div id="milk-tuner-limit-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 5px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd;">
+            <div id="milk-tuner-limit-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
               <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">filter_list</span>
-              <label for="milk-tuner-limit" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600;">Show:</label>
-              <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+              <label for="milk-tuner-limit" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Show:</label>
+              <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
                 <option value="10" ${_limitFilter === '10' ? 'selected' : ''}>Top 10</option>
                 <option value="all" ${_limitFilter === 'all' ? 'selected' : ''}>All</option>
               </select>
@@ -408,10 +408,11 @@ function _renderChannelChart() {
       },
       xaxis: {
         categories: MONTH_LABELS,
+        title: { text: 'Month', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#e2e8f0', fontSize: '12px', fontWeight: 600 } },
       },
       yaxis: {
-        title: { text: 'Bags', style: { color: '#94a3b8', fontWeight: 600 } },
+        title: { text: 'Number of Bags', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#cbd5e1' } },
       },
       tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags` } },
@@ -476,6 +477,7 @@ function _renderChannelChart() {
         title: { text: 'Bags Delivered', style: { color: '#94a3b8', fontWeight: 600 } },
       },
       yaxis: {
+        title: { text: 'Barangay', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
       },
       tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags delivered` } },
@@ -567,6 +569,7 @@ function _renderChannelChart() {
           labels: { style: { colors: '#cbd5e1' } },
         },
         yaxis: {
+          title: { text: 'Donor', style: { color: '#94a3b8', fontWeight: 600 } },
           labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
         },
         tooltip: {
@@ -651,6 +654,7 @@ function _renderChannelChart() {
           labels: { style: { colors: '#cbd5e1' } },
         },
         yaxis: {
+          title: { text: 'Barangay', style: { color: '#94a3b8', fontWeight: 600 } },
           labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
         },
         legend: { show: false },
@@ -727,10 +731,11 @@ function _renderChannelChart() {
       },
       xaxis: {
         categories,
+        title: { text: 'Storage Status', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#f8fafc', fontWeight: 700, fontSize: '12.5px' } },
       },
       yaxis: {
-        title: { text: 'Bags', style: { color: '#94a3b8', fontWeight: 600 } },
+        title: { text: 'Number of Bags', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#cbd5e1' } },
       },
       legend: { show: false },
