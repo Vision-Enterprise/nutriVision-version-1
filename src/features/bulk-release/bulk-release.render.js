@@ -82,7 +82,9 @@ export function renderBulkReleaseShell() {
               <option value="all">All Commodities</option>
             </select>
             <select id="bulk-filter-sort" class="form-input" style="flex:1; min-width:160px;" aria-label="Sort order">
+              <option value="hybrid">FEFO + LSFO (Recommended)</option>
               <option value="fefo">FEFO Sort (Expiring First)</option>
+              <option value="lsfo">LSFO Sort (Shortest Shelf Life)</option>
               <option value="name">Sort by Commodity Name</option>
               <option value="qty-desc">Sort by Qty (High→Low)</option>
               <option value="qty-asc">Sort by Qty (Low→High)</option>

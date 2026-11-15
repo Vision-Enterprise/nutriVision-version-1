@@ -373,9 +373,9 @@ export const MODULE_GUIDES = {
       {
         title: { en: 'Search, filter & select batches', bis: 'Pangitaa, i-filter ug pilia ang batches', tl: 'Maghanap, mag-filter at pumili ng batches' },
         detail: {
-          en: 'Use the Search box, Commodity filter, or FEFO Sort in Select Available Batches, then check the rows you want to release (scroll inside the table for long lists).',
-          bis: 'Gamita ang Search box, Commodity filter, o FEFO Sort sa Select Available Batches, dayon i-check ang mga row nga i-release (i-scroll ang table kon daghan).',
-          tl: 'Gamitin ang Search box, Commodity filter, o FEFO Sort sa Select Available Batches, pagkatapos i-check ang mga row na ire-release (i-scroll ang table kung marami).',
+          en: 'Use the Search box, Commodity filter, or FEFO + LSFO / LSFO sort in Select Available Batches, then check the rows you want to release (scroll inside the table for long lists).',
+          bis: 'Gamita ang Search box, Commodity filter, o FEFO + LSFO / LSFO sort sa Select Available Batches, dayon i-check ang mga row nga i-release (i-scroll ang table kon daghan).',
+          tl: 'Gamitin ang Search box, Commodity filter, o FEFO + LSFO / LSFO sort sa Select Available Batches, pagkatapos i-check ang mga row na ire-release (i-scroll ang table kung marami).',
         },
       },
       {

@@ -12,6 +12,7 @@
  */
 
 import { router } from '../../core/router.js';
+import { sortBatchesByDispatchRule } from '../../shared/utils/shelf-life.utils.js';
 
 import {
   fetchActiveBatchesForRelease,
@@ -30,7 +31,7 @@ import { SystemDialog } from '../../shared/components/dialog.component.js';
 let _batches    = [];        // all active batches from DB
 let _filtered   = [];        // currently displayed (after filter/sort)
 let _cart       = new Map(); // batchId -> { batch, qty }
-let _sortMode    = 'fefo';
+let _sortMode    = 'hybrid';
 let _filterComm  = 'all';
 let _searchQuery = '';
 let _profile     = null;
@@ -49,7 +50,7 @@ export async function openBulkReleaseWorkspace({ profile, onClose }) {
   _batches     = [];
   _filtered    = [];
   _cart        = new Map();
-  _sortMode    = 'fefo';
+  _sortMode    = 'hybrid';
   _filterComm  = 'all';
   _searchQuery = '';
 
@@ -136,7 +137,10 @@ function _applyFilterAndSort() {
     case 'name':     list.sort((a, b) => (a.commodities?.name ?? '').localeCompare(b.commodities?.name ?? '')); break;
     case 'qty-desc': list.sort((a, b) => b.quantity - a.quantity); break;
     case 'qty-asc':  list.sort((a, b) => a.quantity - b.quantity); break;
-    default:         list.sort((a, b) => a.expiration_date.localeCompare(b.expiration_date)); break;
+    case 'fefo':
+    case 'lsfo':
+    case 'hybrid':
+    default:         list = sortBatchesByDispatchRule(list, _sortMode === 'fefo' || _sortMode === 'lsfo' ? _sortMode : 'hybrid'); break;
   }
 
   _filtered = list;
