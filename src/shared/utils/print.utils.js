@@ -66,23 +66,18 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
     .replace(/(^|[}\s,])body(?=\s*[{,])/gim, '$1#nv-pdf-render-temp')
     .replace(/(^|[}\s,])\*(?=\s*[{,])/gm, '$1#nv-pdf-render-temp, #nv-pdf-render-temp *');
 
-  const targetWidth = orientation === 'landscape' ? 1122 : 794;
-
-  // Mask viewport with a clean "Generating PDF..." overlay while rendering at (0,0) in foreground stacking context
+  // Mask viewport with a clean "Generating PDF..." overlay while html2pdf renders
   const backdrop = document.createElement('div');
   backdrop.id = 'nv-pdf-generating-backdrop';
-  backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;';
+  backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.45);display:flex;align-items:center;justify-content:center;';
   backdrop.innerHTML = '<div style="background:#fff;color:#0f172a;padding:14px 24px;border-radius:10px;font-family:Inter,Arial,sans-serif;font-size:14px;font-weight:600;box-shadow:0 12px 32px rgba(0,0,0,0.25);">Generating PDF...</div>';
+  document.body.appendChild(backdrop);
 
-  // Render in foreground stacking context at (0,0) so body background never covers it
+  // IMPORTANT: Keep container static (normal flow, NOT position:fixed/absolute) so
+  // html2pdf's internal .html2pdf__container (height: auto) does not collapse to 0px!
   const container = document.createElement('div');
   container.id = 'nv-pdf-render-temp';
-  container.style.position = 'absolute';
-  container.style.left = '0';
-  container.style.top = '0';
-  container.style.zIndex = '99998';
-  container.style.pointerEvents = 'none';
-  container.style.width = `${targetWidth}px`;
+  container.style.width = '100%';
   container.style.margin = '0';
   container.style.background = '#ffffff';
   container.style.color = '#1a1a1a';
@@ -96,8 +91,6 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
   const contentWrap = document.createElement('div');
   contentWrap.innerHTML = parsedDoc.body ? parsedDoc.body.innerHTML : htmlContent;
   container.appendChild(contentWrap);
-  document.body.appendChild(container);
-  document.body.appendChild(backdrop);
 
   try {
     // Wait for embedded images (e.g. logos, photo evidence) before capturing canvas
@@ -117,9 +110,6 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
       );
     }
 
-    // Allow browser to complete layout & paint before html2canvas captures
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
     const opt = {
       margin: orientation === 'landscape' ? [6, 8, 6, 8] : [8, 8, 8, 8],
       filename: cleanName,
@@ -130,8 +120,6 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: targetWidth,
-        windowHeight: Math.max(container.scrollHeight, 600),
         backgroundColor: '#ffffff'
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: orientation }
@@ -145,9 +133,6 @@ export async function downloadReportPdf(fileTitle, htmlContent, orientation = 'l
   } finally {
     if (document.body.contains(backdrop)) {
       document.body.removeChild(backdrop);
-    }
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
     }
   }
 }
