@@ -11,6 +11,7 @@ import {
   fetchMilkMetrics,
   createMilkDonation,
   createMilkDonationsBulk,
+  deleteMilkDonation,
   getConfidentialDonors,
   saveConfidentialDonor,
   getNextDonorCode,
@@ -473,6 +474,35 @@ function _bindDonationsSheetEvents() {
     });
   });
 
+  // Live highlight when Condition @ Donor or Arrival is marked compromised
+  document.querySelectorAll('.grid-row--draft').forEach(row => {
+    const condCol = row.querySelector('.js-donor-cond-col');
+    const condArr = row.querySelector('.js-donor-cond-arr');
+    const transCond = row.querySelector('.js-donor-trans-cond');
+    const syncCompromised = () => {
+      const isComp = condCol?.value === 'compromised' || condArr?.value === 'compromised';
+      row.classList.toggle('grid-row--compromised', isComp);
+      if (transCond) transCond.placeholder = isComp ? 'Reason required *' : 'e.g. cooler box (opt)';
+    };
+    condCol?.addEventListener('change', syncCompromised);
+    condArr?.addEventListener('change', syncCompromised);
+  });
+
+  // Delete saved donation row
+  document.querySelectorAll('.js-delete-donation-row').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset.donorCode || '';
+      const ok = await MilkModal.confirm(`Delete milk received entry for "${code || 'this donor'}"?`, 'Delete Entry');
+      if (!ok) return;
+      const { error } = await deleteMilkDonation(btn.dataset.donationId, code, _profile);
+      if (error) {
+        await MilkModal.alert('Delete failed: ' + error, 'Error');
+        return;
+      }
+      await _loadData();
+    });
+  });
+
   // Discard single draft row
   document.querySelectorAll('.js-discard-single-donation').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -538,8 +568,24 @@ async function _validateDonationData(data, row) {
     const input = row.querySelector('.js-donor-code');
     input?.classList.add('cell-invalid');
     input?.focus();
-    await MilkModal.alert('Please enter a confidential Donor Code (e.g. DNR-26-001) or click ID to look up/register.', 'Validation Required');
+    await MilkModal.alert('Please enter a confidential Donor Code (e.g. DNR-26-001).', 'Validation Required');
     return false;
+  }
+
+  const isCompromised = data.condition_at_collection === 'compromised' || data.condition_at_arrival === 'compromised';
+  if (isCompromised) {
+    if (!data.transport_condition) {
+      const input = row.querySelector('.js-donor-trans-cond');
+      input?.classList.add('cell-invalid');
+      input?.focus();
+      await MilkModal.alert('Milk is marked Compromised. Please enter the reason in Conditions of Transport (e.g. "Thawed in transit", "Broken seal").', 'Reason Required');
+      return false;
+    }
+    const ok = await MilkModal.confirm(
+      `Milk for "${data.donor_code}" is marked Compromised. Saving will quarantine/reject this intake and exclude it from pasteurization. Continue?`,
+      'Quarantine Compromised Milk'
+    );
+    if (!ok) return false;
   }
 
   if (data.transport_date_end && data.transport_date && data.transport_date_end < data.transport_date) {
@@ -2022,16 +2068,22 @@ function _setupCellBarSync() {
     _applySheetZoom(table);
   });
 
-  // Live toolbar search across all sheet tables
-  document.getElementById('milk-sheet-search')?.addEventListener('input', (e) => {
-    const q = (e.target.value || '').trim().toLowerCase();
+  // Live toolbar search + filter across all sheet tables
+  const applySheetFilters = () => {
+    const q = (document.getElementById('milk-sheet-search')?.value || '').trim().toLowerCase();
+    const f = (document.getElementById('milk-sheet-filter')?.value || '').trim().toLowerCase();
     table.querySelectorAll('tbody tr:not(.grid-row--draft)').forEach(tr => {
       if (tr.querySelector('.milk-sheet-empty')) return;
       const text = (tr.textContent || '').toLowerCase();
       const inputs = Array.from(tr.querySelectorAll('input, select')).map(el => el.value || '').join(' ').toLowerCase();
-      tr.style.display = (!q || text.includes(q) || inputs.includes(q)) ? '' : 'none';
+      const rowFilterVal = (tr.dataset.filterBrgy || tr.dataset.filterStatus || '').toLowerCase();
+      const matchSearch = !q || text.includes(q) || inputs.includes(q);
+      const matchFilter = !f || rowFilterVal === f;
+      tr.style.display = (matchSearch && matchFilter) ? '' : 'none';
     });
-  });
+  };
+  document.getElementById('milk-sheet-search')?.addEventListener('input', applySheetFilters);
+  document.getElementById('milk-sheet-filter')?.addEventListener('change', applySheetFilters);
 
   _activeTargetCell = null;
   _isSyncingCell = false;

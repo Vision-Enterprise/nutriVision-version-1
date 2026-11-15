@@ -220,7 +220,7 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
   `).join('');
 
   const savedHtml = entries.map((e, index) => `
-    <tr>
+    <tr data-filter-brgy="${escapeHtml(e.barangay || '')}">
       <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td><span class="milk-donor-code">${escapeHtml(e.donor_code)}</span></td>
       <td class="text-sm font-weight-medium">${escapeHtml(e.donor_name || '—')}</td>
@@ -251,6 +251,10 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
           <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
           <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor, barangay, code..." aria-label="Search Donor Log" />
         </div>
+        <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Barangay">
+          <option value="">All Barangays</option>
+          ${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-donor-log-csv" class="btn btn-secondary btn-sm" type="button" title="Export Donor Log as Excel / CSV">
@@ -307,15 +311,15 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
   const pendingCount = draftRows.length;
   const today = getLocalDateString();
 
-  const draftHtml = draftRows.map((draft, idx) => `
-    <tr class="grid-row--draft" data-draft-idx="${idx}">
+  const draftHtml = draftRows.map((draft, idx) => {
+    const isDraftCompromised = draft.condition_at_collection === 'compromised' || draft.condition_at_arrival === 'compromised';
+    return `
+    <tr class="grid-row--draft ${isDraftCompromised ? 'grid-row--compromised' : ''}" data-draft-idx="${idx}">
       <td style="color:#0284c7;font-weight:700;text-align:center;">+ Draft</td>
       <td>
-        <div style="display:flex; align-items:center; gap:4px;">
-          <input type="text" class="grid-cell-input js-donor-code"
-                 value="${escapeHtml(draft.donor_code || '')}" placeholder="Donor Code (e.g. DNR-26-001)" aria-label="Confidential Donor Code" autofocus>
-          <button type="button" class="btn btn-secondary btn-sm js-open-donor-lookup" title="Lookup or Register Confidential Donor" style="padding:3px 7px; font-size:11px; flex-shrink:0;">ID</button>
-        </div>
+        <input type="text" class="grid-cell-input js-donor-code"
+               value="${escapeHtml(draft.donor_code || '')}" placeholder="DNR-26-001" aria-label="Confidential Donor Code"
+               style="font-family:monospace;font-weight:600;color:#0284c7;" autofocus>
       </td>
       <td>
         <input type="date" class="grid-cell-input js-donor-exp-date"
@@ -326,12 +330,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
                value="${draft.expression_time || '08:00'}" aria-label="Milk Expression Time">
       </td>
       <td>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <input type="date" class="grid-cell-input js-donor-trans-date"
-                 value="${draft.transport_date || today}" aria-label="Transport Start Date" title="Collection / Transport Start Date">
-          <input type="date" class="grid-cell-input js-donor-trans-date-end"
-                 value="${draft.transport_date_end || ''}" aria-label="Transport End Date (optional)" title="Optional End Date (for multi-day collection)">
-        </div>
+        <input type="date" class="grid-cell-input js-donor-trans-date"
+               value="${draft.transport_date || today}" aria-label="Transport Date" title="Collection / Transport Date">
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-trans-time"
@@ -344,12 +344,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         </select>
       </td>
       <td>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <input type="date" class="grid-cell-input js-donor-arrival-date"
-                 value="${draft.arrival_date || today}" aria-label="Arrival Start Date" title="Arrival Start Date">
-          <input type="date" class="grid-cell-input js-donor-arrival-date-end"
-                 value="${draft.arrival_date_end || ''}" aria-label="Arrival End Date (optional)" title="Optional End Date">
-        </div>
+        <input type="date" class="grid-cell-input js-donor-arrival-date"
+               value="${draft.arrival_date || today}" aria-label="Arrival Date" title="Arrival Date at Milk Bank">
       </td>
       <td>
         <input type="time" class="grid-cell-input js-donor-arrival-time"
@@ -363,21 +359,24 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       </td>
       <td>
         <input type="text" class="grid-cell-input js-donor-trans-cond"
-               value="${escapeHtml(draft.transport_condition || '')}" placeholder="e.g. cooler box (opt)" aria-label="Conditions of Transport">
+               value="${escapeHtml(draft.transport_condition || '')}"
+               placeholder="${isDraftCompromised ? 'Reason required *' : 'e.g. cooler box (opt)'}"
+               aria-label="Conditions of Transport">
       </td>
       <td>
         <span class="text-muted text-xs">Self (on save)</span>
       </td>
       <td class="grid-actions-cell" style="text-align:center;">
-        <button class="btn-grid-save js-save-single-donation" data-draft-idx="${idx}" title="Save row">
-          <span class="icon" style="font-size:16px;">check</span> Save
+        <button type="button" class="btn-grid-save js-save-single-donation" data-draft-idx="${idx}" title="Save row">
+          <span class="icon" style="font-size:15px;">check</span> Save
         </button>
-        <button class="btn-grid-discard js-discard-single-donation" data-draft-idx="${idx}" title="Discard">
-          <span class="icon" style="font-size:16px;">close</span>
+        <button type="button" class="btn-grid-discard js-discard-single-donation" data-draft-idx="${idx}" title="Discard draft row" aria-label="Discard draft row">
+          <span class="icon" style="font-size:16px;">delete</span>
         </button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   const savedHtml = donations.map((d, index) => {
     const range = getDonationDateRange(d.id);
@@ -387,9 +386,22 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
     const arrDateText = range.arrival_date_end
       ? `${formatDate(d.arrival_date)} – ${formatDate(range.arrival_date_end)}`
       : formatDate(d.arrival_date);
+    const isCompromised = d.status === 'compromised' || d.condition_at_collection === 'compromised' || d.condition_at_arrival === 'compromised';
+    const effStatus = isCompromised ? 'compromised' : (d.status || 'stored_raw');
+    const condColBadge = d.condition_at_collection === 'compromised'
+      ? '<span class="badge badge--danger text-uppercase">compromised</span>'
+      : `<span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_collection || 'ok')}</span>`;
+    const condArrBadge = d.condition_at_arrival === 'compromised'
+      ? '<span class="badge badge--danger text-uppercase">compromised</span>'
+      : `<span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_arrival || 'ok')}</span>`;
+    const statusPill = effStatus === 'compromised'
+      ? '<span class="badge badge--danger" title="Quarantined — excluded from pasteurization">Compromised</span>'
+      : (effStatus === 'pasteurized'
+        ? '<span class="badge badge--info">Pasteurized</span>'
+        : '<span class="badge badge--secondary">Stored Raw</span>');
 
     return `
-    <tr>
+    <tr class="${isCompromised ? 'grid-row--compromised' : ''}" data-filter-status="${escapeHtml(effStatus)}">
       <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td>
         <span class="milk-donor-code">${escapeHtml(d.donor_code)}</span>
@@ -398,20 +410,19 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <td class="text-muted text-xs">${formatTime(d.expression_time)}</td>
       <td class="text-sm">${transDateText}</td>
       <td class="text-muted text-xs">${formatTime(d.transport_time)}</td>
-      <td style="text-align:center;">
-        <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_collection || 'ok')}</span>
-      </td>
+      <td style="text-align:center;">${condColBadge}</td>
       <td class="text-sm">${arrDateText}</td>
       <td class="text-muted text-xs">${formatTime(d.arrival_time)}</td>
-      <td style="text-align:center;">
-        <span class="badge badge--success text-uppercase">${escapeHtml(d.condition_at_arrival || 'ok')}</span>
-      </td>
+      <td style="text-align:center;">${condArrBadge}</td>
       <td class="text-muted text-xs">${escapeHtml(d.transport_condition || '—')}</td>
       <td class="text-sm font-weight-medium">${escapeHtml(d.received_by_name || 'Staff')}</td>
-      <td style="text-align:center;">
-        <span class="badge ${d.status === 'pasteurized' ? 'badge--info' : 'badge--secondary'}">
-          ${d.status === 'pasteurized' ? 'Pasteurized' : 'Stored Raw'}
-        </span>
+      <td class="grid-actions-cell" style="text-align:center;">
+        <div style="display:inline-flex;align-items:center;gap:6px;">
+          ${statusPill}
+          <button type="button" class="btn-grid-discard js-delete-donation-row" data-donation-id="${escapeHtml(d.id)}" data-donor-code="${escapeHtml(d.donor_code)}" title="Delete entry" aria-label="Delete entry">
+            <span class="icon" style="font-size:16px;">delete</span>
+          </button>
+        </div>
       </td>
     </tr>
   `;
@@ -428,6 +439,12 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
           <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor code, date, staff..." aria-label="Search Log of Milk Received" />
         </div>
+        <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Status">
+          <option value="">All Statuses</option>
+          <option value="stored_raw">Stored Raw</option>
+          <option value="pasteurized">Pasteurized</option>
+          <option value="compromised">Compromised</option>
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
@@ -506,6 +523,13 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
             <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
             <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search batch code, donor, freezer..." aria-label="Search Pasteurized Batches" />
           </div>
+          <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Stock Status">
+            <option value="">All Stock</option>
+            <option value="optimal">Optimal (&gt;90d)</option>
+            <option value="warning">Near Expiry (≤90d)</option>
+            <option value="expired">Expired</option>
+            <option value="depleted">Depleted</option>
+          </select>
         ` : ''}
       </div>
 
@@ -648,9 +672,12 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
               : (daysLeft <= 180 ? 'var(--color-exp-moderate)' : 'var(--color-text-muted)')));
     const actualLoc = getBatchActualShelfInfo(b, batches, activeFreezers);
     const savedLoc = getBatchFreezerAndShelf(b, activeFreezers);
+    const stockFilterKey = (b.remaining_bags || 0) <= 0
+      ? 'depleted'
+      : (isExpired ? 'expired' : (daysLeft !== null && daysLeft <= 90 ? 'warning' : 'optimal'));
 
     return `
-      <tr data-batch-id="${b.id}">
+      <tr data-batch-id="${b.id}" data-filter-status="${stockFilterKey}">
         <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
         <td>
           <span class="milk-batch-code">${escapeHtml(b.batch_number)}</span>
@@ -1326,7 +1353,7 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
     const shelf = item.milk_batches?.freezer_shelf || 'Freezer';
 
     return `
-      <tr>
+      <tr data-filter-brgy="${escapeHtml(item.barangay || '')}">
         <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
         <td class="text-sm font-weight-medium">${formatDate(item.dispensed_date)}</td>
         <td>
@@ -1357,6 +1384,10 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
           <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search recipient, barangay, batch..." aria-label="Search Dispensing Ledger" />
         </div>
+        <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Barangay">
+          <option value="">All Barangays</option>
+          ${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">

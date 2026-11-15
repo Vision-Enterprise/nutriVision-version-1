@@ -511,6 +511,7 @@ export async function createMilkDonation({
   profileName
 }) {
   try {
+    const isCompromised = condition_at_collection === 'compromised' || condition_at_arrival === 'compromised';
     const { data, error } = await supabase
       .from('milk_donations')
       .insert({
@@ -526,7 +527,7 @@ export async function createMilkDonation({
         arrival_time: arrival_time || '12:30 PM',
         condition_at_arrival: condition_at_arrival || 'ok',
         transport_condition: transport_condition?.trim() || null,
-        status: 'stored_raw',
+        status: isCompromised ? 'compromised' : 'stored_raw',
         received_by: profileId || null,
         received_by_name: profileName || null
       })
@@ -543,7 +544,9 @@ export async function createMilkDonation({
         AUDIT_ACTIONS.CREATE_MILK_DONATION,
         'milk_donation',
         data.id,
-        `Logged donor milk intake from "${donor_code.trim()}".`,
+        isCompromised
+          ? `Quarantined compromised milk intake from "${donor_code.trim()}" (${transport_condition?.trim() || 'condition breach'}).`
+          : `Logged donor milk intake from "${donor_code.trim()}".`,
         { id: profileId, full_name: profileName }
       );
     }
@@ -552,6 +555,31 @@ export async function createMilkDonation({
   } catch (err) {
     console.error(`${MODULE} createMilkDonation error:`, err);
     return { data: null, error: err.message || 'Failed to record donation intake.' };
+  }
+}
+
+export async function deleteMilkDonation(donationId, donorCode = '', profile = null) {
+  try {
+    const { error } = await supabase
+      .from('milk_donations')
+      .delete()
+      .eq('id', donationId);
+
+    if (error) throw error;
+
+    if (profile?.id) {
+      await logMilkAudit(
+        AUDIT_ACTIONS.CREATE_MILK_DONATION,
+        'milk_donation',
+        donationId,
+        `Deleted milk intake log for "${donorCode || donationId}".`,
+        profile
+      );
+    }
+    return { error: null };
+  } catch (err) {
+    console.error(`${MODULE} deleteMilkDonation error:`, err);
+    return { error: err.message || 'Failed to delete milk intake.' };
   }
 }
 
@@ -1139,23 +1167,26 @@ export function removeFreezerShelf(shelfName) {
  */
 export async function createMilkDonationsBulk(donationList, profileId, profileName) {
   try {
-    const formatted = donationList.map(d => ({
-      donor_code: d.donor_code.trim(),
-      bags_count: d.bags_count ? parseInt(d.bags_count, 10) : 1,
-      volume_ml: d.volume_ml ? parseInt(d.volume_ml, 10) : null,
-      expression_date_notes: d.expression_date_notes?.trim() || '@see donor log',
-      expression_time: d.expression_time?.trim() || null,
-      transport_date: d.transport_date?.trim() || null,
-      transport_time: d.transport_time || '12:00 PM',
-      condition_at_collection: d.condition_at_collection || 'ok',
-      arrival_date: d.arrival_date || getLocalDateString(),
-      arrival_time: d.arrival_time || '12:30 PM',
-      condition_at_arrival: d.condition_at_arrival || 'ok',
-      transport_condition: d.transport_condition?.trim() || null,
-      status: 'stored_raw',
-      received_by: profileId || null,
-      received_by_name: profileName || null
-    }));
+    const formatted = donationList.map(d => {
+      const isCompromised = d.condition_at_collection === 'compromised' || d.condition_at_arrival === 'compromised';
+      return {
+        donor_code: d.donor_code.trim(),
+        bags_count: d.bags_count ? parseInt(d.bags_count, 10) : 1,
+        volume_ml: d.volume_ml ? parseInt(d.volume_ml, 10) : null,
+        expression_date_notes: d.expression_date_notes?.trim() || '@see donor log',
+        expression_time: d.expression_time?.trim() || null,
+        transport_date: d.transport_date?.trim() || null,
+        transport_time: d.transport_time || '12:00 PM',
+        condition_at_collection: d.condition_at_collection || 'ok',
+        arrival_date: d.arrival_date || getLocalDateString(),
+        arrival_time: d.arrival_time || '12:30 PM',
+        condition_at_arrival: d.condition_at_arrival || 'ok',
+        transport_condition: d.transport_condition?.trim() || null,
+        status: isCompromised ? 'compromised' : 'stored_raw',
+        received_by: profileId || null,
+        received_by_name: profileName || null
+      };
+    });
 
     const { data, error } = await supabase
       .from('milk_donations')

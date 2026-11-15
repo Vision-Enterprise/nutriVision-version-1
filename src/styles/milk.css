@@ -552,11 +552,70 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 
 .grid-actions-cell {
   white-space: nowrap;
-  display: flex;
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 8px !important;
+}
+
+.milk-shelf-select {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, #0f172a);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.milk-shelf-select:hover {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.milk-shelf-select:focus {
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.14);
+}
+
+.js-quick-dispense-btn {
+  background: #f0f9ff !important;
+  border: 1.5px solid #7dd3fc !important;
+  color: #0369a1 !important;
+  font-weight: 600 !important;
+  border-radius: 9999px !important;
+  padding: 4px 11px !important;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px 6px !important;
+  gap: 5px;
+}
+
+.js-quick-dispense-btn:hover {
+  background: #e0f2fe !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+.freezer-batch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px !important;
+  background: #f0f9ff;
+  border: 1.5px solid #bae6fd !important;
+  font-size: 12.5px;
+  transition: all 0.15s ease;
+}
+
+.freezer-batch-pill:hover {
+  background: #e0f2fe;
+  border-color: #0284c7 !important;
 }
 
 .btn-grid-save {
@@ -699,6 +758,32 @@ body.sidebar--compressed #nav-milk.sidebar__nav-item--active .icon {
 .milk-toolbar-search:focus {
   border-color: #0284c7;
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14);
+}
+
+.milk-toolbar-filter {
+  background: #ffffff;
+  border: 1.5px solid #bae6fd;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0369a1;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.milk-toolbar-filter:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14);
+}
+
+.grid-row--compromised {
+  background: #fef2f2 !important;
+}
+
+.grid-row--compromised td {
+  background: #fef2f2 !important;
 }
 
 .milk-cell-add-btn {
