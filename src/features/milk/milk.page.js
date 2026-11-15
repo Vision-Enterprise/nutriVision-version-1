@@ -607,16 +607,6 @@ async function _validateDonationData(data, row) {
     return false;
   }
 
-  if (data.expression_date_notes && data.arrival_date) {
-    if (data.arrival_date < data.expression_date_notes) {
-      const input = row.querySelector('.js-donor-arrival-date');
-      input?.classList.add('cell-invalid');
-      input?.focus();
-      await MilkModal.alert(`Arrival date (${data.arrival_date}) cannot be earlier than milk expression date (${data.expression_date_notes}).`, 'Invalid Date Sequence');
-      return false;
-    }
-  }
-
   return true;
 }
 
