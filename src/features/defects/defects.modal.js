@@ -177,57 +177,7 @@ function _renderLogModal(batches, profile, onSuccess) {
         </div>
 
         <!-- Photo Evidence (Default enabled for Quarantined, Returned, and Disposed) -->
-        <div class="form-group" id="defect-evidence-group">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <label class="form-label" for="defect-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
-            <button id="btn-toggle-defect-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-              <span class="icon" style="font-size: 14px;">qr_code_2</span>
-              <span>Upload via Phone</span>
-            </button>
-          </div>
-
-          <!-- Phone Upload QR Panel -->
-          <div id="defect-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
-            <div style="display: flex; gap: 14px; align-items: center;">
-              <div id="defect-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
-                <span class="icon" style="animation: spin 1s linear infinite; font-size: 20px; color: var(--color-text-muted);">progress_activity</span>
-              </div>
-              <div style="flex: 1; font-size: 12px; line-height: 1.4;">
-                <div style="font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: 2px;">Scan with your Phone Camera</div>
-                <div style="color: var(--color-text-muted);">Dedicated, isolated session. Photo syncs automatically!</div>
-                <div id="defect-phone-sync-status" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--color-primary); font-size: 11px;">
-                  <span style="width: 7px; height: 7px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
-                  <span>Awaiting phone photo...</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style="
-            border: 2px dashed var(--color-border);
-            border-radius: var(--radius-lg);
-            padding: var(--space-4);
-            text-align: center;
-            cursor: pointer;
-            position: relative;
-          " id="defect-evidence-dropzone">
-            <input type="file" id="defect-evidence" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
-            <span class="icon" style="font-size: 24px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
-            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0;">Click or drag &amp; drop to upload image</p>
-          </div>
-          <div id="defect-evidence-preview" style="display:none; margin-top: var(--space-3); position: relative;">
-            <img id="defect-evidence-img" src="" alt="Evidence preview" style="
-              width: 100%; max-height: 140px; object-fit: cover;
-              border-radius: var(--radius-md); border: 1px solid var(--color-border);
-            ">
-            <button id="defect-evidence-remove" type="button" style="
-              position: absolute; top: 6px; right: 6px;
-              background: rgba(0,0,0,0.6); color: #fff; border: none;
-              border-radius: var(--radius-full); width: 24px; height: 24px;
-              cursor: pointer; display: flex; align-items: center; justify-content: center;
-            "><span class="icon" style="font-size: 14px;">close</span></button>
-          </div>
-        </div>
+        ${_renderEvidenceSectionHtml('defect', false)}
 
         <div id="defect-modal-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
 
@@ -254,28 +204,76 @@ function _renderLogModal(batches, profile, onSuccess) {
   _bindLogModalEvents(overlay, batches, profile, onSuccess);
 }
 
-function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
-  let selectedBatch = null;
+function _renderEvidenceSectionHtml(prefix, hidden = false) {
+  return `
+    <div class="form-group" id="${prefix}-evidence-group" style="${hidden ? 'display: none;' : ''}">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <label class="form-label" for="${prefix}-evidence" style="margin-bottom: 0;">Photographic Evidence <span style="color: var(--color-text-muted); font-weight: normal;">(Optional)</span></label>
+        <button id="btn-toggle-${prefix}-qr" type="button" class="btn-table-action" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+          <span class="icon" style="font-size: 14px;">qr_code_2</span>
+          <span>Upload via Phone</span>
+        </button>
+      </div>
+
+      <!-- Phone Upload QR Panel -->
+      <div id="${prefix}-phone-qr-panel" style="display: none; background: var(--color-surface-alt, #f8faf9); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;">
+        <div style="display: flex; gap: 14px; align-items: center;">
+          <div id="${prefix}-qr-container" style="background: #fff; padding: 6px; border-radius: 8px; border: 1px solid var(--color-border); flex-shrink: 0; min-width: 90px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
+            <span class="icon" style="animation: spin 1s linear infinite; font-size: 20px; color: var(--color-text-muted);">progress_activity</span>
+          </div>
+          <div style="flex: 1; font-size: 12px; line-height: 1.4;">
+            <div style="font-weight: var(--font-weight-bold); color: var(--color-text); margin-bottom: 2px;">Scan with your Phone Camera</div>
+            <div style="color: var(--color-text-muted);">Dedicated, isolated session. Photo syncs automatically!</div>
+            <div id="${prefix}-phone-sync-status" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--color-primary); font-size: 11px;">
+              <span style="width: 7px; height: 7px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
+              <span>Awaiting phone photo...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="
+        border: 2px dashed var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        text-align: center;
+        cursor: pointer;
+        position: relative;
+      " id="${prefix}-evidence-dropzone">
+        <input type="file" id="${prefix}-evidence" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
+        <span class="icon" style="font-size: 24px; color: var(--color-text-muted); display: block; margin-bottom: 4px;">add_photo_alternate</span>
+        <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0;">Click or drag &amp; drop to upload image</p>
+      </div>
+      <div id="${prefix}-evidence-preview" style="display:none; margin-top: var(--space-3); position: relative;">
+        <img id="${prefix}-evidence-img" src="" alt="Evidence preview" style="
+          width: 100%; max-height: 140px; object-fit: cover;
+          border-radius: var(--radius-md); border: 1px solid var(--color-border);
+        ">
+        <button id="${prefix}-evidence-remove" type="button" style="
+          position: absolute; top: 6px; right: 6px;
+          background: rgba(0,0,0,0.6); color: #fff; border: none;
+          border-radius: var(--radius-full); width: 24px; height: 24px;
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+        "><span class="icon" style="font-size: 14px;">close</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function _bindEvidenceUploader(overlay, prefix) {
   let ephemeralImageData = null;
+  let phoneSessionId     = null;
+  let realtimeChannel    = null;
+  let chunkBuffer        = {};
 
-  const searchInput    = overlay.querySelector('#defect-batch-search');
-  const dropdown       = overlay.querySelector('#defect-batch-dropdown');
-  const batchInfo      = overlay.querySelector('#defect-batch-info');
-  const errorEl        = overlay.querySelector('#defect-modal-error');
-  const actionSelect   = overlay.querySelector('#defect-action');
-  const qtyInput       = overlay.querySelector('#defect-qty');
-  const fileInput      = overlay.querySelector('#defect-evidence');
-  const preview        = overlay.querySelector('#defect-evidence-preview');
-  const previewImg     = overlay.querySelector('#defect-evidence-img');
-  const removeBtn      = overlay.querySelector('#defect-evidence-remove');
-  const qrToggleBtn    = overlay.querySelector('#btn-toggle-defect-qr');
-  const qrPanel        = overlay.querySelector('#defect-phone-qr-panel');
-  const qrContainer    = overlay.querySelector('#defect-qr-container');
-  const qrStatus       = overlay.querySelector('#defect-phone-sync-status');
-
-  let phoneSessionId   = null;
-  let realtimeChannel  = null;
-  let chunkBuffer      = {};
+  const fileInput   = overlay.querySelector(`#${prefix}-evidence`);
+  const preview     = overlay.querySelector(`#${prefix}-evidence-preview`);
+  const previewImg  = overlay.querySelector(`#${prefix}-evidence-img`);
+  const removeBtn   = overlay.querySelector(`#${prefix}-evidence-remove`);
+  const qrToggleBtn = overlay.querySelector(`#btn-toggle-${prefix}-qr`);
+  const qrPanel     = overlay.querySelector(`#${prefix}-phone-qr-panel`);
+  const qrContainer = overlay.querySelector(`#${prefix}-qr-container`);
+  const qrStatus    = overlay.querySelector(`#${prefix}-phone-sync-status`);
 
   async function ensureQRCodeLib() {
     if (window.QRCode) return true;
@@ -296,7 +294,6 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     chunkBuffer = {};
   }
 
-  // Multi-user safe: each QR code gets a guaranteed unique timestamp + random hash
   async function initPhoneQR() {
     if (phoneSessionId) return;
     try {
@@ -354,9 +351,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     qrPanel.style.display = isShown ? 'none' : 'block';
     qrToggleBtn.style.background = isShown ? '' : 'var(--color-primary-bg, #e8f5ee)';
     qrToggleBtn.style.color = isShown ? '' : 'var(--color-primary)';
-    if (!isShown) {
-      initPhoneQR();
-    }
+    if (!isShown) initPhoneQR();
   });
 
   fileInput?.addEventListener('change', () => {
@@ -377,6 +372,23 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     previewImg.src = '';
     preview.style.display = 'none';
   });
+
+  return {
+    getImageData: () => ephemeralImageData,
+    cleanup: stopPhoneRealtime,
+  };
+}
+
+function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
+  let selectedBatch = null;
+
+  const searchInput    = overlay.querySelector('#defect-batch-search');
+  const dropdown       = overlay.querySelector('#defect-batch-dropdown');
+  const batchInfo      = overlay.querySelector('#defect-batch-info');
+  const errorEl        = overlay.querySelector('#defect-modal-error');
+  const actionSelect   = overlay.querySelector('#defect-action');
+  const qtyInput       = overlay.querySelector('#defect-qty');
+  const evidenceCtrl   = _bindEvidenceUploader(overlay, 'defect');
 
   // Batch search
   searchInput.addEventListener('input', () => {
@@ -437,7 +449,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
   });
 
   const closeModal = () => {
-    stopPhoneRealtime();
+    evidenceCtrl.cleanup();
     overlay.remove();
     document.removeEventListener('keydown', handleKeyDown);
   };
@@ -469,7 +481,7 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
       quantityAffected: qty,
       actionTaken,
       remarks,
-      imageData: ephemeralImageData
+      imageData: evidenceCtrl.getImageData()
     };
 
     const submitBtn = overlay.querySelector('#defect-modal-generate');
@@ -596,6 +608,9 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
           <textarea id="resolve-notes" class="form-textarea" rows="2" placeholder="Visual inspection passed, supplier approved return..."></textarea>
         </div>
 
+        <!-- Photo Evidence (Auto-shown when Return or Dispose is selected) -->
+        ${_renderEvidenceSectionHtml('resolve', true)}
+
         <div id="resolve-error" style="display:none; color: var(--color-danger); font-size: var(--font-size-sm); background: #fff5f5; border: 1px solid var(--color-danger); border-radius: var(--radius-md); padding: 10px 14px;"></div>
       </div>
 
@@ -623,20 +638,24 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
   const qtyHint     = overlay.querySelector('#resolve-qty-hint');
   const outcomeSel  = overlay.querySelector('#resolve-outcome');
   const notesInput  = overlay.querySelector('#resolve-notes');
-  const confirmBtn  = overlay.querySelector('#btn-resolve-confirm');
-  const btnLabel    = overlay.querySelector('#btn-resolve-label');
+  const confirmBtn    = overlay.querySelector('#btn-resolve-confirm');
+  const btnLabel      = overlay.querySelector('#btn-resolve-label');
+  const evidenceGroup = overlay.querySelector('#resolve-evidence-group');
+  const evidenceCtrl  = _bindEvidenceUploader(overlay, 'resolve');
 
-  // Dynamic button label based on outcome:
-  // If Restore -> "Confirm Restore"
-  // If Return / Dispose -> "Generate Report"
+  // Dynamic button label & photo evidence visibility based on outcome:
+  // If Restore -> "Confirm Restore", hide photo evidence
+  // If Return / Dispose -> "Generate Report", show photo evidence
   const updateResolveBtn = () => {
     const outcome = outcomeSel.value;
     if (outcome === 'Restore') {
       confirmBtn.querySelector('.icon').textContent = 'check';
       btnLabel.textContent = 'Confirm Restore';
+      if (evidenceGroup) evidenceGroup.style.display = 'none';
     } else {
       confirmBtn.querySelector('.icon').textContent = 'picture_as_pdf';
       btnLabel.textContent = 'Generate Report';
+      if (evidenceGroup) evidenceGroup.style.display = 'block';
     }
   };
   outcomeSel.addEventListener('change', updateResolveBtn);
@@ -658,6 +677,7 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
   });
 
   const closeResolveModal = () => {
+    evidenceCtrl.cleanup();
     overlay.remove();
     document.removeEventListener('keydown', handleKeyDown);
   };
@@ -708,6 +728,7 @@ export function openResolveQuarantineModal(incident, profile, onSuccess) {
         quantityAffected: qty,
         actionTaken: outcome === 'Return' ? 'Returned' : 'Disposed',
         remarks: notes,
+        imageData: evidenceCtrl.getImageData(),
         reported_at: new Date().toISOString()
       };
       showDefectPrintPreview(simulatedIncident, incident.batches, profile, null);
