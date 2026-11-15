@@ -68,7 +68,7 @@ function _renderLogModal(batches, profile, onSuccess) {
             <span class="icon" style="color: #b45309; font-size: 22px;">inventory_2</span>
           </div>
           <div>
-            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Log Stock Event</h2>
+            <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin: 0;">Report Defect</h2>
             <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 0;">
               Record quarantined stock under observation, supplier returns, or condemned inventory.
             </p>

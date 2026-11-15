@@ -600,33 +600,57 @@ export const MODULE_GUIDES = {
 
   defects: {
     key: 'defects',
-    title: 'Defects & Spoilage',
+    title: 'Defects & Returns',
     icon: 'report_problem',
     theme: 'green',
     adminOnly: false,
     summary: {
-      en: 'Log damaged, spoiled, or recalled supplies so inventory counts stay accurate.',
-      bis: 'I-record ang mga nadaot o nadunot nga supply para sakto pirmi ang ihap sa stock.',
-      tl: 'I-record ang mga nasira o nabulok na supply para laging tama ang bilang ng stock.',
+      en: 'Track quarantined items under review, supplier returns, and disposed/damaged stock.',
+      bis: 'I-track ang gi-quarantine nga stock, gi-uli sa supplier, ug mga nadaot o gi-dispose.',
+      tl: 'Subaybayan ang naka-quarantine na stock, ibinalik sa supplier, at itinapong/nasirang gamit.',
     },
     steps: [
       {
-        title: { en: 'Report a damaged item', bis: 'I-report ang nadaot nga item', tl: 'I-report ang nasirang item' },
+        title: { en: 'Switch tabs & search records', bis: 'Ilisi ang tabs ug pangita og record', tl: 'Magpalit ng tab at maghanap' },
         detail: {
-          en: 'Click + Report Defect, pick the batch, enter how many units were damaged, and type the reason.',
-          bis: 'I-click ang + Report Defect, pilia ang batch, pila ka buok ang nadaot, ug isulat ang rason.',
-          tl: 'I-click ang + Report Defect, piliin ang batch, ilan ang nasira, at ilagay ang dahilan.',
+          en: 'Use Quarantined, Returned, or Disposed tabs to view each list, or use the Search box by batch, commodity, or reason.',
+          bis: 'Gamita ang Quarantined, Returned, o Disposed tabs, o pangita pinaagi sa Search box.',
+          tl: 'Gamitin ang Quarantined, Returned, o Disposed tabs, o maghanap gamit ang Search box.',
         },
-        chips: [{ label: 'Report Defect', icon: 'add', tone: 'red' }],
+        chips: [
+          { label: 'Quarantined', tone: 'green' },
+          { label: 'Returned', tone: 'neutral' },
+          { label: 'Disposed', tone: 'neutral' },
+        ],
       },
       {
-        title: { en: 'Automatic stock update', bis: 'Awtomatikong update sa stock', tl: 'Awtomatikong update sa stock' },
+        title: { en: 'Click Report Defect & fill inputs', bis: 'I-click ang Report Defect ug sulati', tl: 'I-click ang Report Defect at punan' },
         detail: {
-          en: 'Damaged units are deducted from usable stock right away and recorded in the audit log.',
-          bis: 'Makuhaan dayon ang magamit nga stock ug ma-save sa audit log.',
-          tl: 'Agad mababawas sa magagamit na stock at mare-record sa audit log.',
+          en: 'Click Report Defect, search the Active Batch *, pick Action to Take * and Quantity Affected *, select Reason * and type Remarks *. Add photo (or Upload via Phone), then click Generate Report.',
+          bis: 'I-click ang Report Defect, pilia ang Active Batch *, Action to Take *, Quantity *, Reason *, ug Remarks *. Pwede mag-upload og picture (o Upload via Phone), dayon Generate Report.',
+          tl: 'I-click ang Report Defect, piliin ang Active Batch *, Action to Take *, Quantity *, Reason *, at Remarks *. Pwedeng mag-upload ng larawan (o Upload via Phone), tapos Generate Report.',
         },
+        chips: [
+          { label: 'Report Defect', icon: 'add', tone: 'green' },
+          { label: 'Upload via Phone', icon: 'qr_code_2', tone: 'neutral' },
+          { label: 'Generate Report', icon: 'picture_as_pdf', tone: 'green' },
+        ],
       },
+      {
+        title: { en: 'Resolve held items later', bis: 'I-Resolve ang gi-quarantine', tl: 'I-Resolve ang naka-quarantine' },
+        detail: {
+          en: 'In the Quarantined tab, click Resolve on any row once you decide to return it to stock, return to supplier, or dispose.',
+          bis: 'Sa Quarantined tab, i-click ang Resolve kung nakadesisyon na kung ibalik sa stock, uli sa supplier, o i-dispose.',
+          tl: 'Sa Quarantined tab, i-click ang Resolve kapag napagdesisyunan nang ibalik sa stock, ibalik sa supplier, o itapon.',
+        },
+        chips: [
+          { label: 'Resolve', icon: 'tune', tone: 'neutral' },
+        ],
+      },
+    ],
+    badges: [
+      { label: 'Quarantined', tone: 'amber', meaning: { en: 'Held for inspection (Active Hold)', bis: 'Gi-hold para susihon', tl: 'Naka-hold para suriin' } },
+      { label: 'Disposed', tone: 'red', meaning: { en: 'Condemned / written off from stock', bis: 'Gi-dispose ug gikuha sa stock', tl: 'Itinapon at inalis sa stock' } },
     ],
     relatedRoutes: [
       { route: 'batches', label: 'Batches' },
