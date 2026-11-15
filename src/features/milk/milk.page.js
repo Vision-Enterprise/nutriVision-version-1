@@ -15,9 +15,8 @@ import {
   getConfidentialDonors,
   saveConfidentialDonor,
   getNextDonorCode,
-  getDonorLogEntries,
+  fetchDonorLogEntries,
   addDonorLogEntry,
-  deleteDonorLogEntry,
   createMilkBatch,
   createMilkBatchesBulk,
   dispenseMilk,
@@ -158,9 +157,10 @@ export async function renderMilkPage(profile) {
  * Fetch all records and re-render workspace
  */
 async function _loadData() {
-  const [batchesRes, donationsRes, dispatchesRes, metrics, auditRes] = await Promise.all([
+  const [batchesRes, donationsRes, donorLogsRes, dispatchesRes, metrics, auditRes] = await Promise.all([
     fetchMilkBatches(),
     fetchMilkDonations(),
+    fetchDonorLogEntries(),
     fetchMilkDispatches(),
     fetchMilkMetrics(),
     fetchMilkAuditLogs()
@@ -168,7 +168,7 @@ async function _loadData() {
 
   _batches = batchesRes.data || [];
   _donations = donationsRes.data || [];
-  _donorLogEntries = getDonorLogEntries();
+  _donorLogEntries = donorLogsRes.data || [];
   _dispatches = dispatchesRes.data || [];
   _metrics = metrics;
   _auditLogs = auditRes.data || [];
@@ -503,21 +503,6 @@ function _bindDonationsSheetEvents() {
     });
     transEnd?.addEventListener('change', () => {
       if (arrEnd && !arrEndEdited) arrEnd.value = transEnd.value;
-    });
-  });
-
-  // Delete saved donation row
-  document.querySelectorAll('.js-delete-donation-row').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const code = btn.dataset.donorCode || '';
-      const ok = await MilkModal.confirm(`Delete milk received entry for "${code || 'this donor'}"?`, 'Delete Entry');
-      if (!ok) return;
-      const { error } = await deleteMilkDonation(btn.dataset.donationId, code, _profile);
-      if (error) {
-        await MilkModal.alert('Delete failed: ' + error, 'Error');
-        return;
-      }
-      await _loadData();
     });
   });
 
@@ -903,7 +888,7 @@ function _bindDonorLogSheetEvents() {
 
       donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
 
-      const savedEntry = addDonorLogEntry({
+      const savedEntry = await addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
@@ -914,10 +899,11 @@ function _bindDonorLogSheetEvents() {
         expression_time,
         volume_ml,
         staff_name: _profile?.full_name || 'Nutrition Staff',
-      });
+      }, _profile);
       _queueIntakeDraftFromDonorLog(savedEntry);
       _draftDonorLog.splice(idx, 1);
-      _donorLogEntries = getDonorLogEntries();
+      const donorLogsRes = await fetchDonorLogEntries();
+      _donorLogEntries = donorLogsRes.data || [];
       _updateTabCounts();
       _renderActiveSheet();
     });
@@ -951,7 +937,7 @@ function _bindDonorLogSheetEvents() {
 
       donor_code = await _resolveDonorCodeWithDuplicateCheck({ donor_code, donor_name, barangay });
 
-      const savedEntry = addDonorLogEntry({
+      const savedEntry = await addDonorLogEntry({
         donor_code,
         donor_name,
         barangay,
@@ -962,13 +948,14 @@ function _bindDonorLogSheetEvents() {
         expression_time,
         volume_ml,
         staff_name: _profile?.full_name || 'Nutrition Staff',
-      });
+      }, _profile);
       _queueIntakeDraftFromDonorLog(savedEntry);
       savedCount++;
     }
 
     _draftDonorLog = _draftDonorLog.filter((_, i) => failedIndices.has(i));
-    _donorLogEntries = getDonorLogEntries();
+    const donorLogsRes = await fetchDonorLogEntries();
+    _donorLogEntries = donorLogsRes.data || [];
     _updateTabCounts();
     _renderActiveSheet();
 
@@ -984,17 +971,6 @@ function _bindDonorLogSheetEvents() {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.dlDraftIdx, 10);
       _draftDonorLog.splice(idx, 1);
-      _renderActiveSheet();
-    });
-  });
-
-  document.querySelectorAll('.js-delete-dl-row').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const ok = await MilkModal.confirm('Delete this donor log entry?', 'Delete Entry');
-      if (!ok) return;
-      deleteDonorLogEntry(btn.dataset.dlId);
-      _donorLogEntries = getDonorLogEntries();
-      _updateTabCounts();
       _renderActiveSheet();
     });
   });

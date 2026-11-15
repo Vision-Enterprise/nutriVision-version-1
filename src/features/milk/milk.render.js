@@ -234,9 +234,7 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
       <td class="text-sm font-weight-bold">${Number(e.volume_ml || 0).toLocaleString()} mL</td>
       <td class="text-sm">${escapeHtml(e.staff_name || 'Staff')}</td>
       <td style="text-align:center; white-space:nowrap;">
-        <button type="button" class="btn-grid-discard js-delete-dl-row" data-dl-id="${escapeHtml(e.id)}" title="Delete entry" aria-label="Delete entry">
-          <span class="icon" style="font-size:17px;">delete</span>
-        </button>
+        <span class="text-muted text-xs">Recorded</span>
       </td>
     </tr>
   `).join('');
@@ -430,9 +428,6 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
       <td class="grid-actions-cell" style="text-align:center;">
         <div style="display:inline-flex;align-items:center;gap:6px;">
           ${statusPill}
-          <button type="button" class="btn-grid-discard js-delete-donation-row" data-donation-id="${escapeHtml(d.id)}" data-donor-code="${escapeHtml(d.donor_code)}" title="Delete entry" aria-label="Delete entry">
-            <span class="icon" style="font-size:16px;">delete</span>
-          </button>
         </div>
       </td>
     </tr>

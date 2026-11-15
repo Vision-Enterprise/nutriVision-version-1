@@ -74,31 +74,84 @@ export function getDonorLogEntries() {
   }
 }
 
-export function addDonorLogEntry(entry) {
-  const list = getDonorLogEntries();
-  const saved = {
-    id: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+export async function fetchDonorLogEntries() {
+  try {
+    const { data, error } = await supabase
+      .from('milk_donor_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const list = Array.isArray(data) ? data : [];
+    // Keep local cache & confidential donor registry synced across accounts
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(DONOR_LOG_KEY, JSON.stringify(list));
+      }
+      list.forEach(item => {
+        if (item.donor_name) {
+          saveConfidentialDonor({
+            full_name: item.donor_name,
+            barangay: item.barangay || '',
+            contact: item.contact || '',
+            donor_code: item.donor_code,
+          });
+        }
+      });
+    } catch {}
+
+    return { data: list, error: null };
+  } catch (err) {
+    console.warn(`${MODULE} fetchDonorLogEntries fallback to local cache:`, err?.message || err);
+    return { data: getDonorLogEntries(), error: null };
+  }
+}
+
+export async function addDonorLogEntry(entry, profile = null) {
+  const payload = {
     donor_code: String(entry.donor_code || '').trim() || getNextDonorCode(),
     donor_name: String(entry.donor_name || '').trim(),
     barangay: String(entry.barangay || '').trim(),
-    contact: String(entry.contact || '').trim(),
+    contact: String(entry.contact || '').trim() || null,
     donation_date: entry.donation_date || getLocalDateString(),
     donation_time: entry.donation_time || '09:00',
     expression_date: entry.expression_date || getLocalDateString(),
     expression_time: entry.expression_time || '08:00',
     volume_ml: entry.volume_ml ? parseInt(entry.volume_ml, 10) : 0,
-    staff_name: String(entry.staff_name || 'Staff').trim(),
-    created_at: new Date().toISOString(),
+    staff_name: String(entry.staff_name || profile?.full_name || 'Staff').trim(),
+    created_by: profile?.id || null,
   };
-  if (saved.donor_name) {
+
+  if (payload.donor_name) {
     saveConfidentialDonor({
-      full_name: saved.donor_name,
-      barangay: saved.barangay,
-      contact: saved.contact,
-      donor_code: saved.donor_code,
+      full_name: payload.donor_name,
+      barangay: payload.barangay,
+      contact: payload.contact || '',
+      donor_code: payload.donor_code,
     });
   }
-  list.push(saved);
+
+  let saved = null;
+  try {
+    const { data, error } = await supabase
+      .from('milk_donor_logs')
+      .insert(payload)
+      .select()
+      .single();
+    if (error) throw error;
+    saved = data;
+  } catch (err) {
+    console.warn(`${MODULE} addDonorLogEntry Supabase insert fallback:`, err?.message || err);
+    saved = {
+      ...payload,
+      id: `dl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  const list = getDonorLogEntries();
+  list.unshift(saved);
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(DONOR_LOG_KEY, JSON.stringify(list));
