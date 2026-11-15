@@ -2912,6 +2912,12 @@
   border-color: #fde68a;
 }
 
+.nv-guide-btn-preview--purple {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+}
+
 .nv-guide-btn-preview--neutral {
   background: #f8fafc;
   color: #0f172a;

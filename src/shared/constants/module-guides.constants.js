@@ -70,6 +70,8 @@ export const MODULE_GUIDES = {
         chips: [
           { label: 'Expired Batches', icon: 'error', tone: 'red' },
           { label: 'Nearing Expiry (90d)', icon: 'warning', tone: 'amber' },
+          { label: 'Low Stock Alerts', icon: 'inventory_2', tone: 'orange' },
+          { label: 'Program Event (30d)', icon: 'event', tone: 'purple' },
           { label: 'Advisor', icon: 'insights', tone: 'red' },
         ],
       },
@@ -116,6 +118,7 @@ export const MODULE_GUIDES = {
           { label: 'Expired Batches', icon: 'error', tone: 'red' },
           { label: 'Nearing Expiry (90d)', icon: 'warning', tone: 'amber' },
           { label: 'Low Stock Alerts', icon: 'inventory_2', tone: 'orange' },
+          { label: 'Program Event (30d)', icon: 'event', tone: 'purple' },
         ],
       },
       {
