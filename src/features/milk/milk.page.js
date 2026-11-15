@@ -33,6 +33,8 @@ import {
   setActiveFreezerId,
   addFreezer,
   renameFreezer,
+  updateFreezerSettings,
+  getFreezerCapacity,
   deleteFreezer,
   addShelfToFreezer,
   removeShelfFromFreezer,
@@ -1451,22 +1453,71 @@ function _bindBatchesSheetEvents() {
       }
     });
 
-    // Rename Freezer (works for both current and any tab)
+    // Freezer Settings (Name + Max Bags per Shelf)
     document.querySelectorAll('.js-rename-freezer').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const fId = btn.dataset.freezerId || _activeFreezerId;
         const targetFreezer = _freezers.find(f => f.id === fId);
-        const newName = await MilkModal.prompt(
-          'Enter new name for this cold-chain freezer:',
-          targetFreezer ? targetFreezer.name : '',
-          'Rename Freezer',
-          'Save Name'
-        );
-        if (newName && newName.trim() && targetFreezer && newName.trim() !== targetFreezer.name) {
-          _freezers = renameFreezer(fId, newName.trim(), _profile);
+        if (!targetFreezer) return;
+
+        document.getElementById('milk-freezer-settings-overlay')?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'milk-freezer-settings-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,0.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const currentCap = getFreezerCapacity(targetFreezer);
+
+        overlay.innerHTML = `
+          <div role="dialog" aria-modal="true" aria-labelledby="freezer-settings-title"
+               style="background:var(--color-surface,#fff);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.22);width:100%;max-width:440px;overflow:hidden;border:1px solid var(--color-border,#e2e8f0);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border,#e2e8f0);background:#f8fafc;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;">
+                  <span class="icon" aria-hidden="true">settings</span>
+                </div>
+                <div>
+                  <h3 id="freezer-settings-title" style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">Freezer Settings</h3>
+                  <div style="font-size:12px;color:#64748b;">Customize freezer name &amp; shelf capacity</div>
+                </div>
+              </div>
+              <button type="button" id="fs-close" aria-label="Close" style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px;border-radius:8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+              <div>
+                <label for="fs-name" style="display:block;font-size:12.5px;font-weight:600;color:#334155;margin-bottom:6px;">Freezer Name</label>
+                <input type="text" id="fs-name" class="form-input" value="${esc(targetFreezer.name)}" style="width:100%;" />
+              </div>
+              <div>
+                <label for="fs-cap" style="display:block;font-size:12.5px;font-weight:600;color:#334155;margin-bottom:6px;">Max Bags per Shelf</label>
+                <input type="number" id="fs-cap" class="form-input" min="1" max="500" step="1" value="${currentCap}" style="width:100%;" />
+                <div style="font-size:11.5px;color:#64748b;margin-top:4px;">Default is 20 bags/shelf. Excess bags automatically roll over to adjacent shelves.</div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;">
+                <button type="button" id="fs-cancel" class="btn btn-secondary btn-sm" style="border-radius:9999px;">Cancel</button>
+                <button type="button" id="fs-save" class="btn btn-sm" style="background:#0284c7;border-color:#0284c7;color:#fff;font-weight:600;border-radius:9999px;padding:6px 16px;">Save Settings</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelector('#fs-close')?.addEventListener('click', close);
+        overlay.querySelector('#fs-cancel')?.addEventListener('click', close);
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+        overlay.querySelector('#fs-save')?.addEventListener('click', async () => {
+          const nextName = overlay.querySelector('#fs-name')?.value?.trim();
+          const nextCap = parseInt(overlay.querySelector('#fs-cap')?.value, 10);
+          if (!nextName || !Number.isFinite(nextCap) || nextCap < 1) {
+            await MilkModal.alert('Please enter a valid freezer name and capacity (>= 1).', 'Invalid Settings');
+            return;
+          }
+          _freezers = updateFreezerSettings(fId, { name: nextName, shelf_capacity: nextCap }, _profile);
+          close();
           await _loadData();
-        }
+        });
       });
     });
 

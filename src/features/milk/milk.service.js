@@ -905,25 +905,40 @@ export function addFreezer(name, profile = null) {
   return freezers;
 }
 
-export function renameFreezer(id, newName, profile = null) {
+export function getFreezerCapacity(freezer) {
+  const cap = parseInt(freezer?.shelf_capacity, 10);
+  return Number.isFinite(cap) && cap > 0 ? cap : 20;
+}
+
+export function updateFreezerSettings(id, { name, shelf_capacity }, profile = null) {
   const freezers = getFreezers();
   const freezer = freezers.find(f => f.id === id);
-  if (freezer && newName?.trim()) {
-    const oldName = freezer.name;
-    freezer.name = newName.trim();
-    saveFreezers(freezers);
+  if (!freezer) return freezers;
 
-    if (profile?.id) {
-      logMilkAudit(
-        AUDIT_ACTIONS.UPDATE_FREEZER_UNIT,
-        'cold_chain',
-        id,
-        `Renamed freezer unit from "${oldName}" to "${freezer.name}".`,
-        profile
-      );
-    }
+  const oldName = freezer.name;
+  const oldCap = getFreezerCapacity(freezer);
+  const nextName = name?.trim() || oldName;
+  const parsedCap = parseInt(shelf_capacity, 10);
+  const nextCap = Number.isFinite(parsedCap) && parsedCap > 0 ? parsedCap : oldCap;
+
+  freezer.name = nextName;
+  freezer.shelf_capacity = nextCap;
+  saveFreezers(freezers);
+
+  if (profile?.id && (nextName !== oldName || nextCap !== oldCap)) {
+    logMilkAudit(
+      AUDIT_ACTIONS.UPDATE_FREEZER_UNIT,
+      'cold_chain',
+      id,
+      `Updated freezer "${nextName}" settings (max ${nextCap} bags/shelf).`,
+      profile
+    );
   }
   return freezers;
+}
+
+export function renameFreezer(id, newName, profile = null) {
+  return updateFreezerSettings(id, { name: newName }, profile);
 }
 
 export function deleteFreezer(id, profile = null) {
@@ -1017,10 +1032,12 @@ export function getFreezerShelfAllocations(freezerName, batches = [], freezers =
   const configuredShelves = (freezer && freezer.shelves && freezer.shelves.length > 0)
     ? [...freezer.shelves]
     : ['Shelf 1', 'Shelf 2', 'Shelf 3', 'Shelf 4'];
+  const shelfCapacity = getFreezerCapacity(freezer);
 
   const allocations = configuredShelves.map(name => ({
     shelfName: name,
     usedBags: 0,
+    capacity: shelfCapacity,
     batches: []
   }));
 
@@ -1056,12 +1073,13 @@ export function getFreezerShelfAllocations(freezerName, batches = [], freezers =
         allocations.push({
           shelfName: `Shelf ${allocations.length + 1}`,
           usedBags: 0,
+          capacity: shelfCapacity,
           batches: []
         });
       }
 
       const shelfObj = allocations[currIdx];
-      const avail = Math.max(0, 20 - shelfObj.usedBags);
+      const avail = Math.max(0, shelfCapacity - shelfObj.usedBags);
       if (avail > 0) {
         const place = Math.min(avail, remaining);
         shelfObj.batches.push({ batch: b, bags: place });

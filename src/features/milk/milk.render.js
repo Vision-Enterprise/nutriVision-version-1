@@ -10,6 +10,7 @@ import {
   getBatchFreezerAndShelf,
   getFreezerShelfAllocations,
   getBatchActualShelfInfo,
+  getFreezerCapacity,
   getMilkBatchTrafficLight,
   isMilkBatchExpired,
   getDonationDateRange
@@ -411,7 +412,7 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
         : '<span class="badge badge--secondary">Stored Raw</span>');
 
     return `
-    <tr class="${isCompromised ? 'grid-row--compromised' : ''}" data-filter-status="${escapeHtml(effStatus)}">
+    <tr class="${isCompromised ? 'grid-row--compromised' : ''}" data-filter-status="${isCompromised ? 'compromised' : 'ok'}">
       <td class="text-muted text-xs" style="text-align:center;">${index + 1}</td>
       <td>
         <span class="milk-donor-code">${escapeHtml(d.donor_code)}</span>
@@ -449,10 +450,9 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           <span class="icon icon--sm milk-toolbar-search-icon" aria-hidden="true">search</span>
           <input type="search" id="milk-sheet-search" class="milk-toolbar-search" placeholder="Search donor code, date, staff..." aria-label="Search Log of Milk Received" />
         </div>
-        <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Status">
-          <option value="">All Statuses</option>
-          <option value="stored_raw">Stored Raw</option>
-          <option value="pasteurized">Pasteurized</option>
+        <select id="milk-sheet-filter" class="milk-toolbar-filter" aria-label="Filter by Condition">
+          <option value="">All</option>
+          <option value="ok">OK</option>
           <option value="compromised">Compromised</option>
         </select>
       </div>
@@ -823,7 +823,8 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
     return loc.freezerName.toLowerCase() === activeFreezer.name.toLowerCase();
   });
 
-  // Dynamic Shelf Distribution: 20-bag max capacity per shelf, with excess rolling over to next shelf
+  // Dynamic Shelf Distribution: configurable max capacity per shelf, with excess rolling over to next shelf
+  const shelfCap = getFreezerCapacity(activeFreezer);
   const shelfAllocations = configuredShelves.map(name => ({
     shelfName: name,
     usedBags: 0,
@@ -864,7 +865,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
       }
 
       const shelfObj = shelfAllocations[currIdx];
-      const avail = Math.max(0, 20 - shelfObj.usedBags);
+      const avail = Math.max(0, shelfCap - shelfObj.usedBags);
 
       if (avail > 0) {
         const place = Math.min(avail, remaining);
@@ -893,7 +894,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
     statusText = `${escapeHtml(selectedBatch.batch_number)} - ${selectedBatch.remaining_bags} Bags Available`;
   } else if (selectedShelf) {
     statusSub = 'SHELF SELECTED';
-    statusText = `${escapeHtml(selectedShelf)} - ${selectedShelfBags} / 20 Bags Total`;
+    statusText = `${escapeHtml(selectedShelf)} - ${selectedShelfBags} / ${shelfCap} Bags Total`;
   }
 
   // Freezer Tabs Bar with Rename & Delete (delete shown when >1 freezer)
@@ -985,14 +986,14 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
             ${escapeHtml(pillLabel)}
           </span>
           <span class="digital-twin-shelf-bags-count">
-            ${totalBags} / 20 bags ${totalBags >= 20 ? '<span style="color:#dc2626;font-weight:700;margin-left:4px;">(Full)</span>' : ''}
+            ${totalBags} / ${shelfCap} bags ${totalBags >= shelfCap ? '<span style="color:#dc2626;font-weight:700;margin-left:4px;">(Full)</span>' : ''}
           </span>
         </div>
 
         <div class="batch-boxes-grid">
           ${filledBoxes.length > 0 ? filledBoxes.join('') : `
             <div style="grid-column: span 4; font-size: 12px; color: var(--color-text-muted); font-style: italic; padding: 6px 0;">
-              No batches on this shelf (20 bags available)
+              No batches on this shelf (${shelfCap} bags available)
             </div>
           `}
         </div>
@@ -1118,18 +1119,18 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Total Bags on Shelf</span>
-          <span class="details-field-val details-field-val--qty">${selectedShelfBags} / 20 Bags</span>
+          <span class="details-field-val details-field-val--qty">${selectedShelfBags} / ${shelfCap} Bags</span>
         </div>
         <div class="details-field-group">
           <span class="details-field-label">Batches Count</span>
           <span class="details-field-val">${shelfItems.length} active batch portions</span>
         </div>
         <div class="details-field-group" style="grid-column: span 2;">
-          <span class="details-field-label">Capacity Utilization (Max 20 Bags)</span>
+          <span class="details-field-label">Capacity Utilization (Max ${shelfCap} Bags)</span>
           <div style="background:#e2e8f0;border-radius:6px;height:10px;overflow:hidden;margin-top:6px;">
-            <div style="background:${selectedShelfBags >= 20 ? '#dc2626' : (selectedShelfBags > 14 ? '#f59e0b' : '#0284c7')};width:${Math.min(100, Math.round(selectedShelfBags / 20 * 100))}%;height:100%;"></div>
+            <div style="background:${selectedShelfBags >= shelfCap ? '#dc2626' : (selectedShelfBags > Math.round(shelfCap * 0.7) ? '#f59e0b' : '#0284c7')};width:${Math.min(100, Math.round(selectedShelfBags / shelfCap * 100))}%;height:100%;"></div>
           </div>
-          <span style="font-size:11px;color:var(--color-text-muted);margin-top:4px;">${selectedShelfBags} of 20 bags used (${Math.min(100, Math.round(selectedShelfBags / 20 * 100))}%)</span>
+          <span style="font-size:11px;color:var(--color-text-muted);margin-top:4px;">${selectedShelfBags} of ${shelfCap} bags used (${Math.min(100, Math.round(selectedShelfBags / shelfCap * 100))}%)</span>
         </div>
       </div>
 
@@ -1228,8 +1229,8 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
                 <span>${escapeHtml(activeFreezer.name)}</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <button class="digital-twin-rename-inline-btn js-rename-freezer" data-freezer-id="${activeFreezer.id}" type="button">
-                  <span class="icon">edit</span> Rename
+                <button class="digital-twin-rename-inline-btn js-rename-freezer" data-freezer-id="${activeFreezer.id}" type="button" title="Freezer Settings (Name & Max Shelf Capacity)">
+                  <span class="icon">settings</span> Settings
                 </button>
                 ${freezers.length > 1 ? `
                   <button class="digital-twin-rename-inline-btn js-delete-freezer" data-freezer-id="${activeFreezer.id}" style="color:#fca5a5;" type="button">
