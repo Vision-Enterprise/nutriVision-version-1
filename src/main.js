@@ -30,6 +30,7 @@ import { renderLoginPage }               from './features/auth/auth.page.js';
 import { renderShell }                   from './shared/components/shell.component.js';
 import { APP_NAME }                      from './shared/constants/app.constants.js';
 import { initRealtimeSync, destroyRealtimeSync } from './core/realtime.js';
+import { initCustomSelects }             from './shared/components/custom-select.component.js';
 
 // ── Application State ──────────────────────────────────────────────
 // currentProfile holds the signed-in user's profile.
@@ -37,6 +38,7 @@ import { initRealtimeSync, destroyRealtimeSync } from './core/realtime.js';
 let currentProfile = null;
 
 // ── Boot the Application ───────────────────────────────────────────
+initCustomSelects();
 initApp();
 
 async function initApp() {
