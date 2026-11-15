@@ -613,12 +613,13 @@ export const MODULE_GUIDES = {
       {
         title: { en: 'Switch tabs & search records', bis: 'Ilisi ang tabs ug pangita og record', tl: 'Magpalit ng tab at maghanap' },
         detail: {
-          en: 'Use Quarantined, Returned, or Disposed tabs to view each list, or use the Search box by batch, commodity, or reason.',
-          bis: 'Gamita ang Quarantined, Returned, o Disposed tabs, o pangita pinaagi sa Search box.',
-          tl: 'Gamitin ang Quarantined, Returned, o Disposed tabs, o maghanap gamit ang Search box.',
+          en: 'Use Quarantined, Restored, Returned, or Disposed tabs to view each list, or use the Search box by batch, commodity, or reason.',
+          bis: 'Gamita ang Quarantined, Restored, Returned, o Disposed tabs, o pangita pinaagi sa Search box.',
+          tl: 'Gamitin ang Quarantined, Restored, Returned, o Disposed tabs, o maghanap gamit ang Search box.',
         },
         chips: [
           { label: 'Quarantined', tone: 'green' },
+          { label: 'Restored', tone: 'neutral' },
           { label: 'Returned', tone: 'neutral' },
           { label: 'Disposed', tone: 'neutral' },
         ],
@@ -650,6 +651,7 @@ export const MODULE_GUIDES = {
     ],
     badges: [
       { label: 'Quarantined', tone: 'amber', meaning: { en: 'Held for inspection (Active Hold)', bis: 'Gi-hold para susihon', tl: 'Naka-hold para suriin' } },
+      { label: 'Restored', tone: 'green', meaning: { en: 'Cleared from quarantine and returned to active stock', bis: 'Gibalik sa active stock gikan sa quarantine', tl: 'Ibinalik sa active stock mula sa quarantine' } },
       { label: 'Disposed', tone: 'red', meaning: { en: 'Condemned / written off from stock', bis: 'Gi-dispose ug gikuha sa stock', tl: 'Itinapon at inalis sa stock' } },
     ],
     relatedRoutes: [

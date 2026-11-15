@@ -396,12 +396,15 @@ function _bindLogModalEvents(overlay, batches, profile, onSuccess) {
     } else {
       dropdown.innerHTML = matches.map(b => `
         <div class="defect-batch-option" data-id="${b.id}" style="
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
           padding: 10px 14px; cursor: pointer; font-size: var(--font-size-sm);
           border-bottom: 1px solid var(--color-border);
         ">
-          <strong>${b.batch_number}</strong>
-          <span style="color: var(--color-text-muted);"> — ${b.commodities?.name || '?'}</span>
-          <span style="float:right; color: var(--color-text-muted);">${b.quantity} ${b.commodities?.unit || ''}</span>
+          <div style="min-width: 0; flex: 1; line-height: 1.4;">
+            <strong>${b.batch_number}</strong>
+            <span style="color: var(--color-text-muted);"> — ${b.commodities?.name || '?'}</span>
+          </div>
+          <span style="flex-shrink: 0; white-space: nowrap; font-weight: 600; color: var(--color-text-muted);">${Number(b.quantity || 0).toLocaleString()} ${b.commodities?.unit || ''}</span>
         </div>
       `).join('');
     }
