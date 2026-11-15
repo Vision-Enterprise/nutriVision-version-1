@@ -202,7 +202,7 @@ export function renderDrilldownContent(type, data) {
             >
               <div>
                 <strong style="font-size:13px; color:#1e293b;">${_esc(e.title)}</strong>
-                <span style="font-size:11px; color:#64748b; margin-left:8px;">📍 ${_esc(e.location)}</span>
+                ${e.location ? `<span style="font-size:11px; color:#64748b; margin-left:8px; display:inline-flex; align-items:center; gap:3px;"><span class="icon" style="font-size:13px;">location_on</span>${_esc(e.location)}</span>` : ''}
               </div>
               <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                 <span style="font-size:12px; font-weight:600; color:#6b21a8;">${formatDate(e.startDate)}</span>

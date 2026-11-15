@@ -129,6 +129,23 @@ export function renderCalendarLayout() {
               <span class="form-error" id="cal-error-pic"></span>
             </div>
 
+            <div class="form-group">
+              <label class="form-label" for="cal-field-location">Location <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <select id="cal-field-location" class="form-select">
+                <option value="">Select Location...</option>
+              </select>
+              <div id="cal-field-location-custom-wrap" style="display: none; margin-top: 8px;">
+                <input
+                  id="cal-field-location-custom"
+                  class="form-input"
+                  type="text"
+                  placeholder="Enter custom venue or location..."
+                  autocomplete="off"
+                />
+              </div>
+              <span class="form-error" id="cal-error-location"></span>
+            </div>
+
             <div class="cal-form-row-2col">
               <div class="form-group">
                 <label class="form-label form-label--required" for="cal-field-date">Date</label>
@@ -208,6 +225,7 @@ export function renderCustomEventDetailBody(customEv) {
       </span>
       <span class="cal-modal-label">Date</span><span>${escapeHtml(customEv.start_date)}</span>
       ${formattedTime ? `<span class="cal-modal-label">Time</span><span>${escapeHtml(formattedTime)}</span>` : ''}
+      ${customEv.location ? `<span class="cal-modal-label">Location</span><span>${escapeHtml(customEv.location)}</span>` : ''}
       ${customEv.description ? `<span class="cal-modal-label">Notes</span><span style="white-space: pre-wrap;">${escapeHtml(customEv.description)}</span>` : ''}
     </div>
     <div class="cal-detail-actions">

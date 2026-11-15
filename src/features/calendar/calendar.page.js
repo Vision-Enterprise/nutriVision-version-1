@@ -29,15 +29,15 @@ function getExpColor(dateStr, batch = null) {
   if (!dateStr) return null;
   const status = getExpirationStatus(dateStr, batch);
   if (status === EXPIRATION_STATUS.EXPIRED) {
-    return { bg: '#dc2626', border: '#b91c1c', textColor: '#ffffff' };
+    return { bg: '#fee2e2', border: '#fee2e2', textColor: '#991b1b' };
   }
   if (status === EXPIRATION_STATUS.NEAR_EXPIRY) {
-    return { bg: '#ea580c', border: '#c2410c', textColor: '#ffffff' };
+    return { bg: '#ffedd5', border: '#ffedd5', textColor: '#9a3412' };
   }
   if (status === EXPIRATION_STATUS.MODERATE) {
-    return { bg: '#eab308', border: '#ca8a04', textColor: '#713f12' };
+    return { bg: '#fef3c7', border: '#fef3c7', textColor: '#92400e' };
   }
-  return { bg: '#059669', border: '#047857', textColor: '#ffffff' };
+  return { bg: '#d1fae5', border: '#d1fae5', textColor: '#065f46' };
 }
 
 function loadFullCalendar() {
@@ -85,9 +85,9 @@ async function loadAllEvents(info, successCb, failCb) {
           title:           name,
           start:           b.delivery_date,
           allDay:          true,
-          backgroundColor: '#1565C0',
-          borderColor:     '#0d47a1',
-          textColor:       '#fff',
+          backgroundColor: '#dbeafe',
+          borderColor:     '#dbeafe',
+          textColor:       '#1e40af',
           extendedProps:   { type: 'delivery', batch: b },
         });
       }
@@ -100,7 +100,7 @@ async function loadAllEvents(info, successCb, failCb) {
           allDay:          true,
           backgroundColor: col.bg,
           borderColor:     col.border,
-          textColor:       col.textColor || '#fff',
+          textColor:       col.textColor || '#065f46',
           extendedProps:   { type: 'expiration', batch: b },
         });
       }
@@ -116,9 +116,10 @@ async function loadAllEvents(info, successCb, failCb) {
         start:           e.start_time ? `${e.start_date}T${e.start_time}` : e.start_date,
         end:             e.end_date || null,
         allDay:          !e.start_time,
-        backgroundColor: '#7C3AED',
-        borderColor:     '#5b21b6',
-        textColor:       '#fff',
+        display:         'block',
+        backgroundColor: '#ede9fe',
+        borderColor:     '#ede9fe',
+        textColor:       '#5b21b6',
         extendedProps:   { type: 'custom', event: e },
       }));
 
@@ -177,6 +178,7 @@ export async function renderCalendarPage(profile) {
       right:  'dayGridMonth,dayGridWeek,listMonth',
     },
     height:        'auto',
+    eventDisplay:  'block',
     events:        loadAllEvents,
     eventContent:  arg => {
       const type = arg.event.extendedProps?.type;
@@ -244,7 +246,7 @@ export async function renderCalendarPage(profile) {
             html: `
               <div class="cal-fc-list-custom">
                 <span class="cal-fc-list-title"><span class="icon" style="font-size:14px; vertical-align:middle;">warning</span> Expiry: ${title}</span>
-                <span class="cal-fc-list-pic" style="background:rgba(255,255,255,0.2); color:inherit; font-weight:600;">${escapeHtml(status)} (${diffText})</span>
+                <span class="cal-fc-list-pic" style="background:rgba(0,0,0,0.06); color:inherit; font-weight:600;">${escapeHtml(status)} (${diffText})</span>
               </div>
             `,
           };

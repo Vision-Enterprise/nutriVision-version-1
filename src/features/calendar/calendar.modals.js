@@ -17,6 +17,7 @@ import {
   updateCustomEvent,
   deleteCustomEvent,
   fetchStaffSuggestions,
+  getLocationSuggestions,
 } from './calendar.service.js';
 import { getLocalDateString } from '../../shared/utils/date.utils.js';
 import { SystemDialog } from '../../shared/components/dialog.component.js';
@@ -34,7 +35,26 @@ async function _populateStaffSuggestions(profile) {
     const label = isYou ? `${escapeHtml(name)} (You)` : escapeHtml(name);
     html += `<option value="${escapeHtml(name)}">${label}</option>`;
   });
-  html += '<option value="__custom__">+ Other / Enter Custom Name (BNS, Focal Person)...</option>';
+  html += '<option value="__custom__">Other...</option>';
+
+  select.innerHTML = html;
+
+  if (currentVal) {
+    select.value = currentVal;
+  }
+}
+
+async function _populateLocationSuggestions() {
+  const select = document.getElementById('cal-field-location');
+  if (!select) return;
+  const locations = await getLocationSuggestions();
+  const currentVal = select.value;
+
+  let html = '<option value="">Select Location...</option>';
+  locations.forEach(loc => {
+    html += `<option value="${escapeHtml(loc)}">${escapeHtml(loc)}</option>`;
+  });
+  html += '<option value="__custom__">Other...</option>';
 
   select.innerHTML = html;
 
@@ -44,11 +64,11 @@ async function _populateStaffSuggestions(profile) {
 }
 
 function _clearFormValidation() {
-  ['cal-field-title', 'cal-field-pic', 'cal-field-pic-custom', 'cal-field-date'].forEach(id => {
+  ['cal-field-title', 'cal-field-pic', 'cal-field-pic-custom', 'cal-field-location', 'cal-field-location-custom', 'cal-field-date'].forEach(id => {
     const el = document.getElementById(id);
     el?.classList.remove('form-input--error', 'form-select--error');
   });
-  ['cal-error-title', 'cal-error-pic', 'cal-error-date'].forEach(id => {
+  ['cal-error-title', 'cal-error-pic', 'cal-error-location', 'cal-error-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
@@ -129,7 +149,10 @@ export async function openEventFormModal({ mode = 'add', event = null, profile =
   if (!overlay) return;
 
   _clearFormValidation();
-  await _populateStaffSuggestions(profile);
+  await Promise.all([
+    _populateStaffSuggestions(profile),
+    _populateLocationSuggestions(),
+  ]);
 
   const isEdit = mode === 'edit' && Boolean(event?.id);
 
@@ -152,6 +175,9 @@ export async function openEventFormModal({ mode = 'add', event = null, profile =
   const picSelect     = document.getElementById('cal-field-pic');
   const picCustomWrap = document.getElementById('cal-field-pic-custom-wrap');
   const picCustomInp  = document.getElementById('cal-field-pic-custom');
+  const locSelect     = document.getElementById('cal-field-location');
+  const locCustomWrap = document.getElementById('cal-field-location-custom-wrap');
+  const locCustomInp  = document.getElementById('cal-field-location-custom');
   const dateInput     = document.getElementById('cal-field-date');
   const timeInput     = document.getElementById('cal-field-time');
   const descInput     = document.getElementById('cal-field-desc');
@@ -188,6 +214,32 @@ export async function openEventFormModal({ mode = 'add', event = null, profile =
     }
   }
 
+  const targetLoc = isEdit ? String(event.location || '').trim() : '';
+  if (locSelect) {
+    if (!targetLoc) {
+      locSelect.value = '';
+      if (locCustomWrap) locCustomWrap.style.display = 'none';
+      if (locCustomInp)  locCustomInp.value = '';
+    } else {
+      let matchedLoc = false;
+      for (const opt of locSelect.options) {
+        if (opt.value && opt.value.toLowerCase() === targetLoc.toLowerCase()) {
+          locSelect.value = opt.value;
+          matchedLoc = true;
+          break;
+        }
+      }
+      if (matchedLoc) {
+        if (locCustomWrap) locCustomWrap.style.display = 'none';
+        if (locCustomInp)  locCustomInp.value = '';
+      } else {
+        locSelect.value = '__custom__';
+        if (locCustomWrap) locCustomWrap.style.display = 'block';
+        if (locCustomInp)  locCustomInp.value = targetLoc;
+      }
+    }
+  }
+
   overlay.style.display = 'flex';
   setTimeout(() => {
     if (isEdit && !targetPic) {
@@ -204,6 +256,7 @@ export function showAddEventModal(profile = null) {
 
 export function attachModalListeners(calendarRef, profile) {
   _populateStaffSuggestions(profile);
+  _populateLocationSuggestions();
 
   // Detail modal close
   document.getElementById('cal-modal-close')?.addEventListener('click', () => {
@@ -249,6 +302,31 @@ export function attachModalListeners(calendarRef, profile) {
   picCustomInp?.addEventListener('input', () => {
     picCustomInp.classList.remove('form-input--error');
     const errEl = document.getElementById('cal-error-pic');
+    if (errEl) errEl.textContent = '';
+  });
+
+  // Location dropdown change
+  const locSelect = document.getElementById('cal-field-location');
+  const locCustomWrap = document.getElementById('cal-field-location-custom-wrap');
+  const locCustomInp = document.getElementById('cal-field-location-custom');
+
+  locSelect?.addEventListener('change', () => {
+    locSelect.classList.remove('form-select--error', 'form-input--error');
+    const errEl = document.getElementById('cal-error-location');
+    if (errEl) errEl.textContent = '';
+
+    if (locSelect.value === '__custom__') {
+      if (locCustomWrap) locCustomWrap.style.display = 'block';
+      locCustomInp?.focus();
+    } else {
+      if (locCustomWrap) locCustomWrap.style.display = 'none';
+      if (locCustomInp)  locCustomInp.value = '';
+    }
+  });
+
+  locCustomInp?.addEventListener('input', () => {
+    locCustomInp.classList.remove('form-input--error');
+    const errEl = document.getElementById('cal-error-location');
     if (errEl) errEl.textContent = '';
   });
 
@@ -312,9 +390,15 @@ export function attachModalListeners(calendarRef, profile) {
     const title         = document.getElementById('cal-field-title')?.value.trim() || '';
     const selectVal     = document.getElementById('cal-field-pic')?.value || '';
     const customInp     = document.getElementById('cal-field-pic-custom');
+    const locSelectVal  = document.getElementById('cal-field-location')?.value || '';
+    const locCustomInp  = document.getElementById('cal-field-location-custom');
     const startDate     = document.getElementById('cal-field-date')?.value || '';
     const startTime     = document.getElementById('cal-field-time')?.value || null;
     const desc          = document.getElementById('cal-field-desc')?.value.trim() || null;
+
+    const location = locSelectVal === '__custom__'
+      ? (locCustomInp?.value.trim() || null)
+      : (locSelectVal.trim() || null);
 
     let pic = '';
     let hasError = false;
@@ -355,6 +439,7 @@ export function attachModalListeners(calendarRef, profile) {
     const payload = {
       title,
       person_in_charge: pic,
+      location,
       start_date:       startDate,
       start_time:       startTime,
       description:      desc,
@@ -371,7 +456,10 @@ export function attachModalListeners(calendarRef, profile) {
       btn.disabled = false;
       btn.textContent = isEdit ? 'Update Event' : 'Save Event';
     }
-    await _populateStaffSuggestions(profile);
+    await Promise.all([
+      _populateStaffSuggestions(profile),
+      _populateLocationSuggestions(),
+    ]);
     calendarRef?.refetchEvents();
   });
 }

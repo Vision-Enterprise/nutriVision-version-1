@@ -207,21 +207,27 @@
   transition: background var(--transition-fast);
 }
 
-/* ── Event chips — MD3: 4px radius, ellipsis truncation ── */
+/* ── Event chips — flat tonal pills matching legend ── */
 .fc-event {
-  font-size: 11px !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;          /* MD3 chip radius */
+  font-size: var(--font-size-xs) !important;
+  padding: 3px 10px !important;
+  border-radius: var(--radius-full) !important;
+  border: none !important;
   font-weight: var(--font-weight-medium) !important;
   cursor: pointer !important;
   max-width: 100%;
   overflow: hidden;
+  box-shadow: none !important;
+}
+.fc-daygrid-event-dot {
+  display: none !important;
 }
 .fc-event-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;                /* clean ellipsis on overflow */
   display: block;
+  color: inherit;
 }
 .fc-event-main {
   display: flex;

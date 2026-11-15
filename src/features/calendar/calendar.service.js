@@ -13,14 +13,19 @@
  */
 
 import { supabase } from '../../core/supabase.js';
+import { BARANGAYS } from '../../shared/constants/app.constants.js';
 
-const DB_NAME         = 'nutrivision_calendar';
-const DB_VERSION      = 1;
-const STORE           = 'calendar_events';
-const PENDING         = 'pending_sync';
-const PIC_STORAGE_KEY = 'nutrivision_calendar_pic_v1';
-const STAFF_CACHE_KEY = 'nutrivision_calendar_staff_v1';
-const PIC_DESC_REGEX  = /^\[PIC:\s*([^\]]+)\]\r?\n?/;
+const DB_NAME              = 'nutrivision_calendar';
+const DB_VERSION           = 1;
+const STORE                = 'calendar_events';
+const PENDING              = 'pending_sync';
+const PIC_STORAGE_KEY      = 'nutrivision_calendar_pic_v1';
+const LOC_STORAGE_KEY      = 'nutrivision_calendar_loc_v1';
+const CUSTOM_LOCATIONS_KEY = 'nutrivision_calendar_custom_locations_v1';
+const STAFF_CACHE_KEY      = 'nutrivision_calendar_staff_v1';
+const PIC_DESC_REGEX       = /^\[PIC:\s*([^\]]+)\]\r?\n?/;
+const LOC_DESC_REGEX       = /^\[LOC:\s*([^\]]+)\]\r?\n?/;
+const DEFAULT_LOCATIONS    = ['MNAO Office', 'Municipal Hall', ...BARANGAYS];
 
 // IndexedDB Bootstrap
 
@@ -111,11 +116,89 @@ function _writePicEntry(eventId, personInCharge) {
   }
 }
 
-function _encodeFallbackDescription(personInCharge, cleanDescription) {
+function _readLocMap() {
+  try {
+    const raw = localStorage.getItem(LOC_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function _writeLocEntry(eventId, location) {
+  if (!eventId) return;
+  try {
+    const map = _readLocMap();
+    const cleaned = String(location ?? '').trim();
+    if (cleaned) {
+      map[eventId] = cleaned;
+    } else {
+      delete map[eventId];
+    }
+    localStorage.setItem(LOC_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function saveCustomLocationOption(location) {
+  const cleaned = String(location ?? '').trim();
+  if (!cleaned) return;
+  const isDefault = DEFAULT_LOCATIONS.some(d => d.toLowerCase() === cleaned.toLowerCase());
+  if (isDefault) return;
+  try {
+    const raw = localStorage.getItem(CUSTOM_LOCATIONS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    const exists = Array.isArray(list) && list.some(x => String(x).toLowerCase() === cleaned.toLowerCase());
+    if (!exists) {
+      localStorage.setItem(CUSTOM_LOCATIONS_KEY, JSON.stringify([...(Array.isArray(list) ? list : []), cleaned]));
+    }
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export async function getLocationSuggestions() {
+  const merged = new Map();
+  const add = val => {
+    const cleaned = String(val ?? '').trim();
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (!merged.has(key)) merged.set(key, cleaned);
+  };
+
+  DEFAULT_LOCATIONS.forEach(add);
+
+  try {
+    const raw = localStorage.getItem(CUSTOM_LOCATIONS_KEY);
+    const saved = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(saved)) saved.forEach(add);
+  } catch {
+    // Ignore parse error
+  }
+
+  try {
+    const cachedEvents = await idbGetAll(STORE);
+    cachedEvents.filter(r => !r.deleted_at).forEach(r => {
+      const hydrated = hydrateCalendarEvent(r);
+      if (hydrated.location) add(hydrated.location);
+    });
+  } catch {
+    // Ignore IDB error
+  }
+
+  return Array.from(merged.values());
+}
+
+function _encodeFallbackDescription(personInCharge, location, cleanDescription) {
   const safePic = String(personInCharge ?? '').replace(/[\r\n\]]+/g, ' ').trim();
+  const safeLoc = String(location ?? '').replace(/[\r\n\]]+/g, ' ').trim();
   const safeDesc = String(cleanDescription ?? '').trim();
-  if (!safePic) return safeDesc || null;
-  return safeDesc ? `[PIC: ${safePic}]\n${safeDesc}` : `[PIC: ${safePic}]`;
+  const tags = [];
+  if (safePic) tags.push(`[PIC: ${safePic}]`);
+  if (safeLoc) tags.push(`[LOC: ${safeLoc}]`);
+  if (!tags.length) return safeDesc || null;
+  return safeDesc ? `${tags.join('\n')}\n${safeDesc}` : tags.join('\n');
 }
 
 export function hydrateCalendarEvent(rawRow) {
@@ -123,16 +206,27 @@ export function hydrateCalendarEvent(rawRow) {
   const row = { ...rawRow };
 
   let extractedPic = '';
+  let extractedLoc = '';
   let cleanDesc = row.description ?? null;
 
   if (typeof cleanDesc === 'string') {
-    const match = cleanDesc.match(PIC_DESC_REGEX);
-    if (match) {
-      extractedPic = match[1].trim();
-      cleanDesc = cleanDesc.slice(match[0].length).trim() || null;
-    } else {
-      cleanDesc = cleanDesc.trim() || null;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const picMatch = cleanDesc.match(PIC_DESC_REGEX);
+      if (picMatch) {
+        extractedPic = picMatch[1].trim();
+        cleanDesc = cleanDesc.slice(picMatch[0].length);
+        changed = true;
+      }
+      const locMatch = cleanDesc.match(LOC_DESC_REGEX);
+      if (locMatch) {
+        extractedLoc = locMatch[1].trim();
+        cleanDesc = cleanDesc.slice(locMatch[0].length);
+        changed = true;
+      }
     }
+    cleanDesc = cleanDesc.trim() || null;
   }
 
   const picMap = _readPicMap();
@@ -140,11 +234,20 @@ export function hydrateCalendarEvent(rawRow) {
     row.person_in_charge || extractedPic || picMap[row.id] || ''
   ).trim() || null;
 
+  const locMap = _readLocMap();
+  const resolvedLoc = String(
+    row.location || extractedLoc || locMap[row.id] || ''
+  ).trim() || null;
+
   row.person_in_charge = resolvedPic;
+  row.location = resolvedLoc;
   row.description = cleanDesc;
 
   if (row.id && resolvedPic) {
     _writePicEntry(row.id, resolvedPic);
+  }
+  if (row.id && resolvedLoc) {
+    _writeLocEntry(row.id, resolvedLoc);
   }
 
   return row;
@@ -152,7 +255,7 @@ export function hydrateCalendarEvent(rawRow) {
 
 function _isMissingPicColumnError(err) {
   const text = `${err?.code || ''} ${err?.message || ''} ${err?.details || ''} ${err?.hint || ''}`.toLowerCase();
-  return text.includes('person_in_charge') || text.includes('pgrst204') || text.includes('42703');
+  return text.includes('person_in_charge') || text.includes('location') || text.includes('pgrst204') || text.includes('42703');
 }
 
 function _buildDbPayload(record, includePicColumn = true) {
@@ -164,7 +267,7 @@ function _buildDbPayload(record, includePicColumn = true) {
     end_date:    record.end_date || null,
     description: includePicColumn
       ? (record.description || null)
-      : _encodeFallbackDescription(record.person_in_charge, record.description),
+      : _encodeFallbackDescription(record.person_in_charge, record.location, record.description),
     created_by:  record.created_by,
     created_at:  record.created_at,
     updated_at:  record.updated_at,
@@ -173,6 +276,7 @@ function _buildDbPayload(record, includePicColumn = true) {
 
   if (includePicColumn) {
     base.person_in_charge = record.person_in_charge || null;
+    base.location = record.location || null;
   }
 
   return base;
@@ -360,6 +464,7 @@ export async function createCustomEvent(event, userId) {
     id:               crypto.randomUUID(),
     title:            String(event.title ?? '').trim(),
     person_in_charge: String(event.person_in_charge ?? '').trim() || null,
+    location:         String(event.location ?? '').trim() || null,
     start_date:       event.start_date,
     start_time:       event.start_time || null,
     end_date:         event.end_date || null,
@@ -372,6 +477,10 @@ export async function createCustomEvent(event, userId) {
 
   if (record.person_in_charge) {
     _writePicEntry(record.id, record.person_in_charge);
+  }
+  if (record.location) {
+    _writeLocEntry(record.id, record.location);
+    saveCustomLocationOption(record.location);
   }
 
   await idbPut(STORE, record);
@@ -399,6 +508,9 @@ export async function updateCustomEvent(id, changes) {
     person_in_charge: changes.person_in_charge !== undefined
       ? (String(changes.person_in_charge ?? '').trim() || null)
       : base.person_in_charge,
+    location:         changes.location !== undefined
+      ? (String(changes.location ?? '').trim() || null)
+      : base.location,
     start_date:       changes.start_date !== undefined ? changes.start_date : base.start_date,
     start_time:       changes.start_time !== undefined ? (changes.start_time || null) : base.start_time,
     end_date:         changes.end_date !== undefined ? (changes.end_date || null) : base.end_date,
@@ -409,6 +521,8 @@ export async function updateCustomEvent(id, changes) {
   };
 
   _writePicEntry(updated.id, updated.person_in_charge);
+  _writeLocEntry(updated.id, updated.location);
+  if (updated.location) saveCustomLocationOption(updated.location);
   await idbPut(STORE, updated);
 
   if (navigator.onLine) {

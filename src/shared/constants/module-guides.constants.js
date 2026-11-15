@@ -538,18 +538,18 @@ export const MODULE_GUIDES = {
       {
         title: { en: 'Add an event', bis: 'Pagdugang og event', tl: 'Magdagdag ng event' },
         detail: {
-          en: 'Click any date or the + Add Event button to schedule a feeding program or donor drive.',
-          bis: 'I-click ang bisan unsang petsa o + Add Event para mag-schedule og kalihokan.',
-          tl: 'I-click ang kahit anong petsa o + Add Event para mag-schedule ng gawain.',
+          en: 'Click any date or + Add Event, assign a Person in Charge, and optionally choose a Location (or type a custom one under Other).',
+          bis: 'I-click ang bisan unsang petsa o + Add Event, pilia ang Person in Charge, ug opsyonal ang Location (o i-type sa Other).',
+          tl: 'I-click ang kahit anong petsa o + Add Event, magtalaga ng Person in Charge, at opsyonal na pumili ng Location (o mag-type sa Other).',
         },
         chips: [{ label: 'Add Event', icon: 'add', tone: 'green' }],
       },
       {
-        title: { en: 'Check expiry markers', bis: 'Tan-awa ang expiry markers', tl: 'Tingnan ang expiry markers' },
+        title: { en: 'Read calendar pills', bis: 'Basaha ang calendar pills', tl: 'Basahin ang calendar pills' },
         detail: {
-          en: 'Colored dots show when batches expire so you can plan distributions early.',
-          bis: 'Ang mga kolor nga tuldok nagpakita kanus-a ma-expire ang mga batch.',
-          tl: 'Ang mga may kulay na tuldok ay nagpapakita kung kailan ma-expire ang batches.',
+          en: 'Soft-tinted pills match the legend: violet for Program Events, blue for Deliveries, and green/yellow/orange/red for batch expiry status.',
+          bis: 'Ang mga pill motugma sa legend: violet para sa Program Events, blue para sa Deliveries, ug green/yellow/orange/red para sa batch expiry.',
+          tl: 'Tumutugma ang mga pill sa legend: violet para sa Program Events, blue para sa Deliveries, at green/yellow/orange/red para sa batch expiry.',
         },
       },
     ],

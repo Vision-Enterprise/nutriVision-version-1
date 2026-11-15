@@ -2,6 +2,7 @@ import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
 import { hydrateCommodityShelfLife, computeBatchLsfoMetrics } from '../../shared/utils/shelf-life.utils.js';
+import { hydrateCalendarEvent } from '../calendar/calendar.service.js';
 
 export async function fetchAdvisorData() {
   try {
@@ -190,13 +191,16 @@ export async function fetchAdvisorData() {
     });
 
     // Check Events
-    const upcomingEvents = (events || []).map(e => ({
-      id: e.id,
-      title: e.title,
-      startDate: e.start_date,
-      endDate: e.end_date,
-      location: e.location || 'Municipal Center'
-    }));
+    const upcomingEvents = (events || []).map(raw => {
+      const e = hydrateCalendarEvent(raw);
+      return {
+        id: e.id,
+        title: e.title,
+        startDate: e.start_date,
+        endDate: e.end_date,
+        location: e.location || '',
+      };
+    });
 
     (events || []).forEach(e => {
       suggestedActions.push({
