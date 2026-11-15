@@ -58,7 +58,7 @@ export function renderDefectsLayout() {
     <div class="card" style="padding: 0; overflow: hidden; margin-bottom: var(--space-6);">
 
       <div class="card-header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap;">
-        <!-- 3 Filter Tabs: Quarantined, Returned, Disposed -->
+        <!-- 4 Filter Tabs: Quarantined, Restored, Returned, Disposed -->
         <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
           <button class="defect-tab active" data-filter="Quarantined" style="
             padding: 6px 16px; border-radius: var(--radius-full);
@@ -66,6 +66,12 @@ export function renderDefectsLayout() {
             font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
             cursor: pointer; transition: all var(--transition-md3);
           ">Quarantined</button>
+          <button class="defect-tab" data-filter="Restored" style="
+            padding: 6px 16px; border-radius: var(--radius-full);
+            border: 1px solid var(--color-border); background: transparent; color: var(--color-text-muted);
+            font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+            cursor: pointer; transition: all var(--transition-md3);
+          ">Restored</button>
           <button class="defect-tab" data-filter="Returned" style="
             padding: 6px 16px; border-radius: var(--radius-full);
             border: 1px solid var(--color-border); background: transparent; color: var(--color-text-muted);
@@ -159,6 +165,9 @@ export function renderIncidentRows(incidents = [], currentFilter = 'Quarantined'
           <span class="icon icon--sm" style="font-size: 15px;">tune</span> Resolve
         </button>
       `;
+    } else if (currentFilter === 'Restored') {
+      qtyDisplay = `<span style="font-weight: var(--font-weight-bold); font-size: 13px; color: #059669;">+${inc.quantity_affected} ${unit}</span>`;
+      actionButtons = `<span style="color: #059669; font-size: 11px; font-weight: 600;">Restored</span>`;
     } else {
       const color = currentFilter === 'Returned' ? '#0284c7' : '#dc2626';
       qtyDisplay = `<span style="font-weight: var(--font-weight-bold); font-size: 13px; color: ${color};">${inc.quantity_affected} ${unit}</span>`;
@@ -172,7 +181,7 @@ export function renderIncidentRows(incidents = [], currentFilter = 'Quarantined'
         <td style="padding: 8px 8px; font-weight: var(--font-weight-medium); font-size: 12px;">${inc.batches?.commodities?.name || '—'}</td>
         <td style="padding: 8px 8px; white-space: nowrap;">${qtyDisplay}</td>
         <td style="padding: 8px 8px; font-size: 12px; color: var(--color-text);">${inc.classification || 'Inspection'}</td>
-        <td style="padding: 8px 8px; font-size: 12px; color: var(--color-text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${inc.display_remarks || ''}">
+        <td style="padding: 8px 8px; font-size: 12px; color: var(--color-text-muted); max-width: 300px; white-space: normal; word-break: break-word; line-height: 1.4;">
           ${inc.display_remarks || '—'}
         </td>
         <td style="padding: 8px 8px; font-size: 12px; color: var(--color-text-muted); white-space: nowrap;">${inc.reporter_name || '—'}</td>

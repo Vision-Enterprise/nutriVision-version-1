@@ -112,6 +112,50 @@ export async function fetchDefectIncidents(filter = 'Quarantined') {
   }
 }
 
+/**
+ * Fetch restored-from-quarantine records, newest first.
+ */
+export async function fetchDefectRestores() {
+  try {
+    const { data, error } = await supabase
+      .from('defect_restores')
+      .select(`
+        id, incident_id, batch_id, restored_quantity, notes, restored_by, restored_at,
+        defect_incidents ( id, classification ),
+        batches!inner (
+          id, batch_number,
+          commodities!inner ( id, name, unit )
+        )
+      `)
+      .order('restored_at', { ascending: false });
+
+    if (error) throw error;
+
+    const ids = [...new Set((data || []).map(r => r.restored_by).filter(Boolean))];
+    let nameMap = {};
+    if (ids.length) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+      nameMap = (profiles || []).reduce((acc, p) => { acc[p.id] = p.full_name; return acc; }, {});
+    }
+
+    const restores = (data || []).map(r => ({
+      id: r.id,
+      reported_at: r.restored_at,
+      quantity_affected: r.restored_quantity,
+      classification: r.defect_incidents?.classification || 'Quarantine Clearance',
+      display_remarks: r.notes || 'Restored to active stock',
+      reporter_name: nameMap[r.restored_by] || 'Unknown',
+      resolved_action: 'Restored',
+      batches: r.batches,
+    }));
+
+    return { data: restores, error: null };
+  } catch (err) {
+    console.error(`${MODULE} fetchDefectRestores:`, err);
+    return { data: [], error: 'Failed to load restored stock logs.' };
+  }
+}
+
 // ─── Write: Log Incident ──────────────────────────────────────────────────────
 
 /**
@@ -322,12 +366,13 @@ export async function resolveQuarantineIncident(incidentId, { outcome, quantity,
 
     // 4. Audit Log
     try {
+      const noteSuffix = notes ? ` Reason: ${notes}` : '';
       await supabase.from('audit_logs').insert({
         user_id:     profile.id,
         action:      AUDIT_ACTIONS.FLAG_DEFECT,
         entity_type: 'batch',
         entity_id:   batchId,
-        description: `Quarantine resolution: ${outcome} ${quantity} units. Remainder: ${newRemaining}.`,
+        description: `Quarantine resolution: ${outcome} ${quantity} units (Remainder: ${newRemaining}).${noteSuffix}`,
       });
     } catch (_) {}
 

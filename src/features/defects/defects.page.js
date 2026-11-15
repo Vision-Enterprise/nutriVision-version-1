@@ -3,7 +3,7 @@
  * 3-category log sheet: Quarantined, Returned, Disposed.
  */
 
-import { fetchDefectIncidents } from './defects.service.js';
+import { fetchDefectIncidents, fetchDefectRestores } from './defects.service.js';
 import { renderDefectsLayout, renderIncidentRows } from './defects.render.js';
 import { openLogIncidentModal, openResolveQuarantineModal } from './defects.modal.js';
 
@@ -13,6 +13,7 @@ let _profile        = null;
 let _currentFilter  = 'Quarantined';
 let _searchQuery    = '';
 let _allIncidents   = [];
+let _allRestores    = [];
 
 export async function renderDefectsPage(profile) {
   _profile = profile;
@@ -82,18 +83,22 @@ async function _loadIncidents() {
     </tr>
   `;
 
-  const { allData, error } = await fetchDefectIncidents('all');
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--color-danger); padding: var(--space-6);">Error: ${error}</td></tr>`;
-    console.error(`${MODULE} _loadIncidents:`, error);
+  const [incRes, restRes] = await Promise.all([
+    fetchDefectIncidents('all'),
+    fetchDefectRestores(),
+  ]);
+  if (incRes.error) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--color-danger); padding: var(--space-6);">Error: ${incRes.error}</td></tr>`;
+    console.error(`${MODULE} _loadIncidents:`, incRes.error);
     return;
   }
 
-  _allIncidents = allData || [];
+  _allIncidents = incRes.allData || [];
+  _allRestores  = restRes.data || [];
 
   _updateKPIs(_allIncidents);
   _renderTable();
-  console.log(`${MODULE} loaded ${_allIncidents.length} total records`);
+  console.log(`${MODULE} loaded ${_allIncidents.length} incidents, ${_allRestores.length} restores`);
 }
 
 function _updateKPIs(incidents) {
@@ -135,28 +140,26 @@ function _renderTable() {
 function _getFilteredIncidents() {
   const q = (_searchQuery || '').trim().toLowerCase();
 
-  return _allIncidents.filter(inc => {
-    if (_currentFilter === 'Quarantined') {
-      if (inc.resolved_action !== 'Quarantined') return false;
-      const rem = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
-      if (rem <= 0) return false;
-    } else if (_currentFilter === 'Returned') {
-      if (inc.resolved_action !== 'Returned') return false;
-    } else if (_currentFilter === 'Disposed') {
-      if (inc.resolved_action !== 'Disposed') return false;
-    }
+  const sourceList = _currentFilter === 'Restored'
+    ? _allRestores
+    : _allIncidents.filter(inc => {
+        if (_currentFilter === 'Quarantined') {
+          if (inc.resolved_action !== 'Quarantined') return false;
+          const rem = inc.remaining_quarantined !== null ? inc.remaining_quarantined : inc.quantity_affected;
+          return rem > 0;
+        }
+        return inc.resolved_action === _currentFilter;
+      });
 
-    if (q) {
-      const bNum    = (inc.batches?.batch_number || '').toLowerCase();
-      const cName   = (inc.batches?.commodities?.name || '').toLowerCase();
-      const classif = (inc.classification || '').toLowerCase();
-      const reporter= (inc.reporter_name || '').toLowerCase();
-      const remarks = (inc.display_remarks || '').toLowerCase();
-      const matches = bNum.includes(q) || cName.includes(q) || classif.includes(q) || reporter.includes(q) || remarks.includes(q);
-      if (!matches) return false;
-    }
+  if (!q) return sourceList;
 
-    return true;
+  return sourceList.filter(inc => {
+    const bNum     = (inc.batches?.batch_number || '').toLowerCase();
+    const cName    = (inc.batches?.commodities?.name || '').toLowerCase();
+    const classif  = (inc.classification || '').toLowerCase();
+    const reporter = (inc.reporter_name || '').toLowerCase();
+    const remarks  = (inc.display_remarks || '').toLowerCase();
+    return bNum.includes(q) || cName.includes(q) || classif.includes(q) || reporter.includes(q) || remarks.includes(q);
   });
 }
 
