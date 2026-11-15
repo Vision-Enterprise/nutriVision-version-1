@@ -408,30 +408,52 @@ export const MODULE_GUIDES = {
     theme: 'green',
     adminOnly: false,
     summary: {
-      en: 'Stores old, empty, or expired batches so your active Batches list stays clean.',
-      bis: 'Tipiganan sa mga daan, hurot, o expired nga batches para limpyo ang active list.',
-      tl: 'Taguan ng mga luma, ubos, o expired na batches para malinis ang active list.',
+      en: 'History of expired, voided, empty (depleted) batches, and archived commodities so active lists stay clean.',
+      bis: 'Tipiganan sa mga expired, voided, hurot (depleted) nga batches, ug archived commodities para limpyo ang active list.',
+      tl: 'Listahan ng expired, voided, ubos (depleted) na batches, at archived commodities para malinis ang active list.',
     },
     steps: [
       {
-        title: { en: 'View past records', bis: 'Tan-awa ang daan nga records', tl: 'Tingnan ang mga lumang record' },
+        title: { en: 'Search or pick a category tab', bis: 'Pangita o pilia ang category tab', tl: 'Maghanap o pumili ng category tab' },
         detail: {
-          en: 'Search or filter archived batches anytime for audit or reference.',
-          bis: 'Pangitaa ang bisan unsang archived batch kung kinahanglan og reference.',
-          tl: 'Hanapin ang kahit anong archived batch kapag kailangan ng reference.',
+          en: 'Type in Search by batch code, commodity, reason, or user, or click the filter pills (All Records, Expired Stock, Data Entry Errors, Other Voided, Depleted Batches, Archived Commodities).',
+          bis: 'Pag-type sa Search box o pilia ang pill tabs (Expired Stock, Data Entry Errors, Other Voided, Depleted Batches, Archived Commodities).',
+          tl: 'Mag-type sa Search box o pumili sa pill tabs (Expired Stock, Data Entry Errors, Other Voided, Depleted Batches, Archived Commodities).',
         },
+        chips: [
+          { label: 'All Records', tone: 'neutral' },
+          { label: 'Other Voided', tone: 'green' },
+          { label: 'Depleted Batches', tone: 'neutral' },
+          { label: 'Archived Commodities', tone: 'neutral' },
+        ],
       },
       {
-        title: { en: 'Restore if needed', bis: 'I-restore kung kinahanglan', tl: 'I-restore kung kailangan' },
+        title: { en: 'View Releases on Depleted Batches', bis: 'View Releases sa hurot nga batches', tl: 'View Releases sa ubos na batches' },
         detail: {
-          en: 'If a batch was archived by mistake, click Restore to move it back to Batches.',
-          bis: 'Kung nasayop og archive, i-click ang Restore para mabalik sa Batches.',
-          tl: 'Kung nagkamali sa pag-archive, i-click ang Restore para maibalik sa Batches.',
+          en: 'In Depleted Batches (fully given out), click View Releases to see which barangays received that batch.',
+          bis: 'Sa Depleted Batches, i-click ang View Releases para makita kung asa nga barangay napunta ang batch.',
+          tl: 'Sa Depleted Batches, i-click ang View Releases para makita kung saang barangay napunta ang batch.',
         },
+        chips: [
+          { label: 'View Releases', icon: 'receipt_long', tone: 'neutral' },
+        ],
+      },
+      {
+        title: { en: 'Restore voided items if needed', bis: 'I-Restore kung kinahanglan mabalik', tl: 'I-Restore kung kailangan ibalik' },
+        detail: {
+          en: 'In Other Voided or Archived Commodities, click Restore to move an item back to your active list.',
+          bis: 'Sa Other Voided o Archived Commodities, i-click ang Restore para mabalik sa active list.',
+          tl: 'Sa Other Voided o Archived Commodities, i-click ang Restore para maibalik sa active list.',
+        },
+        chips: [
+          { label: 'Restore', icon: 'restore', tone: 'neutral' },
+        ],
       },
     ],
     relatedRoutes: [
       { route: 'batches', label: 'Batches' },
+      { route: 'commodities', label: 'Commodities' },
+      { route: 'releases', label: 'Releases' },
     ],
   },
 
