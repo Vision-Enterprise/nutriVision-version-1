@@ -1,8 +1,9 @@
 /**
- * NutriVision Module Manual & Navigation Guides (#95)
+ * NutriVision Module Guides (#95)
  *
- * Contextual instructions explaining how to navigate and operate every
- * page and full-screen workspace in NutriVision.
+ * Simple, non-technical step-by-step guides in English, Bisaya, and Tagalog.
+ * Rule: Keep on-screen English button names inside `chips` unchanged so staff
+ * always match the exact button they see on screen.
  */
 
 export const MODULE_GUIDES_ORDER = [
@@ -30,52 +31,53 @@ export const MODULE_GUIDES = {
     icon: 'dashboard',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Provides an at-a-glance operational command center of MNAO commodity stock health, urgent expiration alerts, distribution charts, and recent staff activity.',
-    navigation: [
+    summary: {
+      en: 'Your home screen. See what supplies are in stock, what expires soon, and jump to daily tasks.',
+      bis: 'Kini ang imong home screen. Makita diri ang stock, hapit na ma-expire, ug mga dali nga button.',
+      tl: 'Ito ang home screen. Makikita rito ang stock, malapit nang ma-expire, at mabilis na buttons.',
+    },
+    steps: [
       {
-        label: 'Quick Action Bar',
-        detail: 'Top shortcut buttons let you jump straight to Milk Bank, Bulk Release, or Bulk Batch Registration (+ Add Batch).',
+        title: { en: 'Check the 4 top boxes', bis: 'Tan-awa ang 4 ka kahon sa taas', tl: 'Tingnan ang 4 na kahon sa itaas' },
+        detail: {
+          en: 'Look at Near Expiry (orange) and Expired (red) first so nothing goes to waste.',
+          bis: 'Una tan-awa ang Near Expiry (orange) ug Expired (pula) para walay masayang.',
+          tl: 'Unahin tingnan ang Near Expiry (orange) at Expired (pula) para walang masayang.',
+        },
       },
       {
-        label: '4 Summary KPI Cards',
-        detail: 'Shows live counts of Registered Commodities, Active In-Stock Batches, Near-Expiry Batches, and Expired Batches.',
+        title: { en: 'Click Advisor alerts', bis: 'I-click ang Advisor alerts', tl: 'I-click ang Advisor alerts' },
+        detail: {
+          en: 'Click any colored alert chip to see which items need action, or open the red Advisor button.',
+          bis: 'I-click ang bisan unsang kolor nga chip para makita ang detalye, o ablihi ang pula nga Advisor.',
+          tl: 'I-click ang kahit anong may kulay na chip para makita ang detalye, o buksan ang pulang Advisor.',
+        },
+        chips: [
+          { label: 'Advisor', icon: 'insights', tone: 'red' },
+        ],
       },
       {
-        label: 'Inventory Advisor Banner',
-        detail: 'Highlights priority stock alerts and links directly to the full Inventory Advisor action center.',
-      },
-      {
-        label: 'Analytics & Activity Feed',
-        detail: 'Displays visual inventory breakdown charts alongside the latest recorded actions across staff.',
-      },
-      {
-        label: 'Return Home Anytime',
-        detail: 'Click the NutriVision sidebar logo or the Municipal Nutrition Action Office header emblem from any screen to return here.',
+        title: { en: 'Start a task in 1 click', bis: 'Sugdi ang trabaho sa 1 click', tl: 'Simulan ang gawain sa 1 click' },
+        detail: {
+          en: 'Use the top buttons to open Milk Bank, release items, or add new deliveries.',
+          bis: 'Gamita ang mga button sa taas para sa Milk Bank, pag-release, o pagdugang og stock.',
+          tl: 'Gamitin ang mga button sa itaas para sa Milk Bank, pag-release, o pagdagdag ng stock.',
+        },
+        chips: [
+          { label: 'Milk Bank', icon: 'water_drop', tone: 'blue' },
+          { label: 'Bulk Release', icon: 'shopping_cart', tone: 'orange' },
+          { label: '+ Add Batch', icon: 'add', tone: 'green' },
+        ],
       },
     ],
-    howToUse: [
-      {
-        stepTitle: 'Check Daily Stock Health First',
-        detail: 'Review the Near Expiry and Expired KPI cards at the start of shifts to see if any batches need immediate dispatch or archiving.',
-      },
-      {
-        stepTitle: 'Act on Advisor Warnings',
-        detail: 'If the Advisor summary card shows Near-Expiry or Expired items, click View Full Analysis or Bulk Release to prioritize FEFO dispatch.',
-      },
-      {
-        stepTitle: 'Launch Common Tasks in One Click',
-        detail: 'Use + Add Batch to log newly delivered supplies or Bulk Release to prepare multi-batch barangay distributions.',
-      },
-    ],
-    rulesAndBadges: [
-      'KPI counts strictly include active batches with remaining stock (> 0 units) whose parent commodity is active.',
-      'Perishable items (such as 7-Day Nutribuns) automatically follow their custom Commodity Shelf-Life Policy.',
+    badges: [
+      { label: 'Near Expiry', tone: 'amber', meaning: { en: 'Expiring within 3 months — give out first', bis: 'Ma-expire sulod sa 3 ka bulan — ipanghatag una', tl: 'Ma-expire sa loob ng 3 buwan — unahing ipamigay' } },
+      { label: 'Expired', tone: 'red', meaning: { en: 'Past expiry date — remove from active stock', bis: 'Lapas na sa petsa — kuhaa sa active stock', tl: 'Lampas na sa petsa — alisin sa active stock' } },
     ],
     relatedRoutes: [
-      { route: 'advisor', label: 'Inventory Advisor' },
+      { route: 'advisor', label: 'Advisor' },
       { route: 'batches', label: 'Batches' },
-      { route: 'releases', label: 'Releases' },
+      { route: 'milk', label: 'Milk Bank' },
     ],
   },
 
@@ -85,349 +87,300 @@ export const MODULE_GUIDES = {
     icon: 'insights',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Analyzes active MNAO stock health and guides staff on exactly which batches to release first (FEFO) or remove from active circulation.',
-    navigation: [
+    summary: {
+      en: 'Tells you which supplies are running low, expiring soon, or need to be given out first.',
+      bis: 'Magpahibalo kung unsang mga supply ang hapit na mahurot, ma-expire, o unahon og hatag.',
+      tl: 'Nagsasabi kung aling supplies ang paubos na, malapit ma-expire, o dapat unahing ipamigay.',
+    },
+    steps: [
       {
-        label: 'Interactive Status Chips',
-        detail: 'Click Expired, Near Expiry, Moderate, or Good summary chips to expand a drill-down list of matching batches.',
+        title: { en: 'Open any alert chip', bis: 'Ablihi ang bisan unsang alert chip', tl: 'Buksan ang kahit anong alert chip' },
+        detail: {
+          en: 'Click a colored chip at the top to see the exact list of expired, expiring, or low-stock items.',
+          bis: 'I-click ang kolor nga chip sa taas para makita ang listahan sa mga items nga kinahanglan atimanon.',
+          tl: 'I-click ang may kulay na chip sa itaas para makita ang listahan ng mga kailangang ayusin.',
+        },
       },
       {
-        label: 'Batch Drill-Down Cards',
-        detail: 'Click any batch card inside the drill-down panel to jump straight to Batch Management with that exact row highlighted.',
+        title: { en: 'Prioritize oldest stock first', bis: 'Unaha ang daan nga stock', tl: 'Unahin ang mas lumang stock' },
+        detail: {
+          en: 'Give out batches that expire earliest so supplies stay fresh and safe.',
+          bis: 'Ipanghatag una ang mga batch nga pinakadali ma-expire para walay masayang.',
+          tl: 'Ipamigay muna ang mga batch na pinakamaagang ma-expire para walang masayang.',
+        },
       },
       {
-        label: 'Analytics Carousel Tabs',
-        detail: 'Switch between Barangay Distribution, Stock Levels by Commodity, and Expiration Status Breakdown charts.',
+        title: { en: 'Check Stock Health & Charts', bis: 'Tan-awa ang Stock Health ug Charts', tl: 'Tingnan ang Stock Health at Charts' },
+        detail: {
+          en: 'Click any item in the list to jump straight to its page, or use the chart filters below.',
+          bis: 'I-click ang item sa listahan para moadto sa iyang page, o gamita ang chart filters sa ubos.',
+          tl: 'I-click ang item sa listahan para pumunta sa page nito, o gamitin ang chart filters sa ibaba.',
+        },
       },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Inspect Urgent Categories',
-        detail: 'Click the Expired or Near Expiry chip to see every batch requiring immediate attention, along with remaining days and stock count.',
-      },
-      {
-        stepTitle: 'Dispatch Near-Expiry Stock (FEFO)',
-        detail: 'Use the Bulk Release shortcut to allocate Near-Expiry batches to barangays before newer deliveries are touched.',
-      },
-      {
-        stepTitle: 'Isolate & Archive Expired Batches',
-        detail: 'Click an expired batch card to jump to Batches, then void/archive it under Expired Stock so it cannot be accidentally released.',
-      },
-    ],
-    rulesAndBadges: [
-      'FEFO (First-Expired, First-Out): Always prioritize Near-Expiry and Moderate batches for barangay distribution.',
-      'Expired batches (0 days or overdue) are blocked from distribution and should be archived or logged for disposal.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
+      { route: 'dashboard', label: 'Dashboard' },
       { route: 'bulk-release', label: 'Bulk Release' },
-      { route: 'archive', label: 'Archive' },
     ],
   },
 
   commodities: {
     key: 'commodities',
-    title: 'Commodity Management',
+    title: 'Commodities',
     icon: 'inventory_2',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Maintains the master catalog of nutrition commodities, product photos, measurement units, SKU codes, and custom perishable shelf-life policies.',
-    navigation: [
+    summary: {
+      en: 'The master list of all nutrition items your office tracks (milk, vitamins, food packs, etc.).',
+      bis: 'Listahan sa tanang klase sa nutrition items nga gi-track sa opisina.',
+      tl: 'Listahan ng lahat ng nutrition items na sinusubaybayan ng opisina.',
+    },
+    steps: [
       {
-        label: 'Cards vs. Table View Toggle',
-        detail: 'Switch between the visual Photo Card Grid (default) and the compact Table View; your preference is saved automatically.',
+        title: { en: 'Add a new item type', bis: 'Pagdugang og bag-ong item', tl: 'Magdagdag ng bagong item' },
+        detail: {
+          en: 'Click + Add Commodity to register a new product name, unit (boxes, packs, bottles), and category.',
+          bis: 'I-click ang + Add Commodity para magrehistro og bag-ong ngalan sa produkto ug unit.',
+          tl: 'I-click ang + Add Commodity para magdagdag ng bagong pangalan ng produkto at unit.',
+        },
+        chips: [{ label: '+ Add Commodity', icon: 'add', tone: 'green' }],
       },
       {
-        label: 'Search & Category Filter',
-        detail: 'Filter catalog items by name, SKU code, or nutrition category (Vitamins, Minerals, Bakery / Perishables, Therapeutics, etc.).',
+        title: { en: 'Find items fast', bis: 'Pangitaa dayon ang item', tl: 'Hanapin agad ang item' },
+        detail: {
+          en: 'Type in the Search box or pick a category from the dropdown.',
+          bis: 'Pag-type sa Search box o pili-a ang category sa dropdown.',
+          tl: 'Mag-type sa Search box o pumili ng category sa dropdown.',
+        },
       },
       {
-        label: 'Lightbox Photo Preview',
-        detail: 'Click any commodity photo card to inspect a full-resolution preview along with category, SKU, and live stock summary.',
+        title: { en: 'Set shelf-life if perishable', bis: 'I-set ang shelf-life kung dali madaot', tl: 'I-set ang shelf-life kung madaling masira' },
+        detail: {
+          en: 'For items like 7-day Nutribuns, set custom days so expiry warnings stay accurate.',
+          bis: 'Para sa mga pagkaon sama sa 7-day Nutribuns, i-set ang adlaw para sakto ang expiry alert.',
+          tl: 'Para sa mga pagkain tulad ng 7-day Nutribuns, i-set ang araw para tama ang expiry alert.',
+        },
       },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Register a New Commodity',
-        detail: 'Click + Add Commodity, enter the name, category, and base unit (e.g., Pack, Tablet, Piece). An SKU code is generated automatically.',
-      },
-      {
-        stepTitle: 'Upload a Commodity Photo (Optional)',
-        detail: 'Drag-and-drop or browse a product image in the modal. If left blank, NutriVision assigns a clean category artwork illustration.',
-      },
-      {
-        stepTitle: 'Unified Expiration & Hybrid FEFO+LSFO',
-        detail: 'All commodities share the standard Traffic-Light rule (>180d Good, 91–180d Moderate, 1–90d Near Expiry, ≤0d Expired) with automatic FEFO + LSFO dispatch sorting.',
-      },
-      {
-        stepTitle: 'Edit or Archive Safely',
-        detail: 'Use Edit to update details/photos, or Archive when a commodity is discontinued and has zero remaining active stock.',
-      },
-    ],
-    rulesAndBadges: [
-      'Active-Stock Archive Guard: A commodity cannot be archived while it still has active batches with stock > 0. Release or void remaining batches first.',
-      'Archived commodities can be restored anytime from the Archive module.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
-      { route: 'archive', label: 'Archive' },
+      { route: 'batches', label: 'Batches' },
+      { route: 'batches-workspace', label: 'Bulk Batch Registration' },
     ],
   },
 
   batches: {
     key: 'batches',
-    title: 'Batch Management',
-    icon: 'package_2',
+    title: 'Batches',
+    icon: 'layers',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Tracks every physical delivery batch, remaining stock quantity, auto-formatted batch code, and real-time Traffic-Light expiration status.',
-    navigation: [
+    summary: {
+      en: 'Shows every delivery batch in storage, how many units are left, and when each one expires.',
+      bis: 'Nagpakita sa matag delivery batch sa bodega, pila na lang ang nabilin, ug kanus-a ma-expire.',
+      tl: 'Nagpapakita ng bawat delivery batch sa bodega, ilan ang natitira, at kailan ma-expire.',
+    },
+    steps: [
       {
-        label: 'Expiration Guide Bar',
-        detail: 'Shows Traffic-Light expiration thresholds and FEFO / LSFO dispatch rules at a glance.',
+        title: { en: 'Add new deliveries', bis: 'Pagdugang og bag-ong delivery', tl: 'Magdagdag ng bagong delivery' },
+        detail: {
+          en: 'Click + Add Batch to open Bulk Batch Registration (with Receipt Scanner or manual table).',
+          bis: 'I-click ang + Add Batch para maabli ang Bulk Batch Registration (may Scanner o manual table).',
+          tl: 'I-click ang + Add Batch para mabuksan ang Bulk Batch Registration (may Scanner o manual table).',
+        },
+        chips: [{ label: '+ Add Batch', icon: 'add', tone: 'green' }],
       },
       {
-        label: 'Commodity, Status & Sort Filters',
-        detail: 'Filter by commodity, status, or keyword, and switch sorting between Hybrid (FEFO + LSFO), FEFO (Expiry Date), or LSFO (Shortest Span).',
+        title: { en: 'Filter by status or commodity', bis: 'I-filter pinaagi sa status o item', tl: 'I-filter ayon sa status o item' },
+        detail: {
+          en: 'Use the dropdowns or Search bar to find Near Expiry or Expired batches quickly.',
+          bis: 'Gamita ang dropdowns o Search bar para makita dayon ang hapit na ma-expire.',
+          tl: 'Gamitin ang dropdowns o Search bar para makita agad ang malapit ma-expire.',
+        },
       },
       {
-        label: '+ Add Batch Button',
-        detail: 'Opens the full-screen Bulk Batch Registration spreadsheet & scanner workspace for single or multi-batch intake.',
+        title: { en: 'Release or Archive', bis: 'I-release o i-archive', tl: 'I-release o i-archive' },
+        detail: {
+          en: 'Give out good stock via Bulk Release, or archive empty/expired batches.',
+          bis: 'Ipanghatag ang maayo nga stock gamit ang Bulk Release, o i-archive ang hurot o expired.',
+          tl: 'Ipamigay ang maayos na stock gamit ang Bulk Release, o i-archive ang ubos o expired.',
+        },
       },
-      {
-        label: 'Row Action Buttons',
-        detail: 'Each batch row offers single-batch Release, Edit (delivery/expiry/supplier corrections), and Void / Archive.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Log Incoming Deliveries',
-        detail: 'Click + Add Batch to open the Bulk Batch Registration workspace and record one or multiple delivered batches at once.',
-      },
-      {
-        stepTitle: 'Release a Single Batch Quickly',
-        detail: 'Click the Release icon on a valid batch row to dispatch stock to a single barangay. For multi-batch dispatches, go to Releases -> Bulk Release.',
-      },
-      {
-        stepTitle: 'Correct or Void Batches',
-        detail: 'Use Edit to fix clerical dates/suppliers, or Void to move expired stock or data-entry mistakes into the Archive with a documented reason.',
-      },
-    ],
-    visualBadges: [
-      { label: 'Good', badgeClass: 'badge-good', meaning: '> 6 months (> 180 days) remaining — safe stock.' },
-      { label: 'Moderate', badgeClass: 'badge-moderate', meaning: '3–6 months (91–180 days) remaining — monitor.' },
-      { label: 'Near Expiry', badgeClass: 'badge-near-expiry', meaning: '1–90 days remaining — prioritize for release.' },
-      { label: 'Expired', badgeClass: 'badge-expired', meaning: '≤ 0 days — blocked from release; void/archive.' },
-      { label: '7d span · LSFO', inlineStyle: 'padding:2px 7px; border-radius:999px; font-size:10.5px; font-weight:600; background:rgba(217,119,6,0.12); color:#b45309; border:1px solid rgba(217,119,6,0.28);', meaning: 'Short shelf-life item (spoils within 90 days of delivery) — prioritized if dates match.' },
-    ],
-    rulesAndBadges: [
-      'FEFO (First-Expired, First-Out): Give out items expiring soonest first.',
-      'LSFO (Least-Shelf-Life, First-Out): If two items expire on the same day, give out the faster-spoiling item first.',
-      'Delivery & Expiration Dates are mandatory; expired batches cannot be released.',
     ],
     relatedRoutes: [
-      { route: 'releases', label: 'Releases Ledger' },
-      { route: 'commodities', label: 'Commodities' },
-      { route: 'defects', label: 'Defect Log' },
+      { route: 'batches-workspace', label: 'Bulk Batch Registration' },
+      { route: 'bulk-release', label: 'Bulk Release' },
+      { route: 'archive', label: 'Archive' },
     ],
   },
 
   'batches-workspace': {
     key: 'batches-workspace',
     title: 'Bulk Batch Registration',
-    icon: 'qr_code_scanner',
+    icon: 'document_scanner',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'High-speed spreadsheet and scanner intake workspace for registering multiple incoming commodity deliveries in one transaction.',
-    navigation: [
+    summary: {
+      en: 'Add many deliveries at once — either by scanning a delivery receipt or typing into the table.',
+      bis: 'Pagdugang og daghang deliveries sa usa ka higayon — pwede mag-scan og resibo o mag-type sa table.',
+      tl: 'Magdagdag ng maraming delivery nang sabay — gamit ang Receipt Scanner o pag-type sa table.',
+    },
+    steps: [
       {
-        label: 'Left Collapsible Scanner Pane',
-        detail: 'Scan barcodes or parse delivery receipt text into rows, or click the hamburger button to collapse the pane for a full-width grid.',
+        title: { en: 'Scan a receipt (Optional)', bis: 'Mag-scan og resibo (Opsyonal)', tl: 'Mag-scan ng resibo (Opsyonal)' },
+        detail: {
+          en: 'On the left side, upload a photo, use Live Camera, or Mobile Scanner to auto-fill rows.',
+          bis: 'Sa wala nga bahin, pag-upload og picture, gamita ang Live Camera, o Mobile Scanner.',
+          tl: 'Sa kaliwang bahagi, mag-upload ng larawan, gamitin ang Live Camera, o Mobile Scanner.',
+        },
+        chips: [
+          { label: 'File Import', icon: 'upload_file', tone: 'green' },
+          { label: 'Live Camera', icon: 'photo_camera', tone: 'neutral' },
+          { label: 'Mobile Scanner', icon: 'smartphone', tone: 'neutral' },
+        ],
       },
       {
-        label: 'fx Formula Bar & Inline Cell Expansion',
-        detail: 'Click any cell to view/edit full text in the top fx bar; long commodity names and notes also expand inline while focused.',
+        title: { en: 'Or add rows manually', bis: 'O pagdugang og linya nga manual', tl: 'O magdagdag ng row nang manual' },
+        detail: {
+          en: 'Click + Add New Row Manually on the right table and fill in Commodity, Unit, Qty, and Dates.',
+          bis: 'I-click ang + Add New Row Manually sa tuo nga table ug sulati ang Commodity, Unit, Qty, ug Petsa.',
+          tl: 'I-click ang + Add New Row Manually sa kanang table at punan ang Commodity, Unit, Qty, at Petsa.',
+        },
+        chips: [{ label: '+ Add New Row Manually', icon: 'add', tone: 'green' }],
       },
       {
-        label: 'Live Batch Code Preview',
-        detail: 'Automatically builds standardized codes (SKU-DELyymm-EXPyymm-SUP) as you fill in Commodity, Dates, and Supplier.',
+        title: { en: 'Save all batches', bis: 'I-save ang tanang batches', tl: 'I-save ang lahat ng batches' },
+        detail: {
+          en: 'Once all required fields are filled, click Register All Batches at the top right.',
+          bis: 'Kung kompleto na ang tanang detalye, i-click ang Register All Batches sa taas sa tuo.',
+          tl: 'Kapag kumpleto na ang lahat, i-click ang Register All Batches sa itaas sa kanan.',
+        },
+        chips: [{ label: 'Register All Batches', icon: 'check', tone: 'green' }],
       },
-      {
-        label: 'Footer Breakdown Pills',
-        detail: 'Shows X Batches · Y Commodities along with sky-blue New (Flagged) vs. Existing catalog counts and Total Units.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Select or Type a Commodity',
-        detail: 'Pick an existing catalog item or type a brand-new commodity name. New items turn sky-blue (New Flagged) and auto-infer Category & Unit.',
-      },
-      {
-        stepTitle: 'Complete Mandatory Columns (*)',
-        detail: 'Enter Category, Unit, Quantity (> 0), Delivery Date, and Expiration Date. Supplier and Notes are optional.',
-      },
-      {
-        stepTitle: 'Add, Split, or Remove Rows',
-        detail: 'Click + Add New Row Manually for more items, use the Split icon to divide a delivery across two expiry dates, or Delete unneeded rows.',
-      },
-      {
-        stepTitle: 'Register All Batches',
-        detail: 'Once the status pill turns ready, click Register All Batches. Any flagged new commodities are automatically added to the catalog too.',
-      },
-    ],
-    rulesAndBadges: [
-      'Sky-blue rows indicate new commodities not yet in your catalog — NutriVision creates them automatically when you save.',
-      'Duplicate batch codes within the same commodity are merged or flagged to keep batch identifiers unique.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
+      { route: 'batches', label: 'Batches' },
       { route: 'commodities', label: 'Commodities' },
     ],
   },
 
   releases: {
     key: 'releases',
-    title: 'Releases Ledger',
+    title: 'Releases',
     icon: 'local_shipping',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Records and audits all commodity dispatches distributed from MNAO to the 22 barangays of Manolo Fortich, and launches multi-batch Bulk Release.',
-    navigation: [
+    summary: {
+      en: 'History of all supplies given out to barangays, with printable release receipts.',
+      bis: 'Listahan sa tanang supplies nga nahatag na sa mga barangay, apil ang printable receipts.',
+      tl: 'Listahan ng lahat ng supplies na naipamigay sa mga barangay, kasama ang printable receipts.',
+    },
+    steps: [
       {
-        label: 'Top-Right Bulk Release Button',
-        detail: 'Opens the full-screen Bulk Release Manifest workspace to dispatch multiple batches to a barangay in one manifest.',
+        title: { en: 'Start a new release', bis: 'Paghimo og bag-ong release', tl: 'Gumawa ng bagong release' },
+        detail: {
+          en: 'Click Bulk Release to pick batches and assign how many units go to each barangay.',
+          bis: 'I-click ang Bulk Release para mopili og batches ug pila ang ihatag sa matag barangay.',
+          tl: 'I-click ang Bulk Release para pumili ng batches at kung ilan ang ibibigay sa bawat barangay.',
+        },
+        chips: [{ label: 'Bulk Release', icon: 'shopping_cart', tone: 'orange' }],
       },
       {
-        label: 'Commodity, Barangay & Search Filters',
-        detail: 'Filter the release ledger by specific commodity, destination barangay, recipient name, or batch code.',
+        title: { en: 'Search past releases', bis: 'Pangitaa ang daan nga releases', tl: 'Hanapin ang mga nakaraang release' },
+        detail: {
+          en: 'Filter by barangay, date, or commodity name to check any past delivery.',
+          bis: 'I-filter pinaagi sa barangay, petsa, o item para makita ang miaging paghatag.',
+          tl: 'I-filter ayon sa barangay, petsa, o item para makita ang nakaraang pagbibigay.',
+        },
       },
       {
-        label: 'Expandable Ledger Rows',
-        detail: 'Click any release row in the table to toggle its hidden detail drawer showing Supplier / Source and Release Notes.',
+        title: { en: 'Print or export PDF', bis: 'I-print o i-save isip PDF', tl: 'I-print o i-save bilang PDF' },
+        detail: {
+          en: 'Click Export PDF on any release record for signing and filing.',
+          bis: 'I-click ang Export PDF para sa pirmahan ug file sa opisina.',
+          tl: 'I-click ang Export PDF para sa pirmahan at record ng opisina.',
+        },
       },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Dispatch Multiple Batches',
-        detail: 'Click Bulk Release in the top-right corner to select active batches, set quantities, and record a barangay distribution.',
-      },
-      {
-        stepTitle: 'Verify Past Barangay Distributions',
-        detail: 'Select a Barangay from the dropdown or type a recipient/BNS name in the search box to audit historical dispatches.',
-      },
-      {
-        stepTitle: 'Inspect Supplier & Notes',
-        detail: 'Click any row in the ledger to view which supplier provided the batch and any remarks entered during release.',
-      },
-    ],
-    rulesAndBadges: [
-      'Every confirmed release automatically deducts stock from the source batch; batches reaching 0 units transition cleanly to Depleted in Archive.',
-      'Export formal Barangay Distribution Summary sheets anytime from the Reports module.',
     ],
     relatedRoutes: [
-      { route: 'bulk-release', label: 'Open Bulk Release' },
-      { route: 'batches', label: 'Batch Management' },
+      { route: 'bulk-release', label: 'Bulk Release' },
       { route: 'reports', label: 'Reports' },
     ],
   },
 
   'bulk-release': {
     key: 'bulk-release',
-    title: 'Bulk Release Manifest',
+    title: 'Bulk Release',
     icon: 'shopping_cart_checkout',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Dispatches multiple active commodity batches to a single destination barangay in one FEFO-guided release transaction.',
-    navigation: [
+    summary: {
+      en: 'Prepare a full distribution list for barangays in one go — oldest-expiring stock is suggested first.',
+      bis: 'Pag-andam og daghang ipanghatag sa mga barangay — ang pinakadali ma-expire ang una nga i-suggest.',
+      tl: 'Maghanda ng maraming ipapamigay sa mga barangay — ang pinakamaagang ma-expire ang unang irerekomenda.',
+    },
+    steps: [
       {
-        label: 'Left Panel — Active Batch Selector',
-        detail: 'Displays non-expired in-stock batches sorted by FEFO (Nearest Expiry First), with search, commodity filter, and sort selector.',
+        title: { en: 'Pick recipient barangay & date', bis: 'Pilia ang barangay ug petsa', tl: 'Piliin ang barangay at petsa' },
+        detail: {
+          en: 'Choose which barangay is receiving the supplies and enter the release date.',
+          bis: 'Pilia ang barangay nga modawat ug ibutang ang petsa sa paghatag.',
+          tl: 'Piliin ang barangay na tatanggap at ilagay ang petsa ng pagbibigay.',
+        },
       },
       {
-        label: 'Right Panel — Dispatch Cart & Destination Form',
-        detail: 'Shows full unwrapped commodity names and batch codes for every selected batch, per-batch Release Qty inputs, and barangay recipient fields.',
+        title: { en: 'Select batches & quantities', bis: 'Pilia ang batches ug gidaghanon', tl: 'Piliin ang batches at dami' },
+        detail: {
+          en: 'Add the items to release. Oldest-expiring batches are marked so you can pick them first.',
+          bis: 'Idugang ang mga items nga ihatag. Gi-markahan ang pinakadali ma-expire para mauna.',
+          tl: 'Idagdag ang mga item na ibibigay. May palatandaan ang pinakamaagang ma-expire para mauna.',
+        },
       },
       {
-        label: 'Back to Releases Button',
-        detail: 'Exits the workspace and returns directly to the updated Releases Ledger.',
+        title: { en: 'Confirm & save release', bis: 'I-confirm ug i-save ang release', tl: 'I-confirm at i-save ang release' },
+        detail: {
+          en: 'Review the summary, then save. Stock counts update automatically.',
+          bis: 'Susiha ang summary, dayon i-save. Awtomatikong makuhaan ang stock.',
+          tl: 'Suriin ang summary, pagkatapos i-save. Awtomatikong mababawas ang stock.',
+        },
       },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Select Batches Following FEFO',
-        detail: 'Check one or more batches on the left table (starting from the top FEFO rows so nearest-expiry items leave first).',
-      },
-      {
-        stepTitle: 'Set Release Quantities in Dispatch Cart',
-        detail: 'In the right-hand Dispatch Cart, enter the exact Release Qty for each selected batch (up to its available active stock).',
-      },
-      {
-        stepTitle: 'Enter Barangay & Recipient Details',
-        detail: 'Choose the destination Barangay, enter the receiving BNS / official Recipient Name, verify the Release Date, and add optional notes.',
-      },
-      {
-        stepTitle: 'Confirm & Release Stock',
-        detail: 'Click Confirm & Release Stock to deduct quantities, log audit entries, and record all dispatches to the Releases Ledger.',
-      },
-    ],
-    rulesAndBadges: [
-      'FEFO Default Sort: Batches closest to expiration appear at the top so staff naturally prevent stock wastage.',
-      'Release quantities cannot exceed available active units on hand.',
     ],
     relatedRoutes: [
-      { route: 'releases', label: 'Releases Ledger' },
-      { route: 'batches', label: 'Batch Management' },
+      { route: 'releases', label: 'Releases' },
+      { route: 'batches', label: 'Batches' },
     ],
   },
 
   archive: {
     key: 'archive',
     title: 'Archive',
-    icon: 'archive',
+    icon: 'inventory',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Preserves historical, depleted, expired, and voided batches alongside archived commodities so active views stay clean without losing audit history.',
-    navigation: [
+    summary: {
+      en: 'Stores old, empty, or expired batches so your active Batches list stays clean.',
+      bis: 'Tipiganan sa mga daan, hurot, o expired nga batches para limpyo ang active list.',
+      tl: 'Taguan ng mga luma, ubos, o expired na batches para malinis ang active list.',
+    },
+    steps: [
       {
-        label: 'Search & Category Dropdown',
-        detail: 'Search across batch codes, commodities, void reasons, or staff names, or switch categories from the dropdown.',
+        title: { en: 'View past records', bis: 'Tan-awa ang daan nga records', tl: 'Tingnan ang mga lumang record' },
+        detail: {
+          en: 'Search or filter archived batches anytime for audit or reference.',
+          bis: 'Pangitaa ang bisan unsang archived batch kung kinahanglan og reference.',
+          tl: 'Hanapin ang kahit anong archived batch kapag kailangan ng reference.',
+        },
       },
       {
-        label: 'Quick Filter Pills',
-        detail: 'One-click pills filter between All Records, Expired Stock, Data Entry Errors, Other Voided, Depleted Batches, and Archived Commodities.',
+        title: { en: 'Restore if needed', bis: 'I-restore kung kinahanglan', tl: 'I-restore kung kailangan' },
+        detail: {
+          en: 'If a batch was archived by mistake, click Restore to move it back to Batches.',
+          bis: 'Kung nasayop og archive, i-click ang Restore para mabalik sa Batches.',
+          tl: 'Kung nagkamali sa pag-archive, i-click ang Restore para maibalik sa Batches.',
+        },
       },
-      {
-        label: 'Restore & History Actions',
-        detail: 'Depleted batches let you inspect full release history; Archived Commodities offer a 1-click Restore button.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Audit Expired or Voided Stock',
-        detail: 'Click Expired Stock or Data Entry Errors pills to review why batches were removed and which staff member recorded the action.',
-      },
-      {
-        stepTitle: 'Trace Fully Consumed Batches',
-        detail: 'Select Depleted Batches to inspect batches whose stock reached 0 through legitimate barangay releases.',
-      },
-      {
-        stepTitle: 'Restore a Discontinued Commodity',
-        detail: 'Open Archived Commodities and click Restore if MNAO resumes receiving that commodity in future deliveries.',
-      },
-    ],
-    rulesAndBadges: [
-      'NutriVision never hard-deletes inventory history — archived and voided records remain permanently traceable for COA/MNAO audits.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
-      { route: 'commodities', label: 'Commodities' },
+      { route: 'batches', label: 'Batches' },
     ],
   },
 
@@ -437,59 +390,59 @@ export const MODULE_GUIDES = {
     icon: 'water_drop',
     theme: 'blue',
     adminOnly: false,
-    purpose:
-      'Manages human donor breastmilk intake (Form MH.MNAO.FM.002.00), pasteurized BM-XXX batches, Virtual Freezer shelf mapping, infant dispensing, and Milk Bank audit reports.',
-    navigation: [
+    summary: {
+      en: 'Track breastmilk from donor registration, milk arrival, pasteurization & freezer shelves, up to baby dispensing.',
+      bis: 'I-track ang breastmilk gikan sa donor, pag-abot sa gatas, pag-pasteurize, freezer, hangtod sa paghatag sa bata.',
+      tl: 'Subaybayan ang breastmilk mula sa donor, pagdating ng gatas, pasteurization, freezer, hanggang pagbibigay sa sanggol.',
+    },
+    steps: [
       {
-        label: 'Top 4 Milk Metrics Cards',
-        detail: 'Live volume indicators for Available Pasteurized Milk (mL), Active Pasteurized Batches, Raw Milk Awaiting Pasteurization, and Total Dispensed.',
+        title: { en: '1. Record donors in Donor Log', bis: '1. I-record ang donor sa Donor Log', tl: '1. I-record ang donor sa Donor Log' },
+        detail: {
+          en: 'Click + Add Row, enter donor name, barangay, optional phone, dates, and volume, then Save. New entries also pre-fill Log of Milk Received.',
+          bis: 'I-click ang + Add Row, isulod ang ngalan, barangay, ug volume, dayon i-Save. Awtomatikong mo-fill usab kini sa Log of Milk Received.',
+          tl: 'I-click ang + Add Row, ilagay ang pangalan, barangay, at volume, tapos i-Save. Awtomatiko ring lalabas ito sa Log of Milk Received.',
+        },
+        chips: [
+          { label: '+ Add Row', icon: 'add', tone: 'blue' },
+          { label: 'Save', icon: 'check', tone: 'blue' },
+        ],
       },
       {
-        label: 'Tab 1 — Freezer Inventory',
-        detail: 'Interactive Virtual Freezer Map + Pasteurized Batch table with 1-year expiry Traffic-Light badges, shelf relocation, and Dispense triggers.',
+        title: { en: '2. Check condition in Log of Milk Received', bis: '2. I-check sa Log of Milk Received', tl: '2. I-check sa Log of Milk Received' },
+        detail: {
+          en: 'Verify Transport & Arrival dates and mark Condition as ok or compromised. Use the filter to view OK or Compromised rows.',
+          bis: 'Susiha ang Transport ug Arrival dates ug pilia kung ok o compromised ang gatas.',
+          tl: 'Suriin ang Transport at Arrival dates at piliin kung ok o compromised ang gatas.',
+        },
       },
       {
-        label: 'Tab 2 — Donation Intake',
-        detail: 'Logs expressed breastmilk from donor mothers (real Donor Name, barangay, volume mL, expression date) and pools raw milk into pasteurized batches.',
+        title: { en: '3. Pasteurize & manage Virtual Freezer', bis: '3. Pasteurize ug Virtual Freezer', tl: '3. Pasteurize at Virtual Freezer' },
+        detail: {
+          en: 'Log pasteurized batches (1-year default expiry). Switch to Virtual Freezer to move bags between shelves or click Settings to rename/change shelf capacity.',
+          bis: 'I-log ang pasteurized batches. Gamita ang Virtual Freezer para magbalhin og bags o Settings para usbon ang ngalan ug max bags.',
+          tl: 'I-log ang pasteurized batches. Gamitin ang Virtual Freezer para maglipat ng bags o Settings para palitan ang pangalan at max bags.',
+        },
+        chips: [
+          { label: 'Settings', icon: 'settings', tone: 'neutral' },
+        ],
       },
       {
-        label: 'Tab 3 — Dispense Log',
-        detail: 'Chronological ledger of milk dispensed to recipient infants with clinical indication and printable PDF summaries.',
-      },
-      {
-        label: 'Tab 4 — Audit Trail',
-        detail: 'Read-only chronological log of all Milk Bank actions with action filter and Export PDF official print preview.',
-      },
-      {
-        label: 'Tab 5 — Analytics & Distribution',
-        detail: 'Executive distribution charts across barangays, individual Top Donor Mothers volume charts, award recognition podium (1st, 2nd, 3rd), and printable Award Giving summary PDF.',
+        title: { en: '4. Dispense & check Advisor', bis: '4. Ipanghatag ug tan-awa ang Advisor', tl: '4. Ipamigay at tingnan ang Advisor' },
+        detail: {
+          en: 'Give out oldest-expiring bags first in Dispensing Ledger. Open the red Advisor tab for charts, Donor Outreach (By Barangay or By Individual Donation), and Expiry Check.',
+          bis: 'Unaha ang pinakadali ma-expire sa Dispensing Ledger. Ablihi ang Advisor tab para sa charts ug Expiry Check.',
+          tl: 'Unahin ang pinakamaagang ma-expire sa Dispensing Ledger. Buksan ang Advisor tab para sa charts at Expiry Check.',
+        },
+        chips: [
+          { label: 'Advisor', icon: 'insights', tone: 'red' },
+        ],
       },
     ],
-    howToUse: [
-      {
-        stepTitle: 'Record Donor Milk Intake',
-        detail: 'Open Donation Intake, enter the Donor Name, Barangay, Volume (mL), and Expression Date, then save the donation entry.',
-      },
-      {
-        stepTitle: 'Pasteurize & Assign Freezer Shelf',
-        detail: 'Pool raw donor milk into a pasteurized batch (BM-XXX), pick a Freezer Unit & Shelf Location; expiry auto-sets to 1 year from pasteurization.',
-      },
-      {
-        stepTitle: 'Dispense Pasteurized Milk to Infants',
-        detail: 'In Freezer Inventory, click Dispense on a valid non-expired batch, record recipient infant details, barangay, indication, and mL dispensed.',
-      },
-      {
-        stepTitle: 'Review Distribution & Honor Top Donors',
-        detail: 'Open Analytics & Distribution to review barangay infant dispensing charts, award citations for top donor mothers, and export official Award Giving summary PDFs.',
-      },
-      {
-        stepTitle: 'Export Official Milk Bank PDFs',
-        detail: 'Use Export PDF inside Dispense Log or Audit Trail to preview and print official MNAO Milk Bank documentation.',
-      },
-    ],
-    rulesAndBadges: [
-      '1-Year Pasteurized Expiry Policy: Pasteurized breastmilk expires strictly 1 year from pasteurization date and follows the 4-tier Traffic-Light system.',
-      'Expired pasteurized batches (≤ 0 days left) are automatically blocked from infant dispensing.',
+    badges: [
+      { label: 'Good (>180d)', tone: 'green', meaning: { en: 'Safe, long shelf-life remaining', bis: 'Maayo pa ug dugay pa ma-expire', tl: 'Maayos pa at matagal pa bago ma-expire' } },
+      { label: 'Near Expiry (≤90d)', tone: 'amber', meaning: { en: 'Give out first (FEFO priority)', bis: 'Unahon og hatag', tl: 'Unahing ipamigay' } },
+      { label: 'Expired', tone: 'red', meaning: { en: 'Do not dispense — remove from shelf', bis: 'Ayaw ihatag — kuhaa sa freezer', tl: 'Huwag ipamigay — alisin sa freezer' } },
     ],
     relatedRoutes: [
       { route: 'dashboard', label: 'Dashboard' },
@@ -499,142 +452,112 @@ export const MODULE_GUIDES = {
 
   calendar: {
     key: 'calendar',
-    title: 'Program Calendar',
+    title: 'Calendar',
     icon: 'calendar_month',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Unifies MNAO nutrition program schedules, assigned responsible personnel, batch delivery dates, and upcoming batch expirations on one offline-ready calendar.',
-    navigation: [
+    summary: {
+      en: 'See upcoming nutrition events, scheduled deliveries, and batch expiry dates on one monthly calendar.',
+      bis: 'Makita sa usa ka kalendaryo ang mga schedule sa nutrition events, deliveries, ug expiry dates.',
+      tl: 'Makikita sa isang kalendaryo ang mga schedule ng nutrition events, deliveries, at expiry dates.',
+    },
+    steps: [
       {
-        label: 'Color Legend Chips',
-        detail: 'Blue = Batch Delivery, Green/Yellow/Orange/Red = Batch Expiration Traffic-Light status, Purple = Scheduled Program Event.',
+        title: { en: 'Add an event', bis: 'Pagdugang og event', tl: 'Magdagdag ng event' },
+        detail: {
+          en: 'Click any date or the + Add Event button to schedule a feeding program or donor drive.',
+          bis: 'I-click ang bisan unsang petsa o + Add Event para mag-schedule og kalihokan.',
+          tl: 'I-click ang kahit anong petsa o + Add Event para mag-schedule ng gawain.',
+        },
+        chips: [{ label: '+ Add Event', icon: 'add', tone: 'green' }],
       },
       {
-        label: 'Month / Week / List View Switcher',
-        detail: 'Use top-right calendar controls to toggle between Monthly grid, Weekly schedule, and List Month agenda view (showing Person in Charge pills).',
+        title: { en: 'Check expiry markers', bis: 'Tan-awa ang expiry markers', tl: 'Tingnan ang expiry markers' },
+        detail: {
+          en: 'Colored dots show when batches expire so you can plan distributions early.',
+          bis: 'Ang mga kolor nga tuldok nagpakita kanus-a ma-expire ang mga batch.',
+          tl: 'Ang mga may kulay na tuldok ay nagpapakita kung kailan ma-expire ang batches.',
+        },
       },
-      {
-        label: '+ Add Event & Event Details Modal',
-        detail: 'Click + Add Event to schedule an activity, or click any calendar chip to inspect full batch/event details, Edit Event, or Delete Event.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Schedule a Program Event',
-        detail: 'Click + Add Event, enter the Event Title, assign a required Person in Charge (pick MNAO staff, click Assign to me, or type a BNS name), and set Date/Time.',
-      },
-      {
-        stepTitle: 'Inspect or Update Existing Events',
-        detail: 'Click any purple Program Event on the calendar to view its Person in Charge and notes, then click Edit Event to update details or reassign staff.',
-      },
-      {
-        stepTitle: 'Monitor Upcoming Expirations',
-        detail: 'Switch to List Month view to scan all batch expirations and scheduled barangay nutrition activities for the entire month.',
-      },
-    ],
-    rulesAndBadges: [
-      'Person in Charge is mandatory on all Program Events so every scheduled barangay or office activity has clear accountability.',
-      'Offline-Ready: Custom events save locally when internet drops and sync automatically to Supabase once back online.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
-      { route: 'advisor', label: 'Inventory Advisor' },
+      { route: 'dashboard', label: 'Dashboard' },
+      { route: 'advisor', label: 'Advisor' },
     ],
   },
 
   reports: {
     key: 'reports',
-    title: 'Analytics & Reporting',
+    title: 'Reports',
     icon: 'assessment',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Generates, previews, and exports official MNAO inventory, expiration status, and barangay distribution reports in printable PDF and CSV formats.',
-    navigation: [
+    summary: {
+      en: 'Download official printable PDF and Excel/CSV reports for inventory, releases, and monthly summaries.',
+      bis: 'Pag-download og opisyal nga PDF ug CSV reports para sa inventory ug monthly summary.',
+      tl: 'Mag-download ng opisyal na PDF at CSV reports para sa inventory at monthly summary.',
+    },
+    steps: [
       {
-        label: 'Left Column — Official Report Selector',
-        detail: 'Choose between Batch Inventory & Expiry Status, Barangay Distribution Summary, or Commodity Stock Summary.',
+        title: { en: 'Pick report type & dates', bis: 'Pilia ang klase sa report ug petsa', tl: 'Piliin ang uri ng report at petsa' },
+        detail: {
+          en: 'Choose the date range and report category you need to print.',
+          bis: 'Pilia ang petsa ug klase sa report nga imong i-print.',
+          tl: 'Piliin ang petsa at uri ng report na kailangan i-print.',
+        },
       },
       {
-        label: 'Right Column — Filter Parameters',
-        detail: 'Refine your report by Date Range, Barangay, Commodity Category, or Expiration Status before generating.',
+        title: { en: 'Export PDF or CSV', bis: 'I-export isip PDF o CSV', tl: 'I-export bilang PDF o CSV' },
+        detail: {
+          en: 'Click Export PDF for a ready-to-sign form, or CSV to open in Excel.',
+          bis: 'I-click ang Export PDF para sa pirmahan, o CSV para ablihan sa Excel.',
+          tl: 'I-click ang Export PDF para sa pirmahan, o CSV para buksan sa Excel.',
+        },
+        chips: [
+          { label: 'Export PDF', icon: 'print', tone: 'neutral' },
+          { label: 'CSV', icon: 'table_view', tone: 'neutral' },
+        ],
       },
-      {
-        label: 'Live Preview & Export Toolbar',
-        detail: 'Review exact rows on screen, then export clean formatted PDF printouts (with MNAO header) or CSV spreadsheets.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Select Your Report Model',
-        detail: 'Pick the report card matching your compliance need (e.g., Barangay Distribution Summary for monthly LGU submission).',
-      },
-      {
-        stepTitle: 'Set Date Range & Filters',
-        detail: 'Choose start/end dates or filter to a specific barangay/status, then generate the live preview table below.',
-      },
-      {
-        stepTitle: 'Export PDF or CSV',
-        detail: 'Click Export PDF for a print-ready official MNAO document with signatory blocks, or Export CSV to open in Excel/Google Sheets.',
-      },
-    ],
-    rulesAndBadges: [
-      'PDF previews work identically on both Web browsers and the standalone NutriVision Desktop app.',
     ],
     relatedRoutes: [
-      { route: 'releases', label: 'Releases Ledger' },
-      { route: 'batches', label: 'Batch Management' },
+      { route: 'releases', label: 'Releases' },
+      { route: 'milk', label: 'Milk Bank' },
     ],
   },
 
   defects: {
     key: 'defects',
-    title: 'Defects & Returns',
-    icon: 'assignment_return',
+    title: 'Defects & Spoilage',
+    icon: 'report_problem',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Universal inventory log sheet for managing Quarantined stock under observation, goods Returned to suppliers, and Disposed / condemned commodities.',
-    navigation: [
+    summary: {
+      en: 'Log damaged, spoiled, or recalled supplies so inventory counts stay accurate.',
+      bis: 'I-record ang mga nadaot o nadunot nga supply para sakto pirmi ang ihap sa stock.',
+      tl: 'I-record ang mga nasira o nabulok na supply para laging tama ang bilang ng stock.',
+    },
+    steps: [
       {
-        label: '+ Log Stock Event Button',
-        detail: 'Opens the event dialog to record quarantined holds, supplier returns, or condemned inventory deductions.',
+        title: { en: 'Report a damaged item', bis: 'I-report ang nadaot nga item', tl: 'I-report ang nasirang item' },
+        detail: {
+          en: 'Click + Report Defect, pick the batch, enter how many units were damaged, and type the reason.',
+          bis: 'I-click ang + Report Defect, pilia ang batch, pila ka buok ang nadaot, ug isulat ang rason.',
+          tl: 'I-click ang + Report Defect, piliin ang batch, ilan ang nasira, at ilagay ang dahilan.',
+        },
+        chips: [{ label: '+ Report Defect', icon: 'add', tone: 'red' }],
       },
       {
-        label: '3 KPI Summary Cards',
-        detail: 'Track counts and volume in order: Quarantined (active hold), Returned (supplier returns), and Disposed (condemned).',
+        title: { en: 'Automatic stock update', bis: 'Awtomatikong update sa stock', tl: 'Awtomatikong update sa stock' },
+        detail: {
+          en: 'Damaged units are deducted from usable stock right away and recorded in the audit log.',
+          bis: 'Makuhaan dayon ang magamit nga stock ug ma-save sa audit log.',
+          tl: 'Agad mababawas sa magagamit na stock at mare-record sa audit log.',
+        },
       },
-      {
-        label: 'Category Tabs: Quarantined, Returned, Disposed',
-        detail: 'Instantly toggle between stock under observation, supplier returns, and write-offs with live search.',
-      },
-      {
-        label: 'Quarantine Resolution & Slips',
-        detail: 'Quarantined rows allow partial or full resolution (Restore to stock, Return to supplier, or Dispose) with on-the-fly printable slips.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Log Suspect or Defective Stock',
-        detail: 'Click + Log Stock Event, select the active batch, pick the action (Quarantined, Returned, or Disposed), enter quantity, and document the reason.',
-      },
-      {
-        stepTitle: 'Resolve Quarantined Stock',
-        detail: 'Under the Quarantined tab, click Resolve to restore cleared units back to active inventory, send rejected units back to supplier, or condemn them. Any un-resolved units remain under quarantine.',
-      },
-      {
-        stepTitle: 'Generate Official Document Slips',
-        detail: 'Click [Slip] on any row to generate an on-the-fly printable document with signature blocks without bloating database storage.',
-      },
-    ],
-    rulesAndBadges: [
-      'Quarantined stock is immediately frozen out of active inventory so staff cannot accidentally distribute suspect goods.',
-      'SaaS log sheet design maintains instant multi-device synchronization with zero storage bloat.',
     ],
     relatedRoutes: [
-      { route: 'batches', label: 'Batch Management' },
-      { route: 'archive', label: 'Archive' },
+      { route: 'batches', label: 'Batches' },
+      { route: 'audit-logs', label: 'Audit Logs' },
     ],
   },
 
@@ -644,39 +567,29 @@ export const MODULE_GUIDES = {
     icon: 'group',
     theme: 'green',
     adminOnly: true,
-    purpose:
-      'Administrator console for provisioning MNAO staff accounts, managing Administrator vs. Nutrition Personnel roles, and controlling active access.',
-    navigation: [
+    summary: {
+      en: 'Admin only: create staff accounts, set roles (Admin or Staff), and activate or deactivate access.',
+      bis: 'Para sa Admin ra: paghimo og account sa staff, paghatag og role, ug pag-lock o abli sa access.',
+      tl: 'Para sa Admin lang: gumawa ng staff account, magbigay ng role, at mag-activate o deactivate ng access.',
+    },
+    steps: [
       {
-        label: 'Staff Summary Cards',
-        detail: 'Displays counts of Total Staff, Active Accounts, Administrators, and Deactivated Accounts.',
+        title: { en: 'Add a new staff user', bis: 'Pagdugang og bag-ong staff', tl: 'Magdagdag ng bagong staff' },
+        detail: {
+          en: 'Click + Add User, fill in their name, email, and role (Administrator or Staff).',
+          bis: 'I-click ang + Add User, isulod ang ngalan, email, ug role.',
+          tl: 'I-click ang + Add User, ilagay ang pangalan, email, at role.',
+        },
+        chips: [{ label: '+ Add User', icon: 'person_add', tone: 'green' }],
       },
       {
-        label: 'Search, Role & Status Filters',
-        detail: 'Locate personnel quickly by name/email or filter by Administrator, Nutrition Personnel, Active, or Inactive.',
+        title: { en: 'Edit or deactivate', bis: 'I-edit o i-deactivate', tl: 'I-edit o i-deactivate' },
+        detail: {
+          en: 'Update a staff member’s role or disable their login anytime.',
+          bis: 'Usba ang role o i-disable ang login kung wala na sa opisina.',
+          tl: 'Palitan ang role o i-disable ang login kung wala na sa opisina.',
+        },
       },
-      {
-        label: '+ Add User & Activity Logs Buttons',
-        detail: 'Provision new staff credentials without logging out of your Admin session, or inspect per-user activity logs.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Create a Staff Account',
-        detail: 'Click + Add User, enter First Name and Last Name, use the suggested YYYYNNNN@mnao.ph Account ID (or custom email), pick a Role, and set a strong password.',
-      },
-      {
-        stepTitle: 'Update Roles or Reset Passwords',
-        detail: 'Use row action buttons on any staff record to promote/demote roles or assist personnel with credential updates.',
-      },
-      {
-        stepTitle: 'Deactivate Former Personnel',
-        detail: 'Toggle an account to Inactive when staff leave or rotate; access is revoked immediately while preserving historical audit attribution.',
-      },
-    ],
-    rulesAndBadges: [
-      'Administrator-Only Module: Nutrition Personnel cannot view or modify User Management.',
-      'All new passwords enforce the 8+ character strong password checklist (uppercase, lowercase, number, and symbol).',
     ],
     relatedRoutes: [
       { route: 'audit-logs', label: 'Audit Logs' },
@@ -690,39 +603,31 @@ export const MODULE_GUIDES = {
     icon: 'history',
     theme: 'green',
     adminOnly: true,
-    purpose:
-      'Provides Administrators with a complete, tamper-evident chronological trail of all inventory, commodity, release, defect, and Milk Bank operations.',
-    navigation: [
+    summary: {
+      en: 'Admin only: a complete history of who logged in and every change made in the system.',
+      bis: 'Para sa Admin ra: kompleto nga listahan kung kinsa ang nag-login ug tanang kausaban sa sistema.',
+      tl: 'Para sa Admin lang: kumpletong listahan kung sino ang nag-login at lahat ng pagbabago sa system.',
+    },
+    steps: [
       {
-        label: 'Keyword Search Bar',
-        detail: 'Search by staff member name, batch number, commodity name, barangay, or action description.',
+        title: { en: 'Filter by user or action', bis: 'I-filter pinaagi sa user o aksyon', tl: 'I-filter ayon sa user o gawain' },
+        detail: {
+          en: 'Search a staff name or pick an action type (Login, Create, Update, Delete).',
+          bis: 'Pangitaa ang ngalan sa staff o pilia ang klase sa aksyon.',
+          tl: 'Hanapin ang pangalan ng staff o piliin ang uri ng gawain.',
+        },
       },
       {
-        label: 'Module Category Filter',
-        detail: 'Filter entries by Commodities, Batches & Releases, Defects & Quarantine, or Milk Bank operations.',
+        title: { en: 'Review timestamps', bis: 'Susiha ang petsa ug oras', tl: 'Suriin ang petsa at oras' },
+        detail: {
+          en: 'Logs are read-only and cannot be edited, keeping records trustworthy.',
+          bis: 'Dili mausab ang logs para sigurado nga tinuod ang record.',
+          tl: 'Hindi nababago ang logs para siguradong totoo ang record.',
+        },
       },
-      {
-        label: 'Paginated Activity Ledger',
-        detail: 'Shows exact Philippine local date/time, action badge, acting staff member, and detailed record summary.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Investigate Any Inventory Change',
-        detail: 'Type a batch code or commodity name into the search box to see every creation, edit, release, or void event tied to it.',
-      },
-      {
-        stepTitle: 'Filter by Operational Area',
-        detail: 'Select a category dropdown filter (e.g., Batches or Defects) when conducting periodic MNAO internal reviews.',
-      },
-    ],
-    rulesAndBadges: [
-      'Administrator-Only Module: Audit entries are append-only and cannot be edited or deleted from the client.',
-      'Milk Bank personnel can still view and export Milk-specific logs inside Milk Bank -> Audit Trail.',
     ],
     relatedRoutes: [
       { route: 'users', label: 'User Management' },
-      { route: 'archive', label: 'Archive' },
     ],
   },
 
@@ -732,42 +637,32 @@ export const MODULE_GUIDES = {
     icon: 'manage_accounts',
     theme: 'green',
     adminOnly: false,
-    purpose:
-      'Lets you personalize your profile photo, update your First and Last Name, manage your MNAO Account ID / email, and update your password.',
-    navigation: [
+    summary: {
+      en: 'Update your display name (used on printed PDFs) and change your password.',
+      bis: 'Usba ang imong ngalan (nga mogawas sa PDF) ug ilisi ang imong password.',
+      tl: 'Palitan ang iyong pangalan (na lalabas sa PDF) at magpalit ng password.',
+    },
+    steps: [
       {
-        label: 'Top-Right Navbar Shortcut',
-        detail: 'Click the "Hi, <FirstName>!" profile pill in the top-right header from any page to open Account Settings.',
+        title: { en: 'Update your name', bis: 'Usba ang imong ngalan', tl: 'Palitan ang iyong pangalan' },
+        detail: {
+          en: 'Edit your Full Name and click Save — this appears on your printed PDF signature line.',
+          bis: 'Usba ang Full Name ug i-Save — kini ang mogawas sa pirma sa PDF.',
+          tl: 'I-edit ang Full Name at i-Save — ito ang lalabas sa pirma sa PDF.',
+        },
+        chips: [{ label: 'Save', icon: 'check', tone: 'green' }],
       },
       {
-        label: 'Profile Information Card',
-        detail: 'Upload/remove your profile avatar (auto-cropped square), edit First Name & Last Name, and update your Office Email / Account ID.',
+        title: { en: 'Change password', bis: 'Ilisi ang password', tl: 'Magpalit ng password' },
+        detail: {
+          en: 'Enter your current password and a new password if you want to update your login.',
+          bis: 'Isulod ang daan ug bag-ong password kung gusto ka mag-ilis.',
+          tl: 'Ilagay ang luma at bagong password kung gusto mong magpalit.',
+        },
       },
-      {
-        label: 'Security & Password Card',
-        detail: 'Change your login password with live feedback from the 5-rule strong password checklist.',
-      },
-    ],
-    howToUse: [
-      {
-        stepTitle: 'Upload a Profile Photo',
-        detail: 'Click Upload Photo, pick an image, and click Save Profile Changes — your avatar updates immediately in the top navbar.',
-      },
-      {
-        stepTitle: 'Update Your Name or Account ID',
-        detail: 'Edit First Name / Last Name (updates "Hi, <FirstName>!" live) or click Use Recommended ID to adopt the standard YYYYNNNN@mnao.ph format.',
-      },
-      {
-        stepTitle: 'Change Password Securely',
-        detail: 'Enter a new password satisfying all checklist indicators (8+ chars, upper, lower, number, special character), confirm it, and click Update Password.',
-      },
-    ],
-    rulesAndBadges: [
-      'Sign Out is located at the bottom-left footer of the navigation sidebar (or bottom nav on mobile) to prevent accidental logouts while editing settings.',
     ],
     relatedRoutes: [
       { route: 'dashboard', label: 'Dashboard' },
     ],
   },
 };
-
