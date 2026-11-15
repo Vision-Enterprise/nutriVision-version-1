@@ -219,11 +219,20 @@ export function renderCards(commodities, stockMap = {}) {
               </div>
 
               <!-- Description -->
-              <p class="commodity-card__desc" title="${escapeHtml(c.description || '')}">
-                ${c.description
-                  ? escapeHtml(c.description)
-                  : '<em style="opacity:0.75;">No description provided.</em>'}
-              </p>
+              ${(() => {
+                const desc = c.description ? String(c.description).trim() : '';
+                const hasLongDesc = Boolean(desc && (desc.length > 85 || desc.includes('\n')));
+                return `
+                  <div class="commodity-card__desc-wrap">
+                    <p class="commodity-card__desc${hasLongDesc ? ' commodity-card__desc--clamped' : ''}" title="${escapeHtml(desc)}">
+                      ${desc ? escapeHtml(desc) : '<em style="opacity:0.75;">No description provided.</em>'}
+                    </p>
+                    ${hasLongDesc
+                      ? `<button type="button" class="commodity-card__desc-toggle" data-desc-toggle="${c.id}" aria-expanded="false">See more</button>`
+                      : ''}
+                  </div>
+                `;
+              })()}
             </div>
 
             <div class="commodity-card__footer">

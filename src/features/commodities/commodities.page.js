@@ -242,6 +242,18 @@ function _attachPageListeners(content) {
       return;
     }
 
+    const descToggleBtn = e.target.closest('.commodity-card__desc-toggle');
+    if (descToggleBtn) {
+      const wrap = descToggleBtn.closest('.commodity-card__desc-wrap');
+      const descEl = wrap?.querySelector('.commodity-card__desc');
+      if (descEl) {
+        const isExpanded = !descEl.classList.toggle('commodity-card__desc--clamped');
+        descToggleBtn.textContent = isExpanded ? 'Show less' : 'See more';
+        descToggleBtn.setAttribute('aria-expanded', String(isExpanded));
+      }
+      return;
+    }
+
     if (stockBtn) {
       e.stopPropagation();
       const commId = stockBtn.dataset.filterCommodity;
