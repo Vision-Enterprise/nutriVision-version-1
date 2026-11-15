@@ -296,10 +296,6 @@ function generateReportHTML(title, data, modelId, filters = {}, profile, origina
           </div>
         </div>
       </div>
-
-      <div class="footer">
-        Official Document &bull; Municipal Nutrition Action Office, Manolo Fortich, Bukidnon
-      </div>
     </body>
     </html>
   `;
