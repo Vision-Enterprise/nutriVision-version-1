@@ -3490,6 +3490,12 @@
   cursor: not-allowed;
 }
 
+/* Hide Edge / WebView2 native password reveal/clear icons (prevents duplicate eye icons) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
 
 
 

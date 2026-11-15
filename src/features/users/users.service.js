@@ -215,15 +215,18 @@ export async function createUser(formData, adminProfile) {
 
     // Best-effort sync of separate first_name / last_name columns on public.profiles
     if (firstName || lastName) {
-      await supabase
-        .from('profiles')
-        .update({
-          first_name: firstName || null,
-          last_name:  lastName || null,
-          full_name:  fullName,
-        })
-        .eq('id', createdUser.id)
-        .catch(() => {});
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            first_name: firstName || null,
+            last_name:  lastName || null,
+            full_name:  fullName,
+          })
+          .eq('id', createdUser.id);
+      } catch {
+        // Ignore if first_name / last_name columns are not present yet
+      }
     }
 
     // Record audit log entry using the Admin's authenticated client
