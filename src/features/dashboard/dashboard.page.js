@@ -31,7 +31,7 @@ export async function renderDashboardPage(profile) {
 
   const [stats, activity, advisorRes] = await Promise.all([
     fetchDashboardStats(),
-    fetchRecentActivity(5),
+    fetchRecentActivity(5, profile),
     fetchAdvisorData()
   ]);
 

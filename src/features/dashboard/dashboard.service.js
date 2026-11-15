@@ -6,7 +6,7 @@
 
 import { supabase } from '../../core/supabase.js';
 import { getExpirationStatus } from '../../shared/utils/date.utils.js';
-import { EXPIRATION_STATUS, RECORD_STATUS } from '../../shared/constants/app.constants.js';
+import { EXPIRATION_STATUS, RECORD_STATUS, ROLES } from '../../shared/constants/app.constants.js';
 import { hydrateCommodityShelfLife } from '../../shared/utils/shelf-life.utils.js';
 
 /**
@@ -112,9 +112,9 @@ export async function fetchDashboardStats() {
  * @param {number} limit
  * @returns {Promise<{ logs: Array, error: string|null }>}
  */
-export async function fetchRecentActivity(limit = 5) {
+export async function fetchRecentActivity(limit = 5, profile = null) {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('audit_logs')
       .select(`
         id,
@@ -127,6 +127,13 @@ export async function fetchRecentActivity(limit = 5) {
       `)
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    // Nutrition Personnel only see their own recent activity; Admins see system-wide logs
+    if (profile?.role !== ROLES.ADMINISTRATOR && profile?.id) {
+      query = query.eq('user_id', profile.id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
