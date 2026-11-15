@@ -157,8 +157,6 @@ export function renderCards(commodities, stockMap = {}) {
         const art = getCategoryArtwork(c);
         const hasPhoto = Boolean(c.image_url && String(c.image_url).trim());
         const stock = stockMap[c.id] || { activeBatchCount: 0, totalUnits: 0, urgentBatchCount: 0 };
-        const isStandardPolicy = policy.mode === SHELF_LIFE_MODES.STANDARD;
-        const policyBadgeLabel = policy.badgeLabel || 'Standard Shelf';
 
         return `
           <article class="commodity-card" data-commodity-id="${c.id}">
@@ -170,10 +168,6 @@ export function renderCards(commodities, stockMap = {}) {
                 : `<div class="commodity-card__artwork">${art.svgHtml}</div>`}
               <div class="commodity-card__badges">
                 <code class="commodity-card__sku">${escapeHtml(c.commodity_code)}</code>
-                <span class="commodity-card__policy-pill ${isStandardPolicy ? 'commodity-card__policy-pill--standard' : ''}"
-                      title="${escapeHtml(policy.label)}">
-                  ${escapeHtml(policyBadgeLabel)}
-                </span>
               </div>
             </div>
 
