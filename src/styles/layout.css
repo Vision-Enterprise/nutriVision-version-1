@@ -589,6 +589,7 @@ body.sidebar--compressed .main-wrapper {
   padding: var(--content-padding);
   width: 100%;
   max-width: var(--content-max-width);
+  margin: 0 auto;
   min-width: 0;
   box-sizing: border-box;
 }

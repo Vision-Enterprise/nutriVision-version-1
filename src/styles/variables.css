@@ -116,7 +116,7 @@
   --sidebar-width:      260px;
   --sidebar-width-compressed: 80px;
   --header-height:      64px;
-  --content-max-width:  1280px;
+  --content-max-width:  100%;
   --content-padding:    var(--space-6);
 
   /* â”€â”€ Z-index Scale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
