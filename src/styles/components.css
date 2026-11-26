@@ -1005,10 +1005,15 @@
 
 
 /* --- FULL SCREEN WORKSPACE OVERLAY --- */
+body:has(.workspace-overlay) {
+  overflow: hidden !important;
+}
+
 .workspace-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
+  overflow: hidden;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
