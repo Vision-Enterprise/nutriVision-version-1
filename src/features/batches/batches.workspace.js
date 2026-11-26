@@ -258,14 +258,24 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
                <span class="zoom-pill-label" id="scanner-zoom-label" title="Reset receipt zoom">100%</span>
                <button type="button" class="zoom-pill-btn" id="scanner-zoom-in" aria-label="Zoom in receipt">+</button>
              </div>
-             <button class="scanner-hamburger-btn" id="scanner-collapse-btn" title="Collapse scanner pane" aria-label="Toggle scanner pane">
-               <span></span><span></span><span></span>
+             <button class="scanner-hamburger-btn" id="scanner-collapse-btn" type="button" title="Collapse scanner pane" aria-label="Collapse scanner pane">
+               <svg class="scanner-gemini-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                 <rect x="3" y="4" width="18" height="16" rx="3.5" />
+                 <line x1="9" y1="4.5" x2="9" y2="19.5" />
+                 <polyline class="scanner-gemini-arrow scanner-gemini-arrow--collapse" points="16.5 9.2 13.5 12 16.5 14.8" />
+               </svg>
              </button>
            </div>
          </div>
          <div id="bulk-scanner-container" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
-         <button id="scanner-pane-toggle-tab" title="Expand scanner pane" aria-label="Expand scanner pane">
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+         <button id="scanner-pane-toggle-tab" type="button" title="Expand scanner pane" aria-label="Expand scanner pane">
+           <span class="scanner-gemini-circle">
+             <svg class="scanner-gemini-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <rect x="3" y="4" width="18" height="16" rx="3.5" />
+               <line x1="9" y1="4.5" x2="9" y2="19.5" />
+               <polyline class="scanner-gemini-arrow scanner-gemini-arrow--expand" points="14 9.2 17 12 14 14.8" />
+             </svg>
+           </span>
          </button>
       </div>
 
