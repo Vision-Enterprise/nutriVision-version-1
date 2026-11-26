@@ -159,70 +159,79 @@ export function renderMilkAnalyticsSheet(analyticsData) {
         </div>
 
         <!-- Clean Control Deck -->
-        <div style="padding: 14px 20px 18px; background-color: #f8fafc; border-top: 1.5px solid #bae6fd; display: flex; flex-direction: column; gap: 12px;">
+        <div style="padding: 14px 20px 18px; background-color: #ffffff; border-top: 1.5px solid #bae6fd; display: flex; flex-direction: column; gap: 12px;">
 
-          <!-- Channel Buttons -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px;" id="milk-channel-controls">
-            <button class="btn milk-channel-btn ${(_currentChannel === 'inflow') ? 'milk-channel-btn--active' : ''}" data-channel="inflow" type="button" style="border-radius: 9999px !important; justify-content: center;">
-              <span class="icon" style="font-size: 19px;">swap_vert</span>
-              <strong>Milk In vs. Out</strong>
-            </button>
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <p style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin: 0;">Choose a Chart</p>
+              <span style="font-size: 11.5px; color: #64748b;">Click to switch chart</span>
+            </div>
+            <!-- Channel Buttons -->
+            <div class="milk-channel-track" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px;" id="milk-channel-controls">
+              <button class="btn milk-channel-btn ${(_currentChannel === 'inflow') ? 'milk-channel-btn--active' : ''}" data-channel="inflow" type="button" style="justify-content: center;">
+                <span class="icon" style="font-size: 19px;">swap_vert</span>
+                <strong>Milk In vs. Out</strong>
+              </button>
 
-            <button class="btn milk-channel-btn ${(_currentChannel === 'barangay') ? 'milk-channel-btn--active' : ''}" data-channel="barangay" type="button" style="border-radius: 9999px !important; justify-content: center;">
-              <span class="icon" style="font-size: 19px;">location_on</span>
-              <strong>Where Milk Goes</strong>
-            </button>
+              <button class="btn milk-channel-btn ${(_currentChannel === 'barangay') ? 'milk-channel-btn--active' : ''}" data-channel="barangay" type="button" style="justify-content: center;">
+                <span class="icon" style="font-size: 19px;">location_on</span>
+                <strong>Where Milk Goes</strong>
+              </button>
 
-            <button class="btn milk-channel-btn ${(_currentChannel === 'donors') ? 'milk-channel-btn--active' : ''}" data-channel="donors" type="button" style="border-radius: 9999px !important; justify-content: center;">
-              <span class="icon" style="font-size: 19px;">diversity_1</span>
-              <strong>Donor Outreach</strong>
-            </button>
+              <button class="btn milk-channel-btn ${(_currentChannel === 'donors') ? 'milk-channel-btn--active' : ''}" data-channel="donors" type="button" style="justify-content: center;">
+                <span class="icon" style="font-size: 19px;">diversity_1</span>
+                <strong>Donor Outreach</strong>
+              </button>
 
-            <button class="btn milk-channel-btn ${(_currentChannel === 'expiry') ? 'milk-channel-btn--active' : ''}" data-channel="expiry" type="button" style="border-radius: 9999px !important; justify-content: center;">
-              <span class="icon" style="font-size: 19px;">schedule</span>
-              <strong>Expiry Check</strong>
-            </button>
+              <button class="btn milk-channel-btn ${(_currentChannel === 'expiry') ? 'milk-channel-btn--active' : ''}" data-channel="expiry" type="button" style="justify-content: center;">
+                <span class="icon" style="font-size: 19px;">schedule</span>
+                <strong>Expiry Check</strong>
+              </button>
+            </div>
           </div>
 
           <!-- Inline Filters -->
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <div id="milk-tuner-year-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
-              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">calendar_today</span>
-              <label for="milk-tuner-year" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Year:</label>
-              <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                <option value="all" ${_yearFilter === 'all' ? 'selected' : ''}>All Years</option>
-                ${sortedYears.map(y => `<option value="${y}" ${_yearFilter === y ? 'selected' : ''}>${y}</option>`).join('')}
-              </select>
-            </div>
+          <div style="border-top: 1px dashed #bae6fd; padding-top: 10px;">
+            <p style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 8px 0;">Filters &amp; Customization</p>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <div id="milk-tuner-year-wrap" class="milk-filter-item">
+                <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">calendar_today</span>
+                <label for="milk-tuner-year" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600; white-space: nowrap;">Year:</label>
+                <select id="milk-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                  <option value="all" ${_yearFilter === 'all' ? 'selected' : ''}>All Years</option>
+                  ${sortedYears.map(y => `<option value="${y}" ${_yearFilter === y ? 'selected' : ''}>${y}</option>`).join('')}
+                </select>
+              </div>
 
-            <div id="milk-tuner-period-wrap" style="display: flex; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
-              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">date_range</span>
-              <label for="milk-tuner-period" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Period:</label>
-              <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                <option value="all" ${_periodFilter === 'all' ? 'selected' : ''}>Full Year</option>
-                <option value="q1" ${_periodFilter === 'q1' ? 'selected' : ''}>Q1 (Jan–Mar)</option>
-                <option value="q2" ${_periodFilter === 'q2' ? 'selected' : ''}>Q2 (Apr–Jun)</option>
-                <option value="q3" ${_periodFilter === 'q3' ? 'selected' : ''}>Q3 (Jul–Sep)</option>
-                <option value="q4" ${_periodFilter === 'q4' ? 'selected' : ''}>Q4 (Oct–Dec)</option>
-              </select>
-            </div>
+              <div id="milk-tuner-period-wrap" class="milk-filter-item">
+                <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">date_range</span>
+                <label for="milk-tuner-period" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600; white-space: nowrap;">Period:</label>
+                <select id="milk-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                  <option value="all" ${_periodFilter === 'all' ? 'selected' : ''}>Full Year</option>
+                  <option value="q1" ${_periodFilter === 'q1' ? 'selected' : ''}>Q1 (Jan–Mar)</option>
+                  <option value="q2" ${_periodFilter === 'q2' ? 'selected' : ''}>Q2 (Apr–Jun)</option>
+                  <option value="q3" ${_periodFilter === 'q3' ? 'selected' : ''}>Q3 (Jul–Sep)</option>
+                  <option value="q4" ${_periodFilter === 'q4' ? 'selected' : ''}>Q4 (Oct–Dec)</option>
+                </select>
+              </div>
 
-            <div id="milk-tuner-donor-view-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
-              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">person_search</span>
-              <label for="milk-tuner-donor-view" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Group By:</label>
-              <select id="milk-tuner-donor-view" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                <option value="barangay" ${_donorViewFilter === 'barangay' ? 'selected' : ''}>By Barangay</option>
-                <option value="individual" ${_donorViewFilter === 'individual' ? 'selected' : ''}>By Individual Donation</option>
-              </select>
-            </div>
+              <div id="milk-tuner-donor-view-wrap" class="milk-filter-item" style="display: none;">
+                <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">person_search</span>
+                <label for="milk-tuner-donor-view" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600; white-space: nowrap;">Group By:</label>
+                <select id="milk-tuner-donor-view" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                  <option value="barangay" ${_donorViewFilter === 'barangay' ? 'selected' : ''}>By Barangay</option>
+                  <option value="individual" ${_donorViewFilter === 'individual' ? 'selected' : ''}>By Individual Donation</option>
+                </select>
+              </div>
 
-            <div id="milk-tuner-limit-wrap" style="display: none; align-items: center; gap: 6px; background: #ffffff; padding: 6px 14px; border-radius: 9999px; border: 1.5px solid #bae6fd; white-space: nowrap; flex: 0 0 auto;">
-              <span class="icon icon--sm" style="color: #0284c7; font-size: 16px;">filter_list</span>
-              <label for="milk-tuner-limit" style="font-size: 12px; color: #475569; margin: 0; font-weight: 600; white-space: nowrap;">Show:</label>
-              <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
-                <option value="10" ${_limitFilter === '10' ? 'selected' : ''}>Top 10</option>
-                <option value="all" ${_limitFilter === 'all' ? 'selected' : ''}>All</option>
-              </select>
+              <div id="milk-tuner-limit-wrap" class="milk-filter-item" style="display: none;">
+                <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">filter_list</span>
+                <label for="milk-tuner-limit" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600; white-space: nowrap;">Show:</label>
+                <select id="milk-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; width: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; color: #0c4a6e; cursor: pointer;">
+                  <option value="10" ${_limitFilter === '10' ? 'selected' : ''}>Top 10</option>
+                  <option value="all" ${_limitFilter === 'all' ? 'selected' : ''}>All</option>
+                </select>
+              </div>
             </div>
           </div>
 

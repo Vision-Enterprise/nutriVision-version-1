@@ -479,7 +479,7 @@ export function renderAdvisorLayout(data) {
             <p style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin: 0;">Choose a Report</p>
             <span style="font-size: 12px; color: var(--color-text-muted);">Click to switch chart</span>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);" id="tv-channel-controls">
+          <div class="tv-channel-track" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;" id="tv-channel-controls">
             <button class="btn tv-channel-btn btn-primary" data-channel="barangay" style="padding: 10px 14px; font-size: 13px; text-align: left; display: flex; align-items: center; gap: 10px; border-radius: var(--radius-md);">
               <span class="icon" style="font-size: 22px;">location_on</span>
               <span>
@@ -512,15 +512,15 @@ export function renderAdvisorLayout(data) {
         </div>
 
         <!-- Section: Filters & Customization -->
-        <div>
-          <p style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 var(--space-2) 0;">Filters & Customization</p>
-          <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+        <div style="border-top: 1px dashed #dce7df; padding-top: var(--space-3);">
+          <p style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 8px 0;">Filters & Customization</p>
+          <div class="adv-filter-bar">
             
             <!-- Year Tuner -->
-            <div id="tv-tuner-year-wrap" style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">calendar_today</span>
-              <label for="tv-tuner-year" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Year:</label>
-              <select id="tv-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer;">
+            <div id="tv-tuner-year-wrap" class="adv-filter-item">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">calendar_today</span>
+              <label for="tv-tuner-year" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Year:</label>
+              <select id="tv-tuner-year" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer;">
                 <option value="all">All Years</option>
                 <option value="2026" selected>2026</option>
                 <option value="2025">2025</option>
@@ -528,10 +528,10 @@ export function renderAdvisorLayout(data) {
             </div>
 
             <!-- Quarter / Period Tuner -->
-            <div id="tv-tuner-period-wrap" style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">date_range</span>
-              <label for="tv-tuner-period" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Period:</label>
-              <select id="tv-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer;">
+            <div id="tv-tuner-period-wrap" class="adv-filter-item">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">date_range</span>
+              <label for="tv-tuner-period" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Period:</label>
+              <select id="tv-tuner-period" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer;">
                 <option value="all" selected>Full Year</option>
                 <option value="q1">Q1 (Jan – Mar)</option>
                 <option value="q2">Q2 (Apr – Jun)</option>
@@ -541,10 +541,10 @@ export function renderAdvisorLayout(data) {
             </div>
 
             <!-- Granularity (Release History only: daily, weekly, monthly, yearly) -->
-            <div id="tv-tuner-granularity-wrap" style="display: none; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">tune</span>
-              <label for="tv-tuner-granularity" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Interval:</label>
-              <select id="tv-tuner-granularity" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer;">
+            <div id="tv-tuner-granularity-wrap" class="adv-filter-item" style="display: none;">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">tune</span>
+              <label for="tv-tuner-granularity" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Interval:</label>
+              <select id="tv-tuner-granularity" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer;">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly" selected>Monthly</option>
@@ -553,19 +553,19 @@ export function renderAdvisorLayout(data) {
             </div>
 
             <!-- Commodity / Product Filter (Applies across all charts) -->
-            <div id="tv-tuner-commodity-wrap" style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">category</span>
-              <label for="tv-tuner-commodity" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Product:</label>
-              <select id="tv-tuner-commodity" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer; max-width: 180px;">
+            <div id="tv-tuner-commodity-wrap" class="adv-filter-item">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">category</span>
+              <label for="tv-tuner-commodity" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Product:</label>
+              <select id="tv-tuner-commodity" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer; max-width: 180px;">
                 <option value="all" selected>All Products</option>
               </select>
             </div>
 
             <!-- Limit / Count Filter (for Barangay) -->
-            <div id="tv-tuner-limit-wrap" style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">format_list_numbered</span>
-              <label for="tv-tuner-limit" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Show:</label>
-              <select id="tv-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer;">
+            <div id="tv-tuner-limit-wrap" class="adv-filter-item">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">format_list_numbered</span>
+              <label for="tv-tuner-limit" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Show:</label>
+              <select id="tv-tuner-limit" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer;">
                 <option value="5">Top 5</option>
                 <option value="10" selected>Top 10</option>
                 <option value="15">Top 15</option>
@@ -574,10 +574,10 @@ export function renderAdvisorLayout(data) {
             </div>
 
             <!-- Stock Sort Tuner (for Stock Status) -->
-            <div id="tv-tuner-stock-sort-wrap" style="display: none; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-              <span class="icon icon--sm" style="color: #64748b;">sort</span>
-              <label for="tv-tuner-stock-sort" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">Sort by:</label>
-              <select id="tv-tuner-stock-sort" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 13px; border: none; background: transparent; font-weight: 600; cursor: pointer;">
+            <div id="tv-tuner-stock-sort-wrap" class="adv-filter-item" style="display: none;">
+              <span class="icon icon--sm" style="color: #64748b; font-size: 16px;">sort</span>
+              <label for="tv-tuner-stock-sort" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Sort by:</label>
+              <select id="tv-tuner-stock-sort" class="form-input" style="padding: 2px 4px; min-height: auto; font-size: 12.5px; border: none; background: transparent; font-weight: 700; cursor: pointer;">
                 <option value="lowest" selected>Lowest Stock (Restock Alert)</option>
                 <option value="highest">Highest Stock</option>
                 <option value="distributed">Most Distributed</option>
