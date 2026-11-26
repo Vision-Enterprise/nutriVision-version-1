@@ -570,7 +570,6 @@
 .expiry-reminder {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   margin-top: 3px;
   padding: 1px 7px;
   border-radius: var(--radius-full);
@@ -578,15 +577,6 @@
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
   white-space: nowrap;
-}
-
-.expiry-reminder::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: currentColor;
-  flex-shrink: 0;
 }
 
 .expiry-reminder--good {
