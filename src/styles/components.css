@@ -1092,47 +1092,65 @@
   transition: width 0.3s ease, min-width 0.3s ease;
 }
 
-/* Collapsed state */
+/* Collapsed state — zero-width rail with floating curved ear tab */
 .workspace-panel-left.is-collapsed {
-  width: 44px !important;
-  min-width: 44px !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  border-right: none !important;
+  overflow: visible !important;
+  position: relative;
+  z-index: 30;
 }
 .workspace-panel-left.is-collapsed > *:not(#scanner-pane-toggle-tab) {
   display: none !important;
 }
 
-/* Re-open side tab */
+.workspace-panel-left.is-collapsed + .workspace-panel-right > div:first-child {
+  padding-left: 42px !important;
+  transition: padding-left 0.25s ease;
+}
+
+/* Re-open floating curved ear tab */
 #scanner-pane-toggle-tab {
   display: none;
-  flex-direction: column;
+  position: absolute;
+  top: 18px;
+  left: 0;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   cursor: pointer;
-  background: none;
+  background: var(--color-primary, #1B7A3E);
   border: none;
-  padding: 12px 0;
-  width: 100%;
-  color: var(--color-primary, #1B7A3E);
-  transition: color 0.15s;
+  border-radius: 0 9999px 9999px 0;
+  padding: 4px 5px 4px 8px;
+  width: 46px;
+  height: 40px;
+  box-shadow: 0 4px 14px rgba(27, 122, 62, 0.28);
+  color: #ffffff;
+  transition: width 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .workspace-panel-left.is-collapsed #scanner-pane-toggle-tab { display: flex; }
+#scanner-pane-toggle-tab:hover {
+  width: 50px;
+  box-shadow: 0 6px 18px rgba(27, 122, 62, 0.36);
+}
 
 .scanner-gemini-circle {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(27, 122, 62, 0.08);
-  border: 1px solid rgba(27, 122, 62, 0.18);
-  color: var(--color-primary, #1B7A3E);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #scanner-pane-toggle-tab:hover .scanner-gemini-circle {
-  background: rgba(27, 122, 62, 0.16);
-  border-color: rgba(27, 122, 62, 0.35);
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.45);
   transform: scale(1.06);
 }
 
