@@ -650,9 +650,9 @@ function _renderChannelChart() {
         chart: { ...darkThemeBase, type: 'bar', height: Math.max(360, donorEntries.length * 36) },
         theme: { mode: 'dark' },
         plotOptions: {
-          bar: { horizontal: true, barHeight: '60%', borderRadius: 6, distributed: true, dataLabels: { position: 'right' } },
+          bar: { horizontal: true, barHeight: '60%', borderRadius: 6, dataLabels: { position: 'right' } },
         },
-        colors: donorEntries.map(e => (e.count > 0 ? '#38bdf8' : '#334155')),
+        colors: ['#38bdf8'],
         dataLabels: {
           enabled: true,
           formatter: (val) => (val > 0 ? `${val} Donor${val === 1 ? '' : 's'}` : ''),

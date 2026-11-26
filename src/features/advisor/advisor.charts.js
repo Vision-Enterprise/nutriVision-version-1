@@ -440,8 +440,8 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         enabled: sortedValues.length <= 12,
         formatter: (val) => val > 0 ? val.toLocaleString() : '',
         offsetY: -8,
-        style: { fontSize: '11px', fontWeight: 600, colors: ['#1d4ed8'] },
-        background: { enabled: true, foreColor: '#1e40af', borderRadius: 4, padding: 4, opacity: 0.9, borderWidth: 1, borderColor: '#bfdbfe' }
+        style: { fontSize: '11px', fontWeight: 700, colors: ['#ffffff'] },
+        background: { enabled: true, foreColor: '#ffffff', borderRadius: 4, padding: 4, opacity: 0.95, borderWidth: 1, borderColor: '#1d4ed8' }
       },
       xaxis: {
         categories: displayCategories.length > 0 ? displayCategories : ['No Activity'],
