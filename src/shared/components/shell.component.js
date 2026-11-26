@@ -103,7 +103,7 @@ export function renderShell(profile, onLogout) {
             type="button"
             aria-label="Dashboard"
           >
-            <span class="icon" aria-hidden="true">dashboard</span>
+            <span class="icon" aria-hidden="true">home</span>
             <span class="sidebar__nav-text">Dashboard</span>
           </button>
           <button
@@ -293,7 +293,7 @@ export function renderShell(profile, onLogout) {
         aria-label="Mobile navigation"
       >
         <button class="mobile-nav__item" data-route="dashboard" type="button" aria-label="Dashboard">
-          <span class="icon" aria-hidden="true">dashboard</span>
+          <span class="icon" aria-hidden="true">home</span>
           Dashboard
         </button>
 
