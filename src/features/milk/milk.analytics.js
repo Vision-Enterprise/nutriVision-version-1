@@ -425,7 +425,7 @@ function _renderChannelChart() {
         labels: { style: { colors: '#cbd5e1' } },
       },
       tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags` } },
-      legend: { position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#f8fafc' } },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#f8fafc' } },
       grid: { borderColor: '#1e293b' },
     };
   }
@@ -490,6 +490,7 @@ function _renderChannelChart() {
         labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
       },
       tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags delivered` } },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#e2e8f0' } },
       grid: { borderColor: '#1e293b' },
     };
   }
@@ -590,6 +591,7 @@ function _renderChannelChart() {
             },
           },
         },
+        legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#e2e8f0' } },
         grid: { borderColor: '#1e293b' },
       };
     } else {
@@ -666,7 +668,7 @@ function _renderChannelChart() {
           title: { text: 'Barangay', style: { color: '#94a3b8', fontWeight: 600 } },
           labels: { style: { colors: '#f8fafc', fontWeight: 600, fontSize: '12.5px' } },
         },
-        legend: { show: false },
+        legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#f8fafc' } },
         tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Active donor(s)` } },
         grid: { borderColor: '#1e293b' },
       };
@@ -747,7 +749,7 @@ function _renderChannelChart() {
         title: { text: 'Number of Bags', style: { color: '#94a3b8', fontWeight: 600 } },
         labels: { style: { colors: '#cbd5e1' } },
       },
-      legend: { show: false },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'right', fontSize: '13px', fontWeight: 600, labels: { colors: '#f8fafc' } },
       tooltip: { theme: 'dark', y: { formatter: (val) => `${val} Bags` } },
       grid: { borderColor: '#1e293b' },
     };

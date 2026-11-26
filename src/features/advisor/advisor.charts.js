@@ -268,8 +268,9 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         title: { text: 'Barangay', style: axisTitleStyle },
         labels: { style: { fontSize: '12px', colors: '#1e293b', fontWeight: 500 } }
       },
-      legend: { position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px', show: !isSingleProd },
+      legend: { position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px', show: true, showForSingleSeries: true },
       grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
       tooltip: {
         y: { formatter: (val) => `${val.toLocaleString()} units` }
       }
@@ -359,8 +360,9 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         title: { text: 'Number of Items', style: axisTitleStyle },
         labels: { style: { fontSize: '11px', colors: chartFont.foreColor }, formatter: (v) => Math.round(v).toLocaleString() }
       },
-      legend: { position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
       grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
       tooltip: {
         y: { formatter: (val) => `${val.toLocaleString()} units` }
       }
@@ -451,6 +453,7 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         labels: { style: { fontSize: '11px', colors: chartFont.foreColor }, formatter: (v) => Math.round(v).toLocaleString() }
       },
       grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
       tooltip: {
         y: { formatter: (val) => `${val.toLocaleString()} units` }
       }
@@ -536,8 +539,8 @@ export function renderAdvChart(channel, chartData, _expSummary) {
         title: { text: 'Number of Units in Storage', style: axisTitleStyle },
         labels: { style: { fontSize: '11px', colors: chartFont.foreColor }, formatter: (v) => Math.round(v).toLocaleString() }
       },
-      legend: { show: false },
       grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
+      legend: { show: true, showForSingleSeries: true, position: 'top', horizontalAlign: 'left', offsetY: -5, fontSize: '12px' },
       tooltip: {
         y: { formatter: (val) => `${val.toLocaleString()} units` }
       }
