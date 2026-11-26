@@ -1,6 +1,6 @@
 import { printReportHtml, downloadReportPdf } from '../../shared/utils/print.utils.js';
 import { AUDIT_ACTIONS } from '../../shared/constants/app.constants.js';
-import { getMilkBatchTrafficLight } from './milk.service.js';
+import { getMilkBatchTrafficLight, sortMilkRecords } from './milk.service.js';
 /**
  * Milk Bank — Official Print / PDF Export Generator
  * Formatted precisely for A4 Landscape print/PDF export matching official paper forms.
@@ -113,7 +113,8 @@ function showPrintPreviewOverlay(previewTitle, pdfFilename, htmlContent) {
 export function showDonorLogPrintPreview(entries = []) {
   const dateStr = new Date().toISOString().split('T')[0];
   const pdfTitle = `DONOR_LOG_FM_004_00_${dateStr}`;
-  const html = generateDonorLogReportHTML(entries);
+  const ordered = sortMilkRecords(entries, 'donor-log', 'asc');
+  const html = generateDonorLogReportHTML(ordered);
   showPrintPreviewOverlay('Print Preview — Form MH.MNAO.FM.004.00 (DONOR LOG)', pdfTitle, html);
 }
 
@@ -180,7 +181,8 @@ function generateDonorLogReportHTML(entries = []) {
 export function showMilkIntakePrintPreview(donations = []) {
   const dateStr = new Date().toISOString().split('T')[0];
   const pdfTitle = `LOG_OF_MILK_RECEIVED_FM_002_00_${dateStr}`;
-  const html = generateMilkIntakeReportHTML(donations);
+  const ordered = sortMilkRecords(donations, 'intake', 'asc');
+  const html = generateMilkIntakeReportHTML(ordered);
   showPrintPreviewOverlay('Print Preview — Form MH.MNAO.FM.002.00 (LOG OF MILK RECEIVED)', pdfTitle, html);
 }
 
@@ -257,7 +259,8 @@ function generateMilkIntakeReportHTML(donations = []) {
 export function showMilkBatchesPrintPreview(batches = []) {
   const dateStr = new Date().toISOString().split('T')[0];
   const pdfTitle = `PASTEURIZED_BATCHES_INVENTORY_${dateStr}`;
-  const html = generateMilkBatchesReportHTML(batches);
+  const ordered = sortMilkRecords(batches, 'batches', 'asc');
+  const html = generateMilkBatchesReportHTML(ordered);
   showPrintPreviewOverlay('Print Preview — Pasteurized Human Milk Batches & Freezer Log', pdfTitle, html);
 }
 
@@ -349,7 +352,8 @@ function generateMilkBatchesReportHTML(batches = []) {
 export function showMilkDispensingPrintPreview(dispatches = [], batches = []) {
   const dateStr = new Date().toISOString().split('T')[0];
   const pdfTitle = `BENEFICIARY_MILK_DISPENSING_LEDGER_${dateStr}`;
-  const html = generateMilkDispensingReportHTML(dispatches);
+  const ordered = sortMilkRecords(dispatches, 'dispense', 'asc');
+  const html = generateMilkDispensingReportHTML(ordered);
   showPrintPreviewOverlay('Print Preview — Beneficiary Milk Dispensing & Issuance Ledger', pdfTitle, html);
 }
 
@@ -612,6 +616,7 @@ function _downloadCsvFile(filename, rows) {
 
 export function exportDonorLogCSV(entries = []) {
   const dateStr = new Date().toISOString().split('T')[0];
+  const ordered = sortMilkRecords(entries, 'donor-log', 'asc');
   const rows = [
     [
       '#',
@@ -626,7 +631,7 @@ export function exportDonorLogCSV(entries = []) {
       'Volume Donated (Thawed mL)',
       'Receiving Milk Hub Staff'
     ],
-    ...entries.map((e, idx) => [
+    ...ordered.map((e, idx) => [
       idx + 1,
       e.donor_code || '',
       e.donor_name || '',
@@ -645,6 +650,7 @@ export function exportDonorLogCSV(entries = []) {
 
 export function exportMilkIntakeCSV(donations = []) {
   const dateStr = new Date().toISOString().split('T')[0];
+  const ordered = sortMilkRecords(donations, 'intake', 'asc');
   const rows = [
     [
       '#',
@@ -661,7 +667,7 @@ export function exportMilkIntakeCSV(donations = []) {
       'Receiving Personnel',
       'Status'
     ],
-    ...donations.map((d, idx) => [
+    ...ordered.map((d, idx) => [
       idx + 1,
       d.donor_code || '',
       d.expression_date_notes || '',
@@ -682,6 +688,7 @@ export function exportMilkIntakeCSV(donations = []) {
 
 export function exportMilkBatchesCSV(batches = []) {
   const dateStr = new Date().toISOString().split('T')[0];
+  const ordered = sortMilkRecords(batches, 'batches', 'asc');
   const rows = [
     [
       '#',
@@ -694,7 +701,7 @@ export function exportMilkBatchesCSV(batches = []) {
       'Status',
       'Remarks'
     ],
-    ...batches.map((b, idx) => {
+    ...ordered.map((b, idx) => {
       const rem = Number(b.remaining_bags || 0);
       let status = 'Depleted';
       if (rem > 0) {
@@ -721,6 +728,7 @@ export function exportMilkBatchesCSV(batches = []) {
 
 export function exportMilkDispensingCSV(dispatches = []) {
   const dateStr = new Date().toISOString().split('T')[0];
+  const ordered = sortMilkRecords(dispatches, 'dispense', 'asc');
   const rows = [
     [
       '#',
@@ -733,7 +741,7 @@ export function exportMilkDispensingCSV(dispatches = []) {
       'Released By',
       'Status'
     ],
-    ...dispatches.map((item, idx) => [
+    ...ordered.map((item, idx) => [
       idx + 1,
       item.dispensed_date || '',
       item.recipient_name || '',
@@ -770,7 +778,8 @@ function formatAuditActionLabel(action) {
 export function showMilkAuditPrintPreview(auditLogs = [], meta = {}) {
   const dateStr = new Date().toISOString().split('T')[0];
   const pdfTitle = `MILK_BANK_AUDIT_TRAIL_${dateStr}`;
-  const html = generateMilkAuditReportHTML(auditLogs, meta);
+  const ordered = sortMilkRecords(auditLogs, 'audit', 'asc');
+  const html = generateMilkAuditReportHTML(ordered, meta);
   showPrintPreviewOverlay('Print Preview — Milk Bank Custody & Audit Trail Log', pdfTitle, html);
 }
 
@@ -863,6 +872,7 @@ function generateMilkAuditReportHTML(auditLogs = [], meta = {}) {
 
 export function exportMilkAuditCSV(auditLogs = []) {
   const dateStr = new Date().toISOString().split('T')[0];
+  const ordered = sortMilkRecords(auditLogs, 'audit', 'asc');
   const rows = [
     [
       '#',
@@ -872,7 +882,7 @@ export function exportMilkAuditCSV(auditLogs = []) {
       'Description of Activity',
       'Personnel'
     ],
-    ...auditLogs.map((log, idx) => [
+    ...ordered.map((log, idx) => [
       idx + 1,
       log.created_at ? new Date(log.created_at).toLocaleString() : '',
       formatAuditActionLabel(log.action),

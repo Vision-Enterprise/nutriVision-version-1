@@ -273,8 +273,8 @@ export async function fetchMilkBatches() {
     const { data, error } = await supabase
       .from('milk_batches')
       .select('*')
-      .order('date_pasteurized', { ascending: true })
-      .order('batch_number', { ascending: true });
+      .order('date_pasteurized', { ascending: false })
+      .order('batch_number', { ascending: false });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -292,7 +292,8 @@ export async function fetchMilkDonations() {
     const { data, error } = await supabase
       .from('milk_donations')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('arrival_date', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -314,8 +315,8 @@ export async function fetchMilkDispatches() {
         dispensed_date, dispensed_at, released_by_name, remarks,
         milk_batches ( batch_number, freezer_shelf )
       `)
-      .order('dispensed_date', { ascending: true })
-      .order('dispensed_at', { ascending: true });
+      .order('dispensed_date', { ascending: false })
+      .order('dispensed_at', { ascending: false });
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -454,7 +455,7 @@ export async function fetchMilkAuditLogs() {
         profiles ( full_name )
       `)
       .in('entity_type', ['milk_batch', 'milk_donation', 'milk_dispatch', 'cold_chain'])
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(300);
 
     if (error) throw error;
@@ -463,6 +464,29 @@ export async function fetchMilkAuditLogs() {
     console.error(`${MODULE} fetchMilkAuditLogs error:`, err);
     return { data: [], error: err.message || 'Failed to fetch audit logs.' };
   }
+}
+
+export function sortMilkRecords(list = [], type = 'intake', order = 'desc') {
+  const dir = order === 'asc' ? 1 : -1;
+  const copy = [...(list || [])];
+  const cmpStr = (a, b) => String(a || '').localeCompare(String(b || ''));
+
+  return copy.sort((a, b) => {
+    if (type === 'donor-log') {
+      return (cmpStr(a.donation_date, b.donation_date) || cmpStr(a.created_at, b.created_at)) * dir;
+    }
+    if (type === 'intake') {
+      return (cmpStr(a.arrival_date, b.arrival_date) || cmpStr(a.created_at, b.created_at)) * dir;
+    }
+    if (type === 'batches') {
+      return (cmpStr(a.date_pasteurized, b.date_pasteurized) || cmpStr(a.batch_number, b.batch_number)) * dir;
+    }
+    if (type === 'dispense') {
+      return (cmpStr(a.dispensed_date, b.dispensed_date) || cmpStr(a.dispensed_at, b.dispensed_at)) * dir;
+    }
+    // audit or default
+    return cmpStr(a.created_at, b.created_at) * dir;
+  });
 }
 
 /**

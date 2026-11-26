@@ -43,6 +43,7 @@ import {
   getFreezerShelfAllocations,
   getBatchActualShelfInfo,
   fetchMilkAuditLogs,
+  sortMilkRecords,
   addOneYearToDate,
   isMilkBatchExpired
 } from './milk.service.js';
@@ -123,6 +124,15 @@ let _analyticsPeriod = 'all';
 let _analyticsCustomStart = '';
 let _analyticsCustomEnd = '';
 
+// Per-sheet UI sort order ('desc' = Newest First, 'asc' = Oldest First)
+let _sheetSortOrder = {
+  'donor-log': 'desc',
+  intake: 'desc',
+  batches: 'desc',
+  dispense: 'desc',
+  audit: 'desc',
+};
+
 /**
  * Main entry point called by router
  */
@@ -137,6 +147,13 @@ export async function renderMilkPage(profile) {
   _analyticsPeriod = 'all';
   _analyticsCustomStart = '';
   _analyticsCustomEnd = '';
+  _sheetSortOrder = {
+    'donor-log': 'desc',
+    intake: 'desc',
+    batches: 'desc',
+    dispense: 'desc',
+    audit: 'desc',
+  };
 
   const content = document.getElementById('page-content');
   if (!content) return;
@@ -215,16 +232,19 @@ function _renderActiveSheet() {
   const fefoBatch = getFefoPriorityBatch(_batches);
 
   if (_activeTab === 'donor-log') {
-    contentArea.innerHTML = renderDonorLogSheet(_donorLogEntries, _draftDonorLog);
+    const sortedDonorLogs = sortMilkRecords(_donorLogEntries, 'donor-log', _sheetSortOrder['donor-log']);
+    contentArea.innerHTML = renderDonorLogSheet(sortedDonorLogs, _draftDonorLog, _sheetSortOrder['donor-log']);
     _bindDonorLogSheetEvents();
     _setupCellBarSync();
   } else if (_activeTab === 'intake') {
-    contentArea.innerHTML = renderDonationsSheet(_donations, _draftDonations);
+    const sortedDonations = sortMilkRecords(_donations, 'intake', _sheetSortOrder.intake);
+    contentArea.innerHTML = renderDonationsSheet(sortedDonations, _draftDonations, _sheetSortOrder.intake);
     _bindDonationsSheetEvents();
     _setupCellBarSync();
   } else if (_activeTab === 'batches') {
+    const sortedBatches = sortMilkRecords(_batches, 'batches', _sheetSortOrder.batches);
     contentArea.innerHTML = renderBatchesSheet(
-      _batches,
+      sortedBatches,
       _draftBatches,
       _batchesSubView,
       _shelves,
@@ -233,7 +253,8 @@ function _renderActiveSheet() {
         freezers: _freezers,
         activeFreezerId: _activeFreezerId,
         selectedBatch: _selectedBatch,
-        selectedShelf: _selectedShelf
+        selectedShelf: _selectedShelf,
+        sortOrder: _sheetSortOrder.batches
       }
     );
     _bindBatchesSheetEvents();
@@ -242,11 +263,13 @@ function _renderActiveSheet() {
     }
   } else if (_activeTab === 'dispense') {
     const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
-    contentArea.innerHTML = renderDispatchesSheet(_dispatches, _draftDispatches, available, fefoBatch, _freezers);
+    const sortedDispatches = sortMilkRecords(_dispatches, 'dispense', _sheetSortOrder.dispense);
+    contentArea.innerHTML = renderDispatchesSheet(sortedDispatches, _draftDispatches, available, fefoBatch, _freezers, _sheetSortOrder.dispense);
     _bindDispatchesSheetEvents();
     _setupCellBarSync();
   } else if (_activeTab === 'audit') {
-    contentArea.innerHTML = renderMilkAuditSheet(_auditLogs, _auditFilter, _auditSearch);
+    const sortedAudit = sortMilkRecords(_auditLogs, 'audit', _sheetSortOrder.audit);
+    contentArea.innerHTML = renderMilkAuditSheet(sortedAudit, _auditFilter, _auditSearch, _sheetSortOrder.audit);
     _bindAuditSheetEvents();
   } else if (_activeTab === 'analytics') {
     const analyticsData = computeMilkAnalytics({
@@ -294,6 +317,11 @@ function _bindAuditSheetEvents() {
 
   filterSel?.addEventListener('change', (e) => {
     _auditFilter = e.target.value;
+    _renderActiveSheet();
+  });
+
+  document.getElementById('milk-audit-sort')?.addEventListener('change', (e) => {
+    _sheetSortOrder.audit = e.target.value === 'asc' ? 'asc' : 'desc';
     _renderActiveSheet();
   });
 
@@ -381,18 +409,18 @@ function _scrollToBottomDraft() {
   setTimeout(() => {
     const tableWrap = document.querySelector('.table-responsive');
     if (tableWrap) {
-      tableWrap.scrollTop = tableWrap.scrollHeight;
+      tableWrap.scrollTop = 0;
     }
     const draftRows = document.querySelectorAll('.grid-row--draft');
-    const latestDraftRow = draftRows.length > 0 ? draftRows[draftRows.length - 1] : null;
-    const draftInputs = latestDraftRow
-      ? latestDraftRow.querySelectorAll('input:not([disabled])')
+    const newestDraftRow = draftRows.length > 0 ? draftRows[0] : null;
+    const draftInputs = newestDraftRow
+      ? newestDraftRow.querySelectorAll('input:not([disabled])')
       : document.querySelectorAll('.grid-row--draft input:not([disabled])');
 
     if (draftInputs.length > 0) {
       const firstInDraft = draftInputs[0];
       firstInDraft.focus({ preventScroll: true });
-      firstInDraft.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstInDraft.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, 70);
 }
@@ -403,9 +431,9 @@ function _scrollToBottomDraft() {
 function _bindDonationsSheetEvents() {
   const today = getLocalDateString();
 
-  // Add new draft row at bottom of ledger (physical ledger style)
+  // Add new draft row at top of ledger
   document.getElementById('btn-add-donation-row')?.addEventListener('click', () => {
-    _draftDonations.push({
+    _draftDonations.unshift({
       donor_code: '',
       expression_date_notes: today,
       expression_time: '08:00',
@@ -809,7 +837,7 @@ function _bindDonorLogSheetEvents() {
   });
 
   document.getElementById('btn-add-donor-log-row')?.addEventListener('click', () => {
-    _draftDonorLog.push({
+    _draftDonorLog.unshift({
       donor_code: getNextDonorCode(),
       donor_name: '',
       barangay: '',
@@ -1010,7 +1038,7 @@ function _bindBatchesSheetEvents() {
       || (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0])
       || 'Shelf 1';
 
-    _draftBatches.push({
+    _draftBatches.unshift({
       batch_number: nextBatch,
       date_pasteurized: today,
       expiry_date: addOneYearToDate(today),
@@ -1374,7 +1402,7 @@ function _bindBatchesSheetEvents() {
         || (activeFreezer && activeFreezer.shelves && activeFreezer.shelves[0])
         || 'Shelf 1';
 
-      _draftBatches.push({
+      _draftBatches.unshift({
         batch_number: nextBatch,
         date_pasteurized: today,
         expiry_date: addOneYearToDate(today),
@@ -1808,7 +1836,7 @@ function _bindDispatchesSheetEvents() {
     const available = _batches.filter(b => (b.remaining_bags || 0) > 0 && !isMilkBatchExpired(b));
     const fefo = getFefoPriorityBatch(_batches) || available[0];
     const defaultQty = fefo ? (fefo.remaining_bags || 1) : 1;
-    _draftDispatches.push({
+    _draftDispatches.unshift({
       dispensed_date: getLocalDateString(),
       recipient_name: '',
       barangay: '',
@@ -2120,6 +2148,10 @@ function _setupCellBarSync() {
   };
   document.getElementById('milk-sheet-search')?.addEventListener('input', applySheetFilters);
   document.getElementById('milk-sheet-filter')?.addEventListener('change', applySheetFilters);
+  document.getElementById('milk-sheet-sort')?.addEventListener('change', (e) => {
+    _sheetSortOrder[_activeTab] = e.target.value === 'asc' ? 'asc' : 'desc';
+    _renderActiveSheet();
+  });
 
   _activeTargetCell = null;
   _isSyncingCell = false;

@@ -169,7 +169,7 @@ export function renderCellBar(placeholder = 'Click any table cell to inspect or 
 // ════════════════════════════════════════════════════════════════════════════
 // SHEET 0: Donor Log (Form MH.MNAO.FM.004.00 — Confidential In-House Log)
 // ════════════════════════════════════════════════════════════════════════════
-export function renderDonorLogSheet(entries = [], draftRows = []) {
+export function renderDonorLogSheet(entries = [], draftRows = [], sortOrder = 'desc') {
   const pendingCount = draftRows.length;
   const today = getLocalDateString();
 
@@ -254,6 +254,10 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
           <option value="">All Barangays</option>
           ${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}
         </select>
+        <select id="milk-sheet-sort" class="milk-toolbar-filter" aria-label="Sort Order">
+          <option value="desc" ${sortOrder !== 'asc' ? 'selected' : ''}>Newest First</option>
+          <option value="asc" ${sortOrder === 'asc' ? 'selected' : ''}>Oldest First</option>
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-donor-log-csv" class="btn btn-secondary btn-sm" type="button" title="Export Donor Log as Excel / CSV">
@@ -295,7 +299,7 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
         <tbody>
           ${entries.length === 0 && draftRows.length === 0
             ? `<tr><td colspan="12" class="milk-sheet-empty">No donor log entries yet. Click <strong>+ Add Row</strong> to record a mother's donation.</td></tr>`
-            : savedHtml + draftHtml}
+            : draftHtml + savedHtml}
         </tbody>
       </table>
     </div>
@@ -306,7 +310,7 @@ export function renderDonorLogSheet(entries = [], draftRows = []) {
 // SHEET 1: Log of Milk Received (Form MH.MNAO.FM.002.00) Spreadsheet
 // Strictly matches the official paper form headers and columns
 // ════════════════════════════════════════════════════════════════════════════
-export function renderDonationsSheet(donations = [], draftRows = []) {
+export function renderDonationsSheet(donations = [], draftRows = [], sortOrder = 'desc') {
   const pendingCount = draftRows.length;
   const today = getLocalDateString();
 
@@ -450,6 +454,10 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           <option value="ok">OK</option>
           <option value="compromised">Compromised</option>
         </select>
+        <select id="milk-sheet-sort" class="milk-toolbar-filter" aria-label="Sort Order">
+          <option value="desc" ${sortOrder !== 'asc' ? 'selected' : ''}>Newest First</option>
+          <option value="asc" ${sortOrder === 'asc' ? 'selected' : ''}>Oldest First</option>
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-intake-csv" class="btn btn-secondary btn-sm" type="button" title="Export Log of Milk Received as Excel / CSV">
@@ -495,8 +503,8 @@ export function renderDonationsSheet(donations = [], draftRows = []) {
           </tr>
         </thead>
         <tbody>
-          ${savedHtml}
           ${draftHtml}
+          ${savedHtml}
           ${donations.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="13" style="text-align:center;padding:36px;color:var(--color-text-muted);">
@@ -534,6 +542,10 @@ export function renderBatchesSheet(batches = [], draftBatches = [], subView = 't
             <option value="warning">Near Expiry (≤90d)</option>
             <option value="expired">Expired</option>
             <option value="depleted">Depleted</option>
+          </select>
+          <select id="milk-sheet-sort" class="milk-toolbar-filter" aria-label="Sort Order">
+            <option value="desc" ${freezerOptions.sortOrder !== 'asc' ? 'selected' : ''}>Newest First</option>
+            <option value="asc" ${freezerOptions.sortOrder === 'asc' ? 'selected' : ''}>Oldest First</option>
           </select>
         ` : ''}
       </div>
@@ -762,8 +774,8 @@ function renderBatchesTable(batches = [], draftBatches = [], shelves = [], fefoB
           </tr>
         </thead>
         <tbody>
-          ${savedHtml}
           ${draftHtml}
+          ${savedHtml}
           ${batches.length === 0 && draftBatches.length === 0 ? `
             <tr>
               <td colspan="10" style="text-align:center;padding:36px;color:var(--color-text-muted);">
@@ -1283,7 +1295,7 @@ export function renderFreezerMapView(optionsOrBatches = {}, legacyShelves = [], 
 // SHEET 3: Dispensing Ledger Spreadsheet (Clinical Indication REMOVED)
 // Exactly 8 columns: #, Date, Recipient, Barangay, Batch, Bags, Released By, Actions
 // ════════════════════════════════════════════════════════════════════════════
-export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null, freezers = []) {
+export function renderDispatchesSheet(dispatches = [], draftRows = [], availableBatches = [], fefoBatch = null, freezers = [], sortOrder = 'desc') {
   const pendingCount = draftRows.length;
   const activeFreezers = freezers.length > 0 ? freezers : [];
 
@@ -1394,6 +1406,10 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           <option value="">All Barangays</option>
           ${BARANGAYS.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}
         </select>
+        <select id="milk-sheet-sort" class="milk-toolbar-filter" aria-label="Sort Order">
+          <option value="desc" ${sortOrder !== 'asc' ? 'selected' : ''}>Newest First</option>
+          <option value="asc" ${sortOrder === 'asc' ? 'selected' : ''}>Oldest First</option>
+        </select>
       </div>
       <div class="milk-sheet-actions">
         <button id="btn-export-dispenses-csv" class="btn btn-secondary btn-sm" type="button" title="Export Dispensing Ledger as Excel / CSV">
@@ -1429,8 +1445,8 @@ export function renderDispatchesSheet(dispatches = [], draftRows = [], available
           </tr>
         </thead>
         <tbody>
-          ${savedHtml}
           ${draftHtml}
+          ${savedHtml}
           ${dispatches.length === 0 && draftRows.length === 0 ? `
             <tr>
               <td colspan="8" style="text-align:center;padding:36px;color:var(--color-text-muted);">
@@ -1505,7 +1521,7 @@ function escapeHtml(str) {
 /**
  * Render Milk Bank In-Module Audit Trail Sheet
  */
-export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQuery = '') {
+export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQuery = '', sortOrder = 'desc') {
   let filtered = auditLogs || [];
   if (filterAction) {
     filtered = filtered.filter(l => l.action === filterAction);
@@ -1631,6 +1647,10 @@ export function renderMilkAuditSheet(auditLogs = [], filterAction = '', searchQu
           <option value="${AUDIT_ACTIONS.UPDATE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.UPDATE_FREEZER_UNIT ? 'selected' : ''}>Freezers Renamed</option>
           <option value="${AUDIT_ACTIONS.DELETE_FREEZER_UNIT}" ${filterAction === AUDIT_ACTIONS.DELETE_FREEZER_UNIT ? 'selected' : ''}>Freezers Deleted</option>
           <option value="${AUDIT_ACTIONS.DELETE_MILK_BATCH}" ${filterAction === AUDIT_ACTIONS.DELETE_MILK_BATCH ? 'selected' : ''}>Batches Deleted</option>
+        </select>
+        <select id="milk-audit-sort" class="form-input" style="width: 145px; font-size: 13px; padding: 5px 8px;" aria-label="Sort Order">
+          <option value="desc" ${sortOrder !== 'asc' ? 'selected' : ''}>Newest First</option>
+          <option value="asc" ${sortOrder === 'asc' ? 'selected' : ''}>Oldest First</option>
         </select>
       </div>
     </div>
