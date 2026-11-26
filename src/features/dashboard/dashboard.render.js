@@ -9,10 +9,11 @@
  */
 
 import { renderAdvisorSummaryCard } from '../advisor/advisor.render.js';
+import { renderMetrics as renderMilkMetrics } from '../milk/milk.render.js';
 import { formatDateTime } from '../../shared/utils/date.utils.js';
 import { EXPIRATION_STATUS } from '../../shared/constants/app.constants.js';
 
-export function renderDashboardLayout({ stats, activity, advisorData }) {
+export function renderDashboardLayout({ stats, activity, advisorData, milkMetrics }) {
   return `
     <div class="page-header">
       <h1 class="page-header__title">Dashboard</h1>
@@ -98,6 +99,21 @@ export function renderDashboardLayout({ stats, activity, advisorData }) {
         <div class="stat-card__footer">Requires proper disposal</div>
       </div>
     </div>
+
+    ${milkMetrics ? `
+      <!-- Milk Bank KPI Cards -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);">
+        <span style="font-size: var(--font-size-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0284c7;">
+          Human Milk Bank
+        </span>
+        <a href="#/milk" style="font-size: var(--font-size-xs); font-weight: 600; color: #0284c7; text-decoration: none;">
+          Open Milk Bank &rarr;
+        </a>
+      </div>
+      <div class="dashboard-milk-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+        ${renderMilkMetrics(milkMetrics)}
+      </div>
+    ` : ''}
 
     <!-- Inventory Advisor Widget (Synchronized with Advisor Module) -->
     ${advisorData ? renderAdvisorSummaryCard(advisorData, { isDashboard: true }) : ''}

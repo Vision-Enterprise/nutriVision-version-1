@@ -9,9 +9,11 @@
 
 import { fetchDashboardStats, fetchRecentActivity } from './dashboard.service.js';
 import { fetchAdvisorData } from '../advisor/advisor.service.js';
+import { fetchMilkMetrics } from '../milk/milk.service.js';
 import { renderDashboardLayout } from './dashboard.render.js';
 import { setupAdvisorChips } from '../advisor/advisor.render.js';
 import '../advisor/advisor.css';
+import '../../styles/milk.css';
 
 export async function renderDashboardPage(profile) {
   const content = document.getElementById('page-content');
@@ -29,10 +31,11 @@ export async function renderDashboardPage(profile) {
     </div>
   `;
 
-  const [stats, activity, advisorRes] = await Promise.all([
+  const [stats, activity, advisorRes, milkMetrics] = await Promise.all([
     fetchDashboardStats(),
     fetchRecentActivity(5, profile),
-    fetchAdvisorData()
+    fetchAdvisorData(),
+    fetchMilkMetrics()
   ]);
 
   if (stats.error || activity.error) {
@@ -52,7 +55,17 @@ export async function renderDashboardPage(profile) {
   content.innerHTML = renderDashboardLayout({
     stats,
     activity,
-    advisorData
+    advisorData,
+    milkMetrics
+  });
+
+  // Make Milk Bank summary cards jump to Milk Bank module
+  content.querySelectorAll('.dashboard-milk-cards .stat-card').forEach(card => {
+    card.style.cursor = 'pointer';
+    card.title = 'Open Milk Bank';
+    card.addEventListener('click', () => {
+      window.location.hash = '#/milk';
+    });
   });
 
   // Activate Advisor Interactive Summary Chips & Drilldown on Dashboard
