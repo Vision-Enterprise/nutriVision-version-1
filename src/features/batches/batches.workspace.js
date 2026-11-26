@@ -251,7 +251,7 @@ export async function openFullScreenWorkspace({ commodities, profile, onSaveComp
       <!-- Left Panel: Scanner (Collapsible) -->
       <div class="workspace-panel-left" id="workspace-panel-left">
          <div class="scanner-pane-header" style="padding:7px 12px;">
-           <span style="font-size:13px; font-weight:600; color:var(--text-main);">Scanner Module</span>
+           <span style="font-size:13px; font-weight:600; color:#ffffff;">Scanner Module</span>
            <div style="display:flex; align-items:center; gap:8px;">
              <div class="zoom-pill-group" title="Zoom receipt preview">
                <button type="button" class="zoom-pill-btn" id="scanner-zoom-out" aria-label="Zoom out receipt">−</button>
