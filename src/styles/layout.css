@@ -265,7 +265,7 @@ body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__gemini-arrow--expa
 }
 
 body.sidebar--compressed .sidebar__nav {
-  padding: var(--space-2) 0 var(--space-2) 12px;
+  padding: 20px 0 var(--space-2) 12px;
   align-items: stretch;
 }
 
@@ -355,20 +355,17 @@ body.sidebar--compressed .sidebar__logo-text {
   right: 0;
   width: 18px;
   height: 18px;
-  background: transparent;
   pointer-events: none;
 }
 
 .sidebar__nav-item--active::before {
   top: -18px;
-  border-bottom-right-radius: 18px;
-  box-shadow: 6px 6px 0 6px var(--color-background);
+  background: radial-gradient(circle at 0 0, transparent 18px, var(--color-background) 18.4px);
 }
 
 .sidebar__nav-item--active::after {
   bottom: -18px;
-  border-top-right-radius: 18px;
-  box-shadow: 6px -6px 0 6px var(--color-background);
+  background: radial-gradient(circle at 0 100%, transparent 18px, var(--color-background) 18.4px);
 }
 
 .sidebar__nav-item--active .icon {
