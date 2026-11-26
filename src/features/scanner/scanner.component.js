@@ -46,7 +46,7 @@ export class ScannerComponent {
     this.container.innerHTML = `
       <div style="width:100%; height:100%; display:flex; flex-direction:column; padding:10px 12px;">
         <!-- Tabs (MD3 Segmented Surface) -->
-        <div style="display:flex; background:var(--color-surface-alt, #e8f5ee); border:1px solid var(--color-border, #D8E6DA); border-radius:999px; padding:3px; margin-bottom:10px; gap:4px;">
+        <div style="display:flex; background:#ffffff; border:1px solid #b6dec5; border-radius:999px; padding:3px; margin-bottom:10px; gap:4px; box-shadow:0 1px 4px rgba(27,122,62,0.08);">
           <button class="scanner-tab-btn active" data-tab="upload" id="tab-btn-upload" style="flex:1; border:none; background:var(--color-primary, #1B7A3E); color:white; border-radius:999px; padding:7px 10px; cursor:pointer; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(27,122,62,0.25); transition:all 0.15s ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
             <span>File Import</span>
