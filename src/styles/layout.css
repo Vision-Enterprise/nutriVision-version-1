@@ -70,9 +70,11 @@ body.sidebar--compressed .sidebar {
 }
 
 body.sidebar--compressed .sidebar__header {
-  justify-content: center;
-  gap: 6px;
-  margin: var(--space-2) 6px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: var(--space-2) auto 0;
 }
 
 .sidebar__logo {
@@ -86,8 +88,8 @@ body.sidebar--compressed .sidebar__header {
   border-bottom: none;
   text-decoration: none;
   position: relative;
-  height: 44px;
-  min-height: 44px;
+  height: 48px;
+  min-height: 48px;
   flex: 1;
   min-width: 0;
   box-sizing: border-box;
@@ -100,10 +102,10 @@ body.sidebar--compressed .sidebar__header {
 }
 
 body.sidebar--compressed .sidebar__logo {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: 50%;
 }
@@ -115,15 +117,15 @@ body.sidebar--compressed .sidebar__logo {
 }
 
 .sidebar__logo-img--full {
-  height: 26px;
+  height: 28px;
   width: auto;
   max-width: 100%;
 }
 
 .sidebar__logo-img--compact {
   display: none;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
 }
 
 body.sidebar--compressed .sidebar__logo-img--full {
@@ -163,8 +165,8 @@ body.sidebar--compressed .sidebar__logo-img--compact {
 }
 
 body.sidebar--compressed .sidebar__toggle-btn {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
 }
 
 .sidebar__gemini-icon {
@@ -174,8 +176,8 @@ body.sidebar--compressed .sidebar__toggle-btn {
 }
 
 body.sidebar--compressed .sidebar__gemini-icon {
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
 }
 
 /* Interactive arrows inside Gemini panel icon (appear on hover) */
@@ -254,6 +256,10 @@ body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__gemini-arrow--expa
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+body.sidebar--compressed .sidebar__nav {
+  padding-top: var(--space-2);
 }
 
 .sidebar__nav-label {
