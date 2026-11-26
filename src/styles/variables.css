@@ -114,7 +114,7 @@
 
   /* â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --sidebar-width:      260px;
-  --sidebar-width-compressed: 80px;
+  --sidebar-width-compressed: 84px;
   --header-height:      64px;
   --content-max-width:  1280px;
   --content-padding:    var(--space-6);

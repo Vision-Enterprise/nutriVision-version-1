@@ -69,14 +69,25 @@ export function renderShell(profile, onLogout) {
         aria-label="Main navigation"
       >
 
-        <!-- Brand logo & Toggle -->
-        <div class="sidebar__logo">
-          <div class="sidebar__logo-content" data-route="dashboard" role="button" tabindex="0" title="Go to Dashboard" style="cursor: pointer;">
-            <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img" />
+        <!-- Brand logo & outside Gemini-style Sidebar Toggle -->
+        <div class="sidebar__header">
+          <div class="sidebar__logo" data-route="dashboard" role="button" tabindex="0" title="Go to Dashboard" style="cursor: pointer;">
+            <img src="${logoUrl}" alt="NutriVision Logo" class="sidebar__logo-img sidebar__logo-img--full" />
+            <img src="${logoIconUrl}" alt="NutriVision Logo" class="sidebar__logo-img sidebar__logo-img--compact" />
           </div>
-          <button id="sidebar-toggle-btn" class="sidebar__toggle-btn btn btn-ghost" aria-label="Toggle Sidebar" title="${isCompressed ? 'Expand Sidebar' : 'Collapse Sidebar'}">
-            <span class="sidebar__toggle-icon icon">menu</span>
-            <img src="${logoIconUrl}" alt="NutriVision Icon" class="sidebar__toggle-logo" />
+          <button
+            id="sidebar-toggle-btn"
+            class="sidebar__toggle-btn"
+            type="button"
+            aria-label="${isCompressed ? 'Open sidebar' : 'Collapse sidebar'}"
+            data-tooltip="${isCompressed ? 'Open sidebar' : 'Collapse sidebar'}"
+          >
+            <svg class="sidebar__gemini-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3.5" />
+              <line x1="9" y1="4.5" x2="9" y2="19.5" />
+              <polyline class="sidebar__gemini-arrow sidebar__gemini-arrow--collapse" points="16.5 9.2 13.5 12 16.5 14.8" />
+              <polyline class="sidebar__gemini-arrow sidebar__gemini-arrow--expand" points="14 9.2 17 12 14 14.8" />
+            </svg>
           </button>
         </div>
         
@@ -316,8 +327,9 @@ export function renderShell(profile, onLogout) {
       document.body.classList.toggle('sidebar--compressed');
       const isNowCompressed = document.body.classList.contains('sidebar--compressed');
       localStorage.setItem('sidebar_compressed', isNowCompressed);
-      toggleBtn.setAttribute('title', isNowCompressed ? 'Expand Sidebar' : 'Collapse Sidebar');
-      toggleBtn.setAttribute('aria-label', isNowCompressed ? 'Expand Sidebar' : 'Collapse Sidebar');
+      const label = isNowCompressed ? 'Open sidebar' : 'Collapse sidebar';
+      toggleBtn.setAttribute('aria-label', label);
+      toggleBtn.setAttribute('data-tooltip', label);
     });
   }
 

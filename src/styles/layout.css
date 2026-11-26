@@ -51,7 +51,7 @@
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
-  overflow-y: auto;
+  overflow: visible;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -59,71 +59,82 @@ body.sidebar--compressed .sidebar {
   width: var(--sidebar-width-compressed);
 }
 
-.sidebar__logo {
+.sidebar__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin: var(--space-2) var(--space-3);
-  padding: 0 8px 0 16px;
+  min-height: 48px;
+  position: relative;
+}
+
+body.sidebar--compressed .sidebar__header {
+  justify-content: center;
+  gap: 6px;
+  margin: var(--space-2) 6px;
+}
+
+.sidebar__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
   background-color: #ffffff;
   border-radius: 9999px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   border-bottom: none;
   text-decoration: none;
   position: relative;
-  height: 48px;
-  min-height: 48px;
+  height: 44px;
+  min-height: 44px;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body.sidebar--compressed .sidebar__logo {
-  justify-content: center;
-  margin: var(--space-2) auto;
-  padding: 0;
-  width: 48px;
-  height: 48px;
-  min-height: 48px;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+.sidebar__logo:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
-.sidebar__logo-content {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  max-width: 165px;
-  opacity: 1;
-  transform: translateX(0);
-  transition: opacity 0.25s ease, max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
-  white-space: nowrap;
+body.sidebar--compressed .sidebar__logo {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .sidebar__logo-img {
-  height: 28px;
-  width: auto;
   display: block;
+  object-fit: contain;
+  transition: opacity 0.2s ease, transform 0.25s ease;
 }
 
-.sidebar__logo-sub {
-  font-size: var(--font-size-xs);
-  color: #6b7280;
-  line-height: 1;
-  margin-left: 2px;
+.sidebar__logo-img--full {
+  height: 26px;
+  width: auto;
+  max-width: 100%;
 }
 
-body.sidebar--compressed .sidebar__logo-content {
-  max-width: 0;
-  opacity: 0;
-  transform: translateX(-15px);
-  pointer-events: none;
-  margin: 0;
-  padding: 0;
+.sidebar__logo-img--compact {
+  display: none;
+  width: 24px;
+  height: 24px;
+}
+
+body.sidebar--compressed .sidebar__logo-img--full {
   display: none;
 }
 
-/* Sidebar toggle button (holds hamburger in expanded state, NV logo in compressed state) */
+body.sidebar--compressed .sidebar__logo-img--compact {
+  display: block;
+}
+
+/* Gemini-style outside sidebar toggle button */
 .sidebar__toggle-btn {
   position: relative;
   display: flex;
@@ -131,72 +142,90 @@ body.sidebar--compressed .sidebar__logo-content {
   justify-content: center;
   width: 34px;
   height: 34px;
-  padding: 0 !important;
+  padding: 0;
   border-radius: 50%;
   cursor: pointer;
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
-  transition: background-color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .sidebar__toggle-btn:hover {
-  background-color: #f0fdf4;
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.06);
+}
+
+.sidebar__toggle-btn:active {
+  transform: scale(0.96);
 }
 
 body.sidebar--compressed .sidebar__toggle-btn {
-  width: 48px;
-  height: 48px;
-  margin: 0;
-  background: transparent;
-  box-shadow: none;
+  width: 30px;
+  height: 30px;
 }
 
-body.sidebar--compressed .sidebar__toggle-btn:hover {
-  background-color: transparent;
-  transform: scale(1.05);
+.sidebar__gemini-icon {
+  width: 19px;
+  height: 19px;
+  display: block;
 }
 
-/* Hamburger icon state */
-.sidebar__toggle-icon {
-  font-size: 22px;
-  color: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+body.sidebar--compressed .sidebar__gemini-icon {
+  width: 17px;
+  height: 17px;
 }
 
-body.sidebar--compressed .sidebar__toggle-icon {
+/* Interactive arrows inside Gemini panel icon (appear on hover) */
+.sidebar__gemini-arrow {
   opacity: 0;
-  transform: scale(0.3) rotate(90deg);
-  position: absolute;
-  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* NV Logo icon mark state */
-.sidebar__toggle-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-  opacity: 0;
-  transform: scale(0.4) rotate(-35deg);
-  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: absolute;
-  pointer-events: none;
+.sidebar__gemini-arrow--collapse {
+  transform: translateX(2px);
 }
 
-body.sidebar--compressed .sidebar__toggle-logo {
+.sidebar__gemini-arrow--expand {
+  transform: translateX(-2px);
+}
+
+body:not(.sidebar--compressed) .sidebar__toggle-btn:hover .sidebar__gemini-arrow--collapse {
   opacity: 1;
-  transform: scale(1) rotate(0deg);
-  pointer-events: auto;
-  position: relative;
+  transform: translateX(0);
 }
 
-body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__toggle-logo {
-  transform: scale(1.08) rotate(0deg);
+body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__gemini-arrow--expand {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Gemini-style floating tooltip pill on hover (especially helpful in compressed rail) */
+.sidebar__toggle-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: #ffffff;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 999;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.sidebar__toggle-btn:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
 .sidebar__logo-icon {
@@ -219,6 +248,8 @@ body.sidebar--compressed .sidebar__toggle-btn:hover .sidebar__toggle-logo {
 
 .sidebar__nav {
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
